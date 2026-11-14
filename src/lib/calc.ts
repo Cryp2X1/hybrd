@@ -129,6 +129,37 @@ export function computeTargets(p: Profile): Targets {
   };
 }
 
+/**
+ * Stationary / indoor cycling METs by effort, from the 2011 Compendium of Physical Activities
+ * (Ainsworth BE et al., Med Sci Sports Exerc 2011;43(8):1575–1581, codes 02011, 02017, 02012–02014).
+ * The 2024 Adult Compendium (Herrmann SD et al., J Sport Health Sci 2024;13(1):6–12) keeps these
+ * codes and adds finer watt bins (e.g. 5.0 METs at 60 W, 5.8 at 70–80 W). When no power is
+ * entered we use the published 2011 effort buckets, not a blend:
+ *   02011  3.5 METs  30–50 W, very light to light
+ *   02017  4.8 METs  51–89 W, light-to-moderate
+ *   02012  6.8 METs  90–100 W, moderate to vigorous
+ *   02013  8.8 METs  101–160 W, vigorous
+ *   02014 11.0 METs  161–200 W, vigorous (used here as “very vigorous”)
+ */
+export function indoorCycleMet(rpe?: number) {
+  const r = rpe ?? 5;
+  if (r <= 2) return 3.5;
+  if (r <= 4) return 4.8;
+  if (r <= 6) return 6.8;
+  if (r <= 8) return 8.8;
+  return 11.0;
+}
+/**
+ * Metabolic kcal from average mechanical power. Work (J) = watts × seconds; mechanical
+ * kcal = J / 4184. Dividing by a 0.24 (24%) gross-efficiency assumption gives metabolic
+ * kcal ≈ kJ × ~1.0 (4184 × 0.24 ≈ 1004). Cycling gross efficiency is typically around
+ * 20–25%; this is an estimate, not a measurement. Used when the user (or a file) provides watts.
+ */
+export function wattsKcal(avgWatts: number, durationSec: number) {
+  if (!(avgWatts > 0) || !(durationSec > 0)) return 0;
+  return Math.round((avgWatts * durationSec) / 4184 / 0.24);
+}
+
 /** MET values approximated from the Compendium of Physical Activities (Ainsworth 2011; Herrmann 2024). */
 export function metFor(w: Pick<Workout, 'type' | 'durationSec' | 'distanceM' | 'rpe'>) {
   const hard = (w.rpe ?? 6) >= 7, easy = (w.rpe ?? 6) <= 4;
@@ -137,6 +168,7 @@ export function metFor(w: Pick<Workout, 'type' | 'durationSec' | 'distanceM' | '
     case 'run': return kmh ? Math.min(19, Math.max(6, kmh * 1.02)) : hard ? 11 : 9;
     case 'walk': return kmh ? (kmh < 4 ? 2.8 : kmh < 5.2 ? 3.5 : kmh < 6 ? 4.3 : kmh < 7 ? 5.0 : 7.0) : 3.5;
     case 'cycle': return kmh ? (kmh < 16 ? 4.0 : kmh < 19 ? 6.8 : kmh < 22 ? 8.0 : kmh < 25.7 ? 10.0 : 12.0) : hard ? 8.5 : 6.8;
+    case 'indoor-cycle': return indoorCycleMet(w.rpe);
     case 'strength': return hard ? 6.0 : easy ? 3.5 : 5.0;
     case 'calisthenics': return hard ? 8.0 : easy ? 3.8 : 5.5;
     case 'cardio': return hard ? 8.0 : easy ? 4.0 : 6.5;
@@ -147,6 +179,83 @@ export function metFor(w: Pick<Workout, 'type' | 'durationSec' | 'distanceM' | '
 }
 export const estKcal = (w: Pick<Workout, 'type' | 'durationSec' | 'distanceM' | 'rpe'>, kg: number) =>
   w.type === 'rest' ? 0 : Math.round(metFor(w) * kg * (w.durationSec / 3600));
+
+// ---------- heart rate ----------
+/** Max HR: the value set in Me, else Tanaka, Monahan & Seals (2001): 208 − 0.7 × age. */
+export const hrMaxOf = (p: Pick<Profile, 'hrMax' | 'age'>) => (p.hrMax && p.hrMax > 100 ? Math.round(p.hrMax) : Math.round(208 - 0.7 * (p.age || 30)));
+/** 5 zones as % of max HR (the common 50/60/70/80/90 % convention). */
+export const ZONES = [
+  { z: 1, name: 'Easy', lo: 0.5, color: '#60a5fa' },
+  { z: 2, name: 'Aerobic', lo: 0.6, color: '#22c55e' },
+  { z: 3, name: 'Tempo', lo: 0.7, color: '#FFE600' },
+  { z: 4, name: 'Threshold', lo: 0.8, color: '#f97316' },
+  { z: 5, name: 'Max', lo: 0.9, color: '#ef4444' },
+];
+export function zoneOf(bpm: number, max: number) {
+  const f = bpm / max;
+  for (let i = ZONES.length - 1; i >= 0; i--) if (f >= ZONES[i].lo) return ZONES[i];
+  return null; // below zone 1
+}
+export function timeInZones(samples: [number, number][], max: number) {
+  const out = [0, 0, 0, 0, 0];
+  for (let i = 1; i < samples.length; i++) {
+    const dt = Math.min(15, samples[i][0] - samples[i - 1][0]);
+    const z = zoneOf(samples[i][1], max); if (z && dt > 0) out[z.z - 1] += dt;
+  }
+  return out;
+}
+/**
+ * Keytel et al. (2005) energy expenditure from heart rate, without VO2max:
+ * men  kJ/min = −55.0969 + 0.6309·HR + 0.1988·kg + 0.2017·age
+ * women kJ/min = −20.4022 + 0.4472·HR − 0.1263·kg + 0.074·age   (÷ 4.184 → kcal/min)
+ * Derived from submaximal steady exercise; not valid for very low HR, so it is clamped at ≥ 0.
+ */
+export function keytelKcalPerMin(hr: number, p: Pick<Profile, 'sex' | 'weightKg' | 'age'>) {
+  const kj = p.sex === 'female'
+    ? -20.4022 + 0.4472 * hr - 0.1263 * p.weightKg + 0.074 * p.age
+    : -55.0969 + 0.6309 * hr + 0.1988 * p.weightKg + 0.2017 * p.age;
+  return Math.max(0, kj / 4.184);
+}
+/** Types where the HR formula is reasonable; lifting raises HR without the same energy cost, so those stay MET-based. */
+export const HR_KCAL_TYPES: WorkoutType[] = ['run', 'walk', 'cycle', 'indoor-cycle', 'cardio', 'hyrox', 'hybrid'];
+/**
+ * HR-based kcal when there is enough HR (≥ 50 % of the workout covered and avg ≥ 90 bpm) and the type suits it;
+ * otherwise null (caller keeps the MET estimate).
+ */
+export function hrKcal(w: Pick<Workout, 'type' | 'durationSec' | 'hr'>, p: Pick<Profile, 'sex' | 'weightKg' | 'age'>) {
+  const s = w.hr?.samples;
+  if (!w.hr || !HR_KCAL_TYPES.includes(w.type) || w.hr.avg < 90 || !(w.durationSec > 0)) return null;
+  if (!s || s.length < 2) return Math.round(keytelKcalPerMin(w.hr.avg, p) * (w.durationSec / 60));
+  let kcal = 0, cov = 0;
+  for (let i = 1; i < s.length; i++) { const dt = Math.min(15, s[i][0] - s[i - 1][0]); if (dt <= 0) continue; kcal += keytelKcalPerMin(s[i][1], p) * (dt / 60); cov += dt; }
+  if (cov < w.durationSec * 0.5) return null;
+  return Math.round(kcal * (w.durationSec / cov));
+}
+/** Sets w.kcal + w.kcalMethod: device value if present, else watts, else HR (Keytel), else MET. */
+export function applyKcal<T extends Workout>(w: T, p: Profile, deviceKcal?: number): T {
+  if (deviceKcal && deviceKcal > 0) { w.kcal = Math.round(deviceKcal); w.kcalMethod = 'device'; return w; }
+  if (w.avgWatts && w.avgWatts > 0 && w.durationSec > 0) { w.kcal = wattsKcal(w.avgWatts, w.durationSec); w.kcalMethod = 'power'; return w; }
+  const h = hrKcal(w, p);
+  if (h != null) { w.kcal = h; w.kcalMethod = 'hr'; } else { w.kcal = estKcal(w, p.weightKg); w.kcalMethod = 'met'; }
+  return w;
+}
+/** Keep at most ~n points by averaging into time buckets. */
+export function downsampleHr(samples: [number, number][], n = 720): [number, number][] {
+  if (samples.length <= n) return samples.map(([t, b]) => [Math.round(t), Math.round(b)]);
+  const span = samples[samples.length - 1][0] - samples[0][0], step = span / n;
+  const out: [number, number][] = []; let i = 0;
+  for (let k = 0; k < n && i < samples.length; k++) {
+    const end = samples[0][0] + (k + 1) * step; let sum = 0, c = 0, t0 = samples[i][0];
+    while (i < samples.length && samples[i][0] <= end) { sum += samples[i][1]; c++; i++; }
+    if (c) out.push([Math.round(t0), Math.round(sum / c)]);
+  }
+  return out;
+}
+export function hrStats(samples: [number, number][]) {
+  const v = samples.map((s) => s[1]).filter((b) => b > 25 && b < 250);
+  if (!v.length) return null;
+  return { avg: Math.round(v.reduce((a, b) => a + b, 0) / v.length), max: Math.max(...v) };
+}
 
 // ---------- geo ----------
 export function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -232,7 +341,7 @@ export function streak(d: DataState, today = todayKey()) {
 
 // ---------- Hybrid Score ----------
 export const SCORE_VERSION = 'hs-2';
-const STRENGTH_SHARE: Record<WorkoutType, number> = { strength: 1, calisthenics: 1, hyrox: 0.5, hybrid: 0.5, run: 0, walk: 0, cycle: 0, cardio: 0.2, rest: 0 };
+const STRENGTH_SHARE: Record<WorkoutType, number> = { strength: 1, calisthenics: 1, hyrox: 0.5, hybrid: 0.5, run: 0, walk: 0, cycle: 0, 'indoor-cycle': 0, cardio: 0.2, rest: 0 };
 export interface Pillar { key: 'strength' | 'engine' | 'consistency' | 'nutrition'; label: string; score: number | null; detail: string; formula: string }
 export interface HybridScore { score: number | null; tier: string; pillars: Pillar[]; balancePenalty: number; version: string; asOf: string }
 
@@ -295,7 +404,7 @@ export function hybridScore(d: DataState, p: Profile, asOf = todayKey()): Hybrid
 
   const pillars: Pillar[] = [
     { key: 'strength', label: 'Strength', score: strength, detail: hasS ? `${sCount} strength session${sCount === 1 ? '' : 's'} · load ${Math.round(sLoad)} / ${sTargetLoad}` : 'Not enough data — log a strength or calisthenics session', formula: `Session-RPE load (minutes × RPE) from strength, calisthenics and half of HYROX/hybrid work in the last 7 days, vs. ${strengthTarget} × 45 min × RPE 7.` },
-    { key: 'engine', label: 'Engine', score: engine, detail: hasE ? `${Math.round(eMin)} of 150 moderate-equivalent min` : 'Not enough data — log a run, ride, walk or cardio session', formula: 'Aerobic minutes in the last 7 days (runs, rides, walks, cardio, half of HYROX/hybrid). Sessions at RPE 7+ count double, like the WHO guideline of 150 moderate or 75 vigorous minutes a week.' },
+    { key: 'engine', label: 'Engine', score: engine, detail: hasE ? `${Math.round(eMin)} of 150 moderate-equivalent min` : 'Not enough data — log a run, ride, indoor bike, walk or cardio session', formula: 'Aerobic minutes in the last 7 days (runs, rides, indoor/stationary bike, walks, cardio, half of HYROX/hybrid). Sessions at RPE 7+ count double, like the WHO guideline of 150 moderate or 75 vigorous minutes a week.' },
     { key: 'consistency', label: 'Consistency', score: consistency, detail: month.length ? `${days.size} of ${p.weeklySessions} training days${stepLogged ? ` · step goal ${stepDays}/7 days (+${stepBonus})` : ''}` : 'Not enough data — log your first workout', formula: `Distinct training days in the last 7 vs. your goal of ${p.weeklySessions} per week, plus a step bonus: +2 for each of the last 7 days that hit your ${goal.toLocaleString()}-step goal (max +10). Capped at 100; the bonus only applies once you have logged training.` },
     { key: 'nutrition', label: 'Fuel', score: nutrition, detail: nDays >= 3 ? `${nDays} logged day${nDays === 1 ? '' : 's'} averaged` : `Not enough data — log food on ${3 - nDays} more day${3 - nDays === 1 ? '' : 's'} this week`, formula: 'Per logged day: up to 50 pts for calories within ±10% of target (0 at ±30%), 35 pts for hitting protein, 15 pts for water. Averaged across logged days; needs 3+ days.' },
   ];
@@ -324,8 +433,9 @@ export function personalRecords(d: DataState, u: Units, wU: Units = u): PR[] {
       } else if (s.reps) better(`r:${ex.exId}`, `${ex.name} — most reps`, s.reps, `${s.reps} reps`, w.date);
       if (s.timeSec && !s.reps && !s.distanceM) better(`t:${ex.exId}`, `${ex.name} — longest hold`, s.timeSec, fmtTime(s.timeSec), w.date);
     }
-    if (w.distanceM && ['run', 'walk', 'cycle'].includes(w.type)) {
-      const nm = w.type === 'run' ? 'Run' : w.type === 'walk' ? 'Walk' : 'Ride';
+    if (w.avgWatts && w.type === 'indoor-cycle') better('w:indoor', 'Highest avg indoor-bike power', w.avgWatts, `${Math.round(w.avgWatts)} W`, w.date);
+    if (w.distanceM && ['run', 'walk', 'cycle', 'indoor-cycle'].includes(w.type)) {
+      const nm = w.type === 'run' ? 'Run' : w.type === 'walk' ? 'Walk' : w.type === 'indoor-cycle' ? 'Indoor ride' : 'Ride';
       better(`d:${w.type}`, `Longest ${nm.toLowerCase()}`, w.distanceM, fmtDist(w.distanceM, u), w.date);
       if (w.type === 'run' && w.distanceM >= 1000) {
         const pace = paceSec(w.durationSec, w.distanceM, u);
@@ -343,7 +453,14 @@ export function personalRecords(d: DataState, u: Units, wU: Units = u): PR[] {
 
 export const WORKOUT_TYPES: { v: WorkoutType; label: string }[] = [
   { v: 'strength', label: 'Strength' }, { v: 'calisthenics', label: 'Calisthenics' }, { v: 'run', label: 'Run' },
-  { v: 'walk', label: 'Walk' }, { v: 'cycle', label: 'Ride' }, { v: 'cardio', label: 'Cardio / HIIT' },
-  { v: 'hyrox', label: 'HYROX' }, { v: 'hybrid', label: 'Hybrid' }, { v: 'rest', label: 'Rest day' },
+  { v: 'walk', label: 'Walk' }, { v: 'cycle', label: 'Ride' }, { v: 'indoor-cycle', label: 'Indoor Bike' },
+  { v: 'cardio', label: 'Cardio / HIIT' }, { v: 'hyrox', label: 'HYROX' }, { v: 'hybrid', label: 'Hybrid' }, { v: 'rest', label: 'Rest day' },
 ];
 export const typeLabel = (t: WorkoutType) => WORKOUT_TYPES.find((x) => x.v === t)?.label || t;
+export const GPS_TYPES: WorkoutType[] = ['run', 'walk', 'cycle'];
+export const isGpsType = (t: WorkoutType) => GPS_TYPES.includes(t);
+export const isBikeType = (t: WorkoutType) => t === 'cycle' || t === 'indoor-cycle';
+export function activityLabel(w: Pick<Workout, 'type' | 'bikeKind'>) {
+  if (w.type === 'indoor-cycle') return w.bikeKind === 'stationary' ? 'Stationary Bike' : 'Indoor Bike';
+  return typeLabel(w.type);
+}

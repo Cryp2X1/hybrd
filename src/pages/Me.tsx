@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { Page, Card, RowLink } from '../components/ui';
-import { fromW, toW, wUnit, wu, stepGoalOf, strideM } from '../lib/calc';
+import { fromW, toW, wUnit, wu, stepGoalOf, strideM, hrMaxOf } from '../lib/calc';
 import { DistToggle, WeightToggle } from '../components/UnitToggle';
 import { HYROX_DIVISIONS } from '../data/programs';
 import { unlockAudio, cue } from '../lib/cues';
@@ -32,9 +32,12 @@ export default function Me() {
               <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Daily step goal" defaultValue={stepGoalOf(p)} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); if (Number.isFinite(v) && v >= 500) setProfile({ stepGoal: Math.min(v, 100000) }); }} onBlur={(e) => { e.target.value = String(stepGoalOf(p)); }} /></div>
             <div className="unit-row"><span><b>Step length</b><span className="muted small">Walking; used to estimate steps when the motion sensor isn’t available. Blank = auto from height ({autoStride} {imp ? 'in' : 'cm'})</span></span>
               <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="decimal" aria-label={`Step length in ${imp ? 'inches' : 'centimetres'}`} placeholder={`${autoStride} ${imp ? 'in' : 'cm'}`} value={p.strideCm ? Math.round(p.strideCm / (imp ? 2.54 : 1)) : ''} onChange={(e) => { const v = parseFloat(e.target.value); setProfile({ strideCm: Number.isFinite(v) && v > 0 ? v * (imp ? 2.54 : 1) : undefined }); }} /></div>
+            <div className="unit-row"><span><b>Max heart rate</b><span className="muted small">For HR zones. Blank = estimated from age with 208 − 0.7 × age (Tanaka 2001){p.age ? ` = ${hrMaxOf({ age: p.age })} bpm` : ''}. A measured max is better.</span></span>
+              <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Max heart rate" placeholder={`${hrMaxOf({ age: p.age })} bpm`} value={p.hrMax ?? ''} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); setProfile({ hrMax: Number.isFinite(v) && v > 0 ? Math.min(v, 240) : undefined }); }} /></div>
           </Card>
           <Card>
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
+            <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
             <RowLink to="/progress" icon="progress" title="Progress & PRs" sub="Charts, records, body weight" />
             <RowLink to="/timers" icon="timer" title="Timers" sub="Stopwatch, intervals, EMOM, AMRAP, HYROX" />
             <RowLink to="/routes" icon="map" title="Route history" sub="Every GPS activity on one map" />

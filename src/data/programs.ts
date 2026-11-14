@@ -99,6 +99,17 @@ export const PROGRAMS: Program[] = [
     ],
   },
   {
+    id: 'indoor-bike', name: 'Indoor / Stationary Bike', discipline: 'Cycling', level: 'All levels', weeks: 4, perWeek: 3,
+    summary: 'Time-based sessions for an indoor bike, smart trainer or gym stationary bike. No GPS — use the timer or start an indoor recording and enter distance and watts from the console at the end.',
+    progression: ['Keep the recovery spin easy (you should be able to talk in full sentences).', 'Endurance: add 5–10 min each week, then cut back in week 4.', 'On interval days, the work bouts should feel hard but controlled; shorten a set if you can’t hold the effort.', 'These are common session structures, not a promise of a particular result.'],
+    sessions: [
+      { id: 'recovery', name: 'Recovery Spin', type: 'indoor-cycle', minutes: 30, focus: 'Very easy, conversational', blocks: [{ exId: 'stationary-bike', sets: 1, timeSec: 1800, note: 'RPE 2–3 · light resistance, easy cadence' }] },
+      { id: 'endurance', name: 'Endurance Ride', type: 'indoor-cycle', minutes: 45, focus: 'Steady moderate effort', blocks: [{ exId: 'indoor-bike', sets: 1, timeSec: 2700, note: 'RPE 5–6 · sustainable for the whole time' }] },
+      { id: 'int', name: '4 × 4 min Intervals', type: 'indoor-cycle', minutes: 50, focus: 'Hard 4 min, 3 min easy', timer: 'interval&work=240&rest=180&rounds=4&wu=600&cd=600&type=indoor-cycle&title=4×4 min Intervals', blocks: [{ exId: 'indoor-bike', sets: 1, timeSec: 600, note: 'Warm-up, easy' }, { exId: 'indoor-bike', sets: 4, timeSec: 240, note: 'Hard effort · 3 min easy after each' }, { exId: 'indoor-bike', sets: 1, timeSec: 600, note: 'Cool-down' }] },
+      { id: 'hiit', name: 'HIIT Sprints', type: 'indoor-cycle', minutes: 30, focus: '30 s hard / 90 s easy × 8', timer: 'interval&work=30&rest=90&rounds=8&wu=480&cd=480&type=indoor-cycle&title=HIIT Sprints 30/90', blocks: [{ exId: 'indoor-bike', sets: 1, timeSec: 480, note: 'Warm-up, 8 min easy' }, { exId: 'indoor-bike', sets: 8, timeSec: 30, note: 'Hard sprint · 90 s easy after each' }, { exId: 'indoor-bike', sets: 1, timeSec: 480, note: 'Cool-down, 8 min easy' }] },
+    ],
+  },
+  {
     id: 'hiit-engine', name: 'HIIT Engine', discipline: 'Cardio', level: 'All levels', weeks: 4, perWeek: 3,
     summary: 'Short, hard conditioning built on the Tabata, EMOM and AMRAP timers. Pair with easy days.',
     progression: ['Pick a version you can finish with good form.', 'Each week: add a round or 5 s of work.', 'Low-impact swap: air bike or rower for the jumps.'],

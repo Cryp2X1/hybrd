@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { RoutePoint, Split, WorkoutType } from './types';
+import type { BikeKind, RoutePoint, Split, WorkoutType } from './types';
 import { haversine, splitsFromTrack } from './calc';
 import { acquireWakeLock, cue, say } from './cues';
 import { Pedometer, type MotionStatus } from './pedometer';
 import { saveLastPos } from './location';
 
-export type RecType = Extract<WorkoutType, 'run' | 'walk' | 'cycle'>;
+export type RecType = Extract<WorkoutType, 'run' | 'walk' | 'cycle' | 'indoor-cycle'>;
 export interface RecState {
   status: 'idle' | 'recording' | 'paused';
   type: RecType;
   indoor: boolean;
+  bikeKind: BikeKind;
   autoPause: boolean;
   startedAt: number;
   pausedAt: number | null; // set while paused (manual or auto)
@@ -30,14 +31,14 @@ export interface RecState {
   motion: MotionStatus;   // pedometer state for this session
 }
 const LS = 'hybrd:rec';
-const fresh = (type: RecType = 'run', splitUnitM = 1000): RecState => ({
-  status: 'idle', type, indoor: false, autoPause: true, startedAt: 0, pausedAt: null, autoPaused: false, accPauseMs: 0,
+const fresh = (type: RecType = 'run', splitUnitM = 1000, bikeKind: BikeKind = 'indoor'): RecState => ({
+  status: 'idle', type, indoor: type === 'indoor-cycle', bikeKind, autoPause: type !== 'indoor-cycle', startedAt: 0, pausedAt: null, autoPaused: false, accPauseMs: 0,
   segments: [], distanceM: 0, elevGainM: 0, splits: [], splitUnitM, lastAcc: null, lastFixAt: 0, gaps: [], error: '', dropped: 0, steps: 0, motion: 'unknown',
 });
 // Tunables per activity
 const MAX_ACC = 35; // m — drop worse fixes
-const MAX_SPEED: Record<RecType, number> = { run: 9, walk: 4, cycle: 25 }; // m/s — drop teleport jumps
-const MOVE_SPEED: Record<RecType, number> = { run: 1.0, walk: 0.5, cycle: 1.8 }; // m/s — under this = stopped
+const MAX_SPEED: Record<RecType, number> = { run: 9, walk: 4, cycle: 25, 'indoor-cycle': 25 }; // m/s — drop teleport jumps
+const MOVE_SPEED: Record<RecType, number> = { run: 1.0, walk: 0.5, cycle: 1.8, 'indoor-cycle': 1.8 }; // m/s — under this = stopped
 const AUTO_PAUSE_SEC = 10;
 const GAP_SEC = 25; // no fix for this long (screen locked / tab hidden) = gap, never bridged
 
@@ -45,7 +46,7 @@ export const elapsedMs = (s: RecState, now = Date.now()) => (s.startedAt ? (s.pa
 
 interface Ctx {
   s: RecState;
-  setup(p: Partial<Pick<RecState, 'type' | 'indoor' | 'autoPause' | 'splitUnitM'>>): void;
+  setup(p: Partial<Pick<RecState, 'type' | 'indoor' | 'bikeKind' | 'autoPause' | 'splitUnitM'>>): void;
   start(): void; pause(): void; resume(): void; finish(): RecState; discard(): void;
   currentPaceSec(): number; // sec per meter, recent
   setMotion(m: MotionStatus): void; // result of the permission request (from a tap)
@@ -61,7 +62,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
       if (j && j.status !== 'idle') {
         // Restored after reload/crash: GPS watch is gone, so come back paused and say so.
         const now = Date.now();
-        return { ...j, steps: j.steps || 0, motion: j.motion === 'denied' || j.motion === 'unsupported' ? j.motion : 'unknown', status: 'paused', pausedAt: j.pausedAt ?? (j.lastFixAt || now), autoPaused: false, restored: true };
+        return { ...j, steps: j.steps || 0, bikeKind: j.bikeKind || 'indoor', indoor: j.type === 'indoor-cycle' ? true : j.indoor, motion: j.motion === 'denied' || j.motion === 'unsupported' ? j.motion : 'unknown', status: 'paused', pausedAt: j.pausedAt ?? (j.lastFixAt || now), autoPaused: false, restored: true };
       }
     } catch { /* ignore */ }
     return fresh();
@@ -89,7 +90,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
   const stopPedo = () => { ped.current?.stop(); ped.current = null; if (pedTimer.current) { clearTimeout(pedTimer.current); pedTimer.current = null; } };
   const startPedo = () => {
     const st = ref.current;
-    if (st.type === 'cycle' || st.status !== 'recording' || ped.current) return;
+    if (st.type === 'cycle' || st.type === 'indoor-cycle' || st.status !== 'recording' || ped.current) return;
     if (st.motion !== 'granted' && st.motion !== 'waiting') return;
     const p = new Pedometer((n) => update((x) => ({ ...x, steps: n })), st.type === 'run' ? { minIntervalMs: 230 } : {});
     p.start(st.steps); ped.current = p;
@@ -187,6 +188,11 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
 
   const setup: Ctx['setup'] = (p) => update((x) => {
     const n = { ...x, ...p };
+    if (n.type === 'indoor-cycle') { n.indoor = true; n.autoPause = false; }
+    else if (p.type && p.type !== 'indoor-cycle' && x.type === 'indoor-cycle') {
+      n.indoor = p.indoor ?? false;
+      n.autoPause = p.autoPause ?? true;
+    }
     // Unit switched mid-session: rebuild splits for the new unit from the raw points (nothing is lost).
     if (p.splitUnitM && p.splitUnitM !== x.splitUnitM && x.status !== 'idle') n.splits = splitsFromTrack(x.segments, p.splitUnitM);
     return n;
@@ -195,7 +201,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     const base = ref.current;
     const now = Date.now();
     lastMoveAt.current = now; altRef.current = null;
-    update(() => ({ ...fresh(base.type, base.splitUnitM), indoor: base.indoor, autoPause: base.autoPause, motion: base.motion === 'denied' || base.motion === 'unsupported' ? base.motion : 'unknown', status: 'recording', startedAt: now }), true);
+    update(() => ({ ...fresh(base.type, base.splitUnitM, base.bikeKind), indoor: base.type === 'indoor-cycle' || base.indoor, autoPause: base.type === 'indoor-cycle' ? false : base.autoPause, bikeKind: base.bikeKind || 'indoor', motion: base.motion === 'denied' || base.motion === 'unsupported' ? base.motion : 'unknown', status: 'recording', startedAt: now }), true);
     release.current?.(); release.current = acquireWakeLock();
     startWatch(); cue('go'); say('Workout started');
     startPedo();
@@ -216,7 +222,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     stopWatch(); stopPedo(); release.current?.(); release.current = null;
     const final = { ...ref.current, pausedAt: ref.current.pausedAt ?? Date.now() };
     localStorage.removeItem(LS);
-    const next = { ...fresh(final.type, final.splitUnitM), indoor: final.indoor, autoPause: final.autoPause };
+    const next = { ...fresh(final.type, final.splitUnitM, final.bikeKind), indoor: final.indoor, autoPause: final.autoPause, bikeKind: final.bikeKind };
     ref.current = next; setS(next);
     cue('done');
     return final;

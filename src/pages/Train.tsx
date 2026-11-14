@@ -5,7 +5,8 @@ import { EXERCISES, CATS, type ExCat } from '../data/exercises';
 import { useStore } from '../lib/store';
 import { Page, Segmented, Card, RowLink, Empty, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { fmtDist, fmtTime, typeLabel, WORKOUT_TYPES } from '../lib/calc';
+import { activityLabel, fmtDist, fmtTime, isBikeType, isGpsType, typeLabel, WORKOUT_TYPES } from '../lib/calc';
+import { SourceBadge } from '../components/Strava';
 
 type Tab = 'programs' | 'library' | 'templates' | 'history';
 export default function Train() {
@@ -23,6 +24,20 @@ export default function Train() {
       <Segmented value={tab} onChange={(v) => setSp({ tab: v })} options={[{ v: 'programs', label: 'Programs' }, { v: 'library', label: 'Exercises' }, { v: 'templates', label: 'My workouts' }, { v: 'history', label: 'History' }]} />
 
       {tab === 'programs' && <>
+        <div className="tile-grid" data-testid="train-indoor-bikes" style={{ marginBottom: 14 }}>
+          <Link to="/record?type=indoor-cycle&kind=indoor" className="tile feature">
+            <div className="kicker">New · No GPS</div>
+            <h3>Indoor Bike</h3>
+            <div className="muted small">Smart trainer or spin bike. Time-based session — enter distance, cadence and watts from the console when you finish.</div>
+            <div className="meta"><Pill>Timer</Pill><Pill>Optional watts</Pill></div>
+          </Link>
+          <Link to="/record?type=indoor-cycle&kind=stationary" className="tile">
+            <div className="kicker">New · No GPS</div>
+            <h3>Stationary Bike</h3>
+            <div className="muted small">Upright or recumbent gym bike. Same timer, plus optional resistance level and cadence (rpm).</div>
+            <div className="meta"><Pill>Timer</Pill><Pill>Resistance</Pill></div>
+          </Link>
+        </div>
         <Link to="/timers?t=hyrox" className="card hero click" style={{ display: 'block' }}>
           <div className="row"><div style={{ flex: 1 }}><div className="kicker">New · HYROX</div><h2>Race Simulator</h2><p className="muted small" style={{ margin: '6px 0 0' }}>8 × 1 km runs + 8 stations in the official order. Tap through splits, compare to your last sim.</p></div><Icon name="flag" size={36} className="y" /></div>
         </Link>
@@ -60,10 +75,10 @@ export default function Train() {
       {tab === 'history' && <>
         <Segmented small value={ftype} onChange={setFtype} options={[{ v: 'all', label: 'All' }, ...WORKOUT_TYPES.filter((w) => w.v !== 'rest').map((w) => ({ v: w.v as string, label: w.label }))]} />
         <Card>
-          {hist.length ? hist.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={['run', 'walk', 'cycle'].includes(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={w.title} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${typeLabel(w.type)}${w.kcal ? ` · ~${w.kcal} kcal est.` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
+          {hist.length ? hist.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={<>{w.title}<SourceBadge w={w} /></>} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.kcal ? ` · ~${w.kcal} kcal est.` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
             : <Empty title="No workouts yet" icon="train">Your history shows up here.</Empty>}
         </Card>
-        <Link className="link" to="/routes">Route map of all GPS activities →</Link>
+        <div className="row gap8 wrap" style={{ justifyContent: 'space-between' }}><Link className="link" to="/routes">Route map of all GPS activities →</Link><Link className="link" to="/me/import" data-testid="history-import">Import watch files · Strava →</Link></div>
       </>}
     </Page>
   );

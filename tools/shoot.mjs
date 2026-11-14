@@ -22,7 +22,7 @@ async function run(kind) {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${kind}] console.${m.type()}: ${m.text()} @ ${page.url()}`); });
   page.on('pageerror', (e) => errors.push(`[${kind}] pageerror: ${e.message} @ ${page.url()}`));
   // Requests made inside Spotify's own embed iframe are Spotify's (not HYBRD code): listed separately, not counted.
-  page.on('requestfailed', (r) => { const u = r.url(); if (u.includes('tile.openstreetmap.org')) return; if (r.frame() && r.frame() !== page.mainFrame() && !u.startsWith('http://localhost')) { thirdParty.push(`[${kind}] inside ${new URL(r.frame().url()).host} iframe: ${u} ${r.failure()?.errorText}`); return; } errors.push(`[${kind}] requestfailed: ${u} ${r.failure()?.errorText}`); });
+  page.on('requestfailed', (r) => { const u = r.url(); if (u.includes('tile.openstreetmap.org')) return; if (r.frame() && r.frame() !== page.mainFrame() && !u.startsWith('http://localhost')) { thirdParty.push(`[${kind}] inside ${(() => { try { return new URL(r.frame().url()).host; } catch { return 'a closed'; } })()} iframe: ${u} ${r.failure()?.errorText}`); return; } errors.push(`[${kind}] requestfailed: ${u} ${r.failure()?.errorText}`); });
   page.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('openstreetmap')) errors.push(`[${kind}] HTTP ${r.status()}: ${r.url()}`); });
   const shot = async (name, full = false) => { await sleep(700); await page.screenshot({ path: `${OUT}${kind}-${name}.png`, fullPage: full }); console.log('shot', kind, name); };
   const go = async (path, wait = 900) => {

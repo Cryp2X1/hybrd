@@ -111,6 +111,110 @@ Sources:
 - https://developer.spotify.com/blog/2026-07-23-web-api-quota-updates
 - https://developer.spotify.com/documentation/web-playback-sdk
 
+## 9. (Optional) Strava — "Connect with Strava" sync
+
+HYBRD works without this: Bluetooth heart rate and watch-file import (.fit/.tcx/.gpx) need no setup. Until steps 1–4 are done, Me › Devices & sync shows **"Strava setup needed"** and nothing breaks.
+
+Strava requires the **Client Secret** for the token exchange and for every token refresh, and a static GitHub Pages site can't keep a secret. So HYBRD ships a tiny, stateless **token-exchange function** that holds the secret. It stores nothing. Pick **one** host; both are $0:
+- Supabase Edge Functions: the free plan includes 500,000 invocations a month (supabase.com/pricing).
+- Cloudflare Workers: the free plan includes 100,000 requests a day (developers.cloudflare.com/workers/platform/pricing).
+
+### 9.1 Create the Strava API app (Jose — needs a Strava subscription)
+1. Sign in to Strava, then open https://www.strava.com/settings/api. Strava says a subscription is required to create an API app.
+2. Fill in:
+   - **Application Name**: HYBRD. Don't use "Strava" in the name.
+   - **Category**: pick the closest one.
+   - **Website**: https://cryp2x1.github.io/hybrd/
+   - **Authorization Callback Domain**: `cryp2x1.github.io` (the domain only, with no https:// and no path). localhost and 127.0.0.1 are always allowed, for local testing.
+   - Upload an icon.
+3. Copy the **Client ID** (public) and the **Client Secret** (private; it goes only into the function).
+
+### 9.2a Deploy the function on Supabase (recommended if accounts are on Supabase)
+The code is `supabase/functions/strava-token/index.ts`.
+- **CLI:**
+  ```bash
+  npx supabase login
+  npx supabase link --project-ref <your-project-ref>
+  npx supabase secrets set STRAVA_CLIENT_ID=<id> STRAVA_CLIENT_SECRET=<secret> ALLOWED_ORIGINS=https://cryp2x1.github.io,http://localhost:5173
+  npx supabase functions deploy strava-token --no-verify-jwt
+  ```
+- **Dashboard instead:**
+  1. Go to Edge Functions › Deploy a new function, choose the in-browser editor, name it `strava-token`, paste index.ts and deploy.
+  2. In the function's settings, turn JWT verification **off**. The browser calls it before anyone signs in, and the function checks the Origin itself.
+  3. Add the three secrets under Edge Functions › Secrets.
+- The function URL is `https://<project-ref>.supabase.co/functions/v1/strava-token`.
+
+### 9.2b …or on Cloudflare Workers
+The code is in `workers/strava-token/`.
+```bash
+cd workers/strava-token
+# edit wrangler.toml: STRAVA_CLIENT_ID = "<id>"
+npx wrangler login
+npx wrangler secret put STRAVA_CLIENT_SECRET
+npx wrangler deploy
+```
+The URL is `https://hybrd-strava-token.<your-subdomain>.workers.dev`.
+
+### 9.3 Turn it on in the app
+Edit `public/config.js` (or `config.js` in the published site):
+```js
+stravaClientId: '<Client ID>',
+stravaTokenUrl: 'https://<project-ref>.supabase.co/functions/v1/strava-token',
+supportEmail: '<an address users can write to>', // Strava API Policy §2.4 requires a support contact
+```
+Rebuild or re-publish. To test without publishing, open Me › Devices & sync › Strava, choose "Enter Client ID & function URL", and enter both on that one device.
+
+### 9.4 Test
+1. Go to Me › Devices & sync › Connect with Strava, read the consent screen, and approve on strava.com.
+2. You land back in HYBRD, and your last 30 days of activities appear in Train › History with a **from Strava** badge.
+3. Open an activity: it shows the full route, the HR chart, laps or splits, and **View on Strava**.
+4. Test **Disconnect & delete**. It revokes access and deletes all Strava data on the device, and HYBRD shows a written confirmation.
+
+`tools/test-strava-fn.mjs` (`node tools/test-strava-fn.mjs`) unit-tests both functions against a mocked Strava. It needs no keys or network.
+
+### 9.5 Strava limits and rules (checked Nov 14, 2026)
+**Who can connect**
+- A new app is in **Single Player Mode**: only the owner's own Strava account can connect (athlete capacity 1).
+- In the API settings, the owner can self-serve up to **10 athletes**. That also raises the rate limits to 200 reads per 15 min and 2,000 a day.
+- More than 10 athletes needs Strava's review through the Developer Program form, with screenshots of everywhere Strava data appears and of the Connect button.
+
+**Rate limits**
+- Defaults are 100 reads per 15 min and 1,000 a day, and 200 / 2,000 overall, per app. Going over returns `429`.
+- HYBRD shows usage from the `X-ReadRateLimit-*` headers.
+- A sync costs 1–4 list calls, plus at most 20 detail calls for new activities. Opening an activity costs 1 call for its streams.
+
+**Tokens**
+- Access tokens last 6 h. Refresh needs the secret (it goes through the function).
+- The newest refresh token is always kept, because Strava may rotate it.
+- Disconnect uses the new `/oauth/revoke` endpoint. Strava added it on June 1, 2026, and it will be the only method from June 1, 2027. If revoke fails, the app falls back to `/oauth/deauthorize`.
+
+**Data rules HYBRD follows** (API Agreement and API Policy)
+- Strava data is displayed **only to the athlete** who connected.
+- It is cached for **at most 7 days** (§6.2), on that device only.
+- It is not synced to Supabase or included in exports.
+- It is never used for AI/ML (§5.3).
+- Activities removed on Strava disappear at the next sync.
+- Disconnecting deletes everything and confirms it in writing (§2.5 / §7.4).
+- The consent screen discloses what is read and how to withdraw or delete (§2.1).
+- The app links to strava.com/settings/apps (§2.4).
+
+**Brand**
+- HYBRD uses the official, unmodified "Connect with Strava" button (48 px) and the "Powered by Strava" logo, in `public/brand/strava/`.
+- Links back read **View on Strava** in bold orange #FC5200.
+- Don't add Strava's logo to HYBRD's own logo or icon.
+
+**Upcoming change**
+- Strava's API base URL moves to `https://api-v3.strava.com` from **Jan 4, 2027** (changelog). Update `API` in `src/lib/strava.ts` then if `www.strava.com/api/v3` stops answering.
+
+Sources:
+- https://developers.strava.com/docs/getting-started/
+- https://developers.strava.com/docs/authentication/
+- https://developers.strava.com/docs/rate-limits/
+- https://developers.strava.com/docs/changelog/
+- https://developers.strava.com/guidelines/
+- https://www.strava.com/legal/api
+- https://www.strava.com/legal/api_policy
+
 ## Local development
 ```bash
 npm install

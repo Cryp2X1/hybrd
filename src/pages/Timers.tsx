@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { attachHr } from '../lib/hr';
+import { HrButton, HrLive } from '../components/HeartRate';
 import { MusicButton } from '../components/Music';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Page, Segmented, Card, HoldButton, NumberStepper, Banner } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { useClock, useSequence, usePersisted, type Phase } from '../lib/timer';
-import { fmtMs, fmtTime, estKcal } from '../lib/calc';
+import { fmtMs, fmtTime } from '../lib/calc';
 import { useStore, uid } from '../lib/store';
 import type { Workout, WorkoutType } from '../lib/types';
 import { useToast } from '../lib/toast';
@@ -18,8 +20,8 @@ function useSaveTimed() {
   const toast = useToast();
   const nav = useNavigate();
   return (title: string, type: WorkoutType, sec: number, notes?: string) => {
-    const w: Workout = { id: uid(), updatedAt: Date.now(), date: new Date(Date.now() - sec * 1000).toISOString(), type, title, durationSec: Math.round(sec), rpe: 8, notes, source: 'timer' };
-    w.kcal = estKcal(w, profile.weightKg);
+    const w: Workout = { id: uid(), updatedAt: Date.now(), date: new Date(Date.now() - sec * 1000).toISOString(), type, title, durationSec: Math.round(sec), rpe: 8, notes, source: 'timer', ...(type === 'indoor-cycle' ? { bikeKind: 'indoor' as const } : {}) };
+    attachHr(w, profile, Date.now() - sec * 1000);
     upsert<Workout>('workouts', w); toast('Saved to history'); nav(`/train/workout/${w.id}`);
   };
 }
@@ -78,28 +80,44 @@ export default function Timers() {
   const t = (sp.get('t') as T) || 'stopwatch';
   const [cfg, setCfg] = usePersisted('hybrd:t:cfg', () => ({ cdMin: 5, cdSec: 0, work: 40, rest: 20, rounds: 8, emomEvery: 60, emomRounds: 12, amrapMin: 15, tabataBlocks: 1 }));
   const up = (x: Partial<typeof cfg>) => setCfg((c) => ({ ...c, ...x }));
+  const work = +(sp.get('work') || 0) || cfg.work;
+  const rest = sp.has('rest') ? Math.max(0, +(sp.get('rest') || 0)) : cfg.rest;
+  const rounds = +(sp.get('rounds') || 0) || cfg.rounds;
+  const wu = Math.max(0, +(sp.get('wu') || 0));
+  const cd = Math.max(0, +(sp.get('cd') || 0));
+  const saveType = (['strength', 'calisthenics', 'run', 'walk', 'cycle', 'indoor-cycle', 'cardio', 'hyrox', 'hybrid'].includes(sp.get('type') || '') ? sp.get('type') : 'cardio') as WorkoutType;
+  const saveTitle = sp.get('title') || (t === 'interval' ? `Intervals ${work}/${rest} × ${rounds}` : undefined);
+  useEffect(() => {
+    const patch: Partial<typeof cfg> = {};
+    if (+(sp.get('work') || 0) > 0) patch.work = +(sp.get('work') || 0);
+    if (sp.has('rest') && +sp.get('rest')! >= 0) patch.rest = +sp.get('rest')!;
+    if (+(sp.get('rounds') || 0) > 0) patch.rounds = +(sp.get('rounds') || 0);
+    if (Object.keys(patch).length) setCfg((c) => ({ ...c, ...patch }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp]);
   const phases = useMemo<Record<string, Phase[]>>(() => {
-    const intervals = (work: number, rest: number, rounds: number): Phase[] => Array.from({ length: rounds }).flatMap((_, i) => [{ label: 'Work', sec: work, kind: 'work' as const, round: i + 1, of: rounds }, ...(rest && i < rounds - 1 ? [{ label: 'Rest', sec: rest, kind: 'rest' as const, round: i + 1, of: rounds }] : [])]);
+    const intervals = (wsec: number, rsec: number, n: number): Phase[] => Array.from({ length: n }).flatMap((_, i) => [{ label: 'Work', sec: wsec, kind: 'work' as const, round: i + 1, of: n }, ...(rsec && i < n - 1 ? [{ label: 'Rest', sec: rsec, kind: 'rest' as const, round: i + 1, of: n }] : [])]);
     const tab: Phase[] = [];
     for (let b = 0; b < cfg.tabataBlocks; b++) { tab.push(...intervals(20, 10, 8).map((p) => ({ ...p, label: p.kind === 'work' ? `Block ${b + 1} · Work` : 'Rest' }))); if (b < cfg.tabataBlocks - 1) tab.push({ label: 'Block rest', sec: 60, kind: 'rest' }); }
     return {
       countdown: [{ label: 'Countdown', sec: cfg.cdMin * 60 + cfg.cdSec, kind: 'work' }],
-      interval: intervals(cfg.work, cfg.rest, cfg.rounds),
+      interval: [...(wu ? [{ label: 'Warm-up', sec: wu, kind: 'rest' as const }] : []), ...intervals(work, rest, rounds), ...(cd ? [{ label: 'Cool-down', sec: cd, kind: 'rest' as const }] : [])],
       tabata: tab,
       emom: Array.from({ length: cfg.emomRounds }, (_, i) => ({ label: `Minute ${i + 1}`, sec: cfg.emomEvery, kind: 'work' as const, round: i + 1, of: cfg.emomRounds })),
       amrap: [{ label: 'AMRAP', sec: cfg.amrapMin * 60, kind: 'work' }],
     };
-  }, [cfg]);
+  }, [cfg, work, rest, rounds, wu, cd]);
 
   return (
-    <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide actions={<MusicButton />}>
+    <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide actions={<><HrButton /><MusicButton /></>}>
       <Segmented value={t} onChange={(v) => setSp({ t: v })} options={[{ v: 'stopwatch', label: 'Stopwatch' }, { v: 'countdown', label: 'Countdown' }, { v: 'interval', label: 'Intervals' }, { v: 'tabata', label: 'Tabata' }, { v: 'emom', label: 'EMOM' }, { v: 'amrap', label: 'AMRAP' }, { v: 'hyrox', label: 'HYROX Sim' }]} />
       {isIOS() && !isStandalone() && <Banner tone="warn">iPhone: sounds work after you tap Start; there’s no vibration on iOS. Add HYBRD to your Home Screen to keep the screen awake (iOS 18.4+).</Banner>}
+      <HrLive />
       <div className="desk-grid">
         <div>
           {t === 'stopwatch' && <Stopwatch />}
           {t === 'countdown' && <SequenceView key={`cd${cfg.cdMin}${cfg.cdSec}`} id="countdown" phases={phases.countdown} title="Countdown" type="cardio" />}
-          {t === 'interval' && <SequenceView id="interval" phases={phases.interval} title={`Intervals ${cfg.work}/${cfg.rest} × ${cfg.rounds}`} type="cardio" />}
+          {t === 'interval' && <SequenceView id={`interval-${work}-${rest}-${rounds}-${wu}-${cd}`} phases={phases.interval} title={saveTitle || `Intervals ${work}/${rest} × ${rounds}`} type={saveType} />}
           {t === 'tabata' && <SequenceView id="tabata" phases={phases.tabata} title={`Tabata × ${cfg.tabataBlocks}`} type="cardio" />}
           {t === 'emom' && <SequenceView id="emom" phases={phases.emom} title={`EMOM ${Math.round((cfg.emomEvery * cfg.emomRounds) / 60)}`} type="cardio" />}
           {t === 'amrap' && <SequenceView id="amrap" phases={phases.amrap} title={`AMRAP ${cfg.amrapMin}`} type="cardio" countRounds />}
@@ -110,8 +128,9 @@ export default function Timers() {
             <h3 style={{ marginBottom: 12 }}>Set up</h3>
             {t === 'countdown' && <><div className="chips" style={{ marginBottom: 12 }}>{[1, 3, 5, 10, 20, 30].map((m) => <button key={m} className={`chip ${cfg.cdMin === m && !cfg.cdSec ? 'on' : ''}`} onClick={() => up({ cdMin: m, cdSec: 0 })}>{m} min</button>)}</div>
               <div className="row wrap"><NumberStepper label="Min" value={cfg.cdMin} onChange={(v) => up({ cdMin: v })} max={180} /><NumberStepper label="Sec" value={cfg.cdSec} onChange={(v) => up({ cdSec: v })} step={5} max={55} /></div></>}
-            {t === 'interval' && <><div className="chips" style={{ marginBottom: 12 }}>{[[40, 20, 10, 'HIIT 40/20'], [30, 30, 10, '30/30'], [60, 60, 8, '1:1 min'], [90, 30, 6, '90/30']].map(([w, r, n, l]) => <button key={String(l)} className={`chip ${cfg.work === w && cfg.rest === r && cfg.rounds === n ? 'on' : ''}`} onClick={() => up({ work: w as number, rest: r as number, rounds: n as number })}>{l}</button>)}</div>
-              <div className="stack"><NumberStepper label="Work" unit="s" value={cfg.work} onChange={(v) => up({ work: v })} step={5} min={5} max={3600} /><NumberStepper label="Rest" unit="s" value={cfg.rest} onChange={(v) => up({ rest: v })} step={5} max={3600} /><NumberStepper label="Rounds" value={cfg.rounds} onChange={(v) => up({ rounds: v })} min={1} max={99} /></div></>}
+            {t === 'interval' && <><div className="chips" style={{ marginBottom: 12 }}>{[[40, 20, 10, 'HIIT 40/20'], [30, 30, 10, '30/30'], [60, 60, 8, '1:1 min'], [90, 30, 6, '90/30'], [240, 180, 4, '4×4 min'], [30, 90, 8, 'Sprint 30/90']].map(([w, r, n, l]) => <button key={String(l)} className={`chip ${work === w && rest === r && rounds === n ? 'on' : ''}`} onClick={() => { setSp({ t: 'interval' }); up({ work: w as number, rest: r as number, rounds: n as number }); }}>{l}</button>)}</div>
+              <div className="stack"><NumberStepper label="Work" unit="s" value={work} onChange={(v) => { setSp({ t: 'interval' }); up({ work: v }); }} step={5} min={5} max={3600} /><NumberStepper label="Rest" unit="s" value={rest} onChange={(v) => { setSp({ t: 'interval' }); up({ rest: v }); }} step={5} max={3600} /><NumberStepper label="Rounds" value={rounds} onChange={(v) => { setSp({ t: 'interval' }); up({ rounds: v }); }} min={1} max={99} /></div>
+              {(wu || cd) && <p className="muted small">This session includes a {wu ? `${Math.round(wu / 60)} min warm-up` : ''}{wu && cd ? ' and ' : ''}{cd ? `${Math.round(cd / 60)} min cool-down` : ''}.</p>}</>}
             {t === 'tabata' && <><p className="muted small">Classic Tabata: 20 s all-out, 10 s rest, × 8 (4 min). Stack blocks with 1 min between.</p><NumberStepper label="Blocks" value={cfg.tabataBlocks} onChange={(v) => up({ tabataBlocks: v })} min={1} max={8} /></>}
             {t === 'emom' && <><p className="muted small">Every minute on the minute: do the work, rest for what’s left of the minute.</p><div className="stack"><NumberStepper label="Every" unit="s" value={cfg.emomEvery} onChange={(v) => up({ emomEvery: v })} step={15} min={15} max={600} /><NumberStepper label="Rounds" value={cfg.emomRounds} onChange={(v) => up({ emomRounds: v })} min={1} max={90} /></div></>}
             {t === 'amrap' && <><p className="muted small">As many rounds as possible — tap +1 after every round.</p><div className="chips" style={{ marginBottom: 12 }}>{[10, 12, 15, 20, 30].map((m) => <button key={m} className={`chip ${cfg.amrapMin === m ? 'on' : ''}`} onClick={() => up({ amrapMin: m })}>{m} min</button>)}</div><NumberStepper label="Min" value={cfg.amrapMin} onChange={(v) => up({ amrapMin: v })} min={1} max={120} /></>}

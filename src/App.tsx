@@ -17,6 +17,8 @@ const Record = lazy(() => import('./pages/Record'));
 const RoutesPage = lazy(() => import('./pages/Routes'));
 const Timers = lazy(() => import('./pages/Timers'));
 const Fuel = lazy(() => import('./pages/Fuel'));
+const Devices = lazy(() => import('./pages/Devices'));
+const ImportPage = lazy(() => import('./pages/Import'));
 const AddFood = lazy(() => import('./pages/AddFood'));
 const RecipeDetail = lazy(() => import('./pages/RecipeDetail'));
 const Calculator = lazy(() => import('./pages/Calculator'));
@@ -99,6 +101,8 @@ export function App() {
             <Route path="/me/account" element={<Account />} />
             <Route path="/me/data" element={<DataPage />} />
             <Route path="/me/help" element={<Help />} />
+            <Route path="/me/devices" element={<Devices />} />
+            <Route path="/me/import" element={<ImportPage />} />
             <Route path="/sign-in" element={<Auth mode="sign-in" />} />
             <Route path="/sign-up" element={<Auth mode="sign-up" />} />
             <Route path="/forgot" element={<Auth mode="forgot" />} />

@@ -33,7 +33,8 @@ export default function ProgramDetail() {
           {s.blocks.map((b, i) => { const e = exById(b.exId); return <div key={i} className="food-row"><div className="fr-main"><Link to={`/train/exercise/${b.exId}`} className="fr-name">{e?.name || b.exId}</Link>{b.note && <div className="fr-sub">{b.note}</div>}</div><div className="fr-k">{target(b)}</div></div>; })}
           <div className="row wrap" style={{ marginTop: 12 }}>
             {['run', 'walk', 'cycle'].includes(s.type) && !s.timer ? <Link className="btn sm y" to={`/record?type=${s.type}`}>Start with GPS</Link> : null}
-            {s.timer && <Link className="btn sm y" to={`/timers?t=${s.timer}`}>Open {s.timer === 'hyrox' ? 'HYROX Sim' : s.timer.toUpperCase()} timer</Link>}
+            {s.type === 'indoor-cycle' ? <Link className="btn sm y" to="/record?type=indoor-cycle&kind=indoor">Start indoor session</Link> : null}
+            {s.timer && <Link className="btn sm y" to={`/timers?t=${s.timer}`}>{(() => { const id = s.timer!.split('&')[0]; return id === 'hyrox' ? 'Open HYROX Sim' : id === 'interval' ? 'Open interval timer' : `Open ${id.toUpperCase()} timer`; })()}</Link>}
             <Link className="btn sm" to={`/train/log?program=${p.id}&session=${s.id}`}>Log this session</Link>
           </div>
         </Card>

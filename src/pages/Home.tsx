@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore, uid } from '../lib/store';
-import { addDays, computeTargets, dayKeyOf, dayTotals, fmtDist, fmtTime, hybridScore, personalRecords, streak, todayKey, typeLabel, wu, dayBurned } from '../lib/calc';
+import { addDays, computeTargets, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu, dayBurned } from '../lib/calc';
 import { PillarBar, ScoreRing, MacroBar } from '../components/charts';
 import { StepsCard } from '../components/StepsCard';
 import { Card, RowLink, Banner } from '../components/ui';
@@ -52,7 +52,7 @@ export default function Home() {
     <div className="page wide">
       <header className="page-head"><div className="page-title"><div className="kicker">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div><h1>{hello}{profile.name ? `, ${profile.name.split(' ')[0]}` : ''}</h1></div></header>
 
-      {rec.status !== 'idle' && <Banner tone="yellow"><b>{rec.status === 'recording' ? 'Recording' : 'Paused'} {typeLabel(rec.type)}</b> · {fmtTime(elapsedMs(rec) / 1000)} · {fmtDist(rec.distanceM, profile.units)} — <Link to="/record">open</Link></Banner>}
+      {rec.status !== 'idle' && <Banner tone="yellow"><b>{rec.status === 'recording' ? 'Recording' : 'Paused'} {activityLabel(rec)}</b> · {fmtTime(elapsedMs(rec) / 1000)} · {fmtDist(rec.distanceM, profile.units)} — <Link to="/record">open</Link></Banner>}
 
       <div className="desk-grid">
         <div>
@@ -101,7 +101,7 @@ export default function Home() {
 
           <Card>
             <div className="card-head"><h3>Recent</h3><Link to="/train?tab=history">History →</Link></div>
-            {recent.length ? recent.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={w.type === 'run' || w.type === 'walk' || w.type === 'cycle' ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={w.title} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${typeLabel(w.type)}${w.rpe ? ` · RPE ${w.rpe}` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
+            {recent.length ? recent.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={w.title} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.rpe ? ` · RPE ${w.rpe}` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
               : <p className="muted">Nothing yet. Start with a GPS run, a program session, or a timer workout.</p>}
           </Card>
 

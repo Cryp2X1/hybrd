@@ -7,7 +7,7 @@ export default function Help() {
   const loc = useLocation();
   useEffect(() => { if (loc.hash) setTimeout(() => document.getElementById(loc.hash.slice(1))?.scrollIntoView({ block: 'start' }), 50); }, [loc.hash]);
   return (
-    <Page title="Help & tips" kicker="Install · GPS · iPhone limits · Privacy" back="/me">
+    <Page title="Help & tips" kicker="Install · GPS · Devices · iPhone limits · Privacy" back="/me">
       <Card>
         <h3 style={{ marginBottom: 8 }}>Install it like an app</h3>
         <ul className="cues">
@@ -44,6 +44,29 @@ export default function Help() {
         </ul>
       </Card>
       <Card>
+        <h3 style={{ marginBottom: 8 }} id="devices">Heart-rate straps, watch files and Strava</h3>
+        <ul className="cues">
+          <li><b>Bluetooth heart rate</b> (Me › Devices & sync, or the ♥ button in Record, Timers and the logger): HYBRD talks to any sensor that uses the standard Bluetooth Heart Rate profile — most chest straps and armbands, and watches with “broadcast heart rate” turned on. Live BPM and your zone show during the session; the HR curve, average and max are saved with the workout.</li>
+          <li><b>Which browsers:</b> Web Bluetooth works in <b>Chrome, Edge, Opera and Samsung Internet on Android</b>, and Chrome/Edge on Windows, macOS and ChromeOS (on Linux it’s behind a Chrome flag). <b>Safari and every browser on iPhone/iPad don’t support Web Bluetooth</b> (Apple hasn’t implemented it), and Firefox doesn’t either. On iPhone, record with your watch and import the file, or connect Strava. Third-party iOS browsers such as Bluefy add Web Bluetooth, but HYBRD hasn’t been tested there.</li>
+          <li><b>If the sensor drops out</b> HYBRD reconnects by itself (it retries for about a minute). If that fails, tap <b>Reconnect</b>. Keep HYBRD on screen — phones can pause web apps in the background. Wet the strap’s electrodes if the reading is “no skin contact”.</li>
+          <li><b>Zones</b> are 50/60/70/80/90 % of max HR. Enter your measured max HR in Me; otherwise HYBRD uses 208 − 0.7 × age (Tanaka 2001).</li>
+          <li><b>Calories from heart rate</b> (Keytel 2005) replace the MET estimate for runs, walks, rides, indoor/stationary bike and cardio when at least half the session has HR. Calories from a watch file or Strava are used as-is. Strength sessions stay MET-based: the Keytel equation was developed on steady running and cycling, not lifting.</li>
+          <li><b>Watch files</b> (Me › Devices & sync › Import files): drop one or many .fit, .tcx or .gpx files. You see a preview — route, time, distance, HR, cadence, elevation, laps — before anything is saved. Files are read on your device and never uploaded. The same file, or an activity that starts within 3 minutes with a similar length, is flagged as a duplicate.</li>
+          <li><b>Strava:</b> Connect with Strava imports your recent activities (7, 30 or 90 days) with a “from Strava” badge. Strava’s API rules: Strava data is <b>shown only to you</b>, kept on this device for <b>at most 7 days</b> (HYBRD refreshes it when you open the app), not synced to your HYBRD account or exports, and never used for AI. Activities you delete on Strava disappear here at the next sync. To keep one forever, export its file on strava.com and import it. <b>Disconnect & delete</b> removes everything and revokes access.</li>
+          <li><b>Strava limits:</b> a new Strava API app starts in “Single Player Mode” — only the app owner can connect (1 athlete). The owner can raise it to 10 athletes in Strava’s API settings; more than 10 needs Strava’s review. Strava allows 100 reads per 15 minutes and 1,000 per day for the whole app at first; A HYBRD sync uses 1–4 reads to list activities plus one per new activity (at most 20 per sync), and opening a Strava activity uses one more for its full route and heart rate. Creating the Strava API app needs a Strava subscription.</li>
+        </ul>
+      </Card>
+      <Card>
+        <h3 style={{ marginBottom: 8 }}>Indoor Bike and Stationary Bike</h3>
+        <ul className="cues">
+          <li>On <b>Train</b> (or Record › Indoor) you can start an <b>Indoor Bike</b> or <b>Stationary Bike</b> session. There is no map and no GPS — it’s a timer. When you finish, enter distance in mi or km (the same units switch as everywhere else), plus optional average speed, cadence (rpm), resistance level and average/max watts from the bike console.</li>
+          <li><b>Calories</b> use average watts when you enter them (mechanical work ÷ a 24% efficiency assumption — an estimate). If there’s no power, a connected Bluetooth heart-rate strap uses the Keytel 2005 formula. Otherwise HYBRD uses Compendium of Physical Activities MET values for stationary cycling by effort (very light 3.5, light-to-moderate 4.8, moderate 6.8, vigorous 8.8, very vigorous 11.0).</li>
+          <li>The <b>Indoor / Stationary Bike</b> program has a recovery spin, an endurance ride, 4 × 4 min intervals and HIIT sprints. Interval days open the existing interval timer (warm-up and cool-down included).</li>
+          <li>Imported FIT files from indoor rides (cycling with no GPS) and Strava <b>VirtualRide</b> or trainer rides map to Indoor Bike. Watts in the file are kept when the file has them.</li>
+          <li><b>Limit:</b> this web app can connect a Bluetooth heart-rate strap, but it cannot read power or cadence live from a trainer or gym bike. Copy those numbers from the console, or import a file from a head unit or watch.</li>
+        </ul>
+      </Card>
+      <Card>
         <h3 style={{ marginBottom: 8 }}>iPhone limits (honest version)</h3>
         <ul className="cues">
           <li><b>GPS stops when the screen locks.</b> iOS pauses websites and web apps when the screen turns off or you switch apps, so tracking pauses too. HYBRD marks the gap and never adds a straight line across it.</li>
@@ -52,6 +75,7 @@ export default function Help() {
           <li>The Home Screen app and Safari keep <b>separate storage and sign-in</b>. Pick one and stick to it (the Home Screen app is better).</li>
           <li>Safari can clear a site’s data after <b>7 days</b> without a visit; the Home Screen app is exempt. Export your data now and then.</li>
           <li>Barcode scanning by camera isn’t available in Safari yet — type the barcode number instead.</li>
+          <li><b>No Bluetooth heart-rate sensors</b> in Safari (no Web Bluetooth on iOS). Import your watch’s files or connect Strava instead.</li>
         </ul>
         {isIOS() && <p className="muted small" style={{ margin: 0 }}>You’re on an Apple device — these apply to you.</p>}
       </Card>
@@ -70,7 +94,7 @@ export default function Help() {
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Privacy</h3>
-        <p className="muted small" style={{ margin: 0 }}>No ads, no trackers. Without an account, your data never leaves this device. With an account, it’s stored in the app owner’s Supabase database and row-level security lets only you read it. Location is used only while you record. Map tiles come from OpenStreetMap; product lookups go to Open Food Facts.</p>
+        <p className="muted small" style={{ margin: 0 }}>No ads, no trackers. Without an account, your data never leaves this device. With an account, it’s stored in the app owner’s Supabase database and row-level security lets only you read it. Location is used only while you record. Map tiles come from OpenStreetMap; product lookups go to Open Food Facts. Imported watch files are parsed on your device. Strava data stays on this device only (up to 7 days) and is never added to your account sync or exports.</p>
       </Card>
       <Disclaimer />
       <p className="muted small">Exercise carries risk. Check with a doctor before starting a new program if you have a medical condition, and stop if you feel pain, dizziness or chest discomfort.</p>

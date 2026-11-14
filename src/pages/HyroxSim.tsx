@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
+import { attachHr } from '../lib/hr';
 import { HYROX_DIVISIONS, HYROX_STATIONS } from '../data/programs';
 import { usePersisted, useTick } from '../lib/timer';
 import { Card, HoldButton, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { fmtTime, estKcal, fmtOfficial, localizeOfficial, officialWork, wu } from '../lib/calc';
+import { fmtTime, fmtOfficial, localizeOfficial, officialWork, wu } from '../lib/calc';
 import { acquireWakeLock, cue, say, unlockAudio } from '../lib/cues';
 import { useStore, uid } from '../lib/store';
 import type { Workout } from '../lib/types';
@@ -53,7 +54,7 @@ export default function HyroxSim() {
   const save = () => {
     const splits = s.marks.map((m, i) => ({ label: SIM_SEGMENTS[i].label, sec: Math.round((m - (s.marks[i - 1] || 0)) / 1000) }));
     const w: Workout = { id: uid(), updatedAt: Date.now(), date: new Date(s.startedAt).toISOString(), type: 'hyrox', title: done ? 'HYROX Simulation' : `HYROX Sim (partial, ${s.marks.length}/16)`, durationSec: Math.round((s.marks[s.marks.length - 1] || el) / 1000), rpe: 9, splits, source: 'hyrox-sim', notes: `Division: ${div.label}` };
-    w.kcal = estKcal(w, profile.weightKg);
+    attachHr(w, profile, s.startedAt);
     upsert<Workout>('workouts', w); setS(fresh(s.targetMin)); toast('Simulation saved'); nav(`/train/workout/${w.id}`);
   };
 

@@ -1,0 +1,8 @@
+name = "hybrd-strava-token"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+STRAVA_CLIENT_ID = "YOUR_CLIENT_ID"
+ALLOWED_ORIGINS = "https://cryp2x1.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+# The secret is NOT here: run `npx wrangler secret put STRAVA_CLIENT_SECRET`

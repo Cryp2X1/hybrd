@@ -2,7 +2,8 @@ export type Units = 'metric' | 'imperial';
 export type Sex = 'male' | 'female';
 export type Goal = 'lose' | 'maintain' | 'gain';
 export type Discipline = 'calisthenics' | 'strength' | 'running' | 'walking' | 'cycling' | 'cardio' | 'hyrox' | 'hybrid';
-export type WorkoutType = 'strength' | 'calisthenics' | 'run' | 'walk' | 'cycle' | 'cardio' | 'hyrox' | 'hybrid' | 'rest';
+export type WorkoutType = 'strength' | 'calisthenics' | 'run' | 'walk' | 'cycle' | 'indoor-cycle' | 'cardio' | 'hyrox' | 'hybrid' | 'rest';
+export type BikeKind = 'indoor' | 'stationary';
 
 export interface Profile {
   name: string;
@@ -23,6 +24,7 @@ export interface Profile {
   strideCm?: number; // user-set step length; otherwise estimated from height
   sound?: boolean;
   voice?: boolean;
+  hrMax?: number; // user-set max heart rate; otherwise Tanaka 208 − 0.7 × age
   updatedAt?: number;
 }
 
@@ -49,7 +51,21 @@ export interface Workout extends Rec {
   steps?: number;
   cadence?: number; // avg steps per minute while moving
   stepsSource?: 'sensor' | 'est';
+  /** Heart rate: avg/max bpm and a downsampled series [seconds from start, bpm] */
+  hr?: { avg: number; max: number; samples?: [number, number][]; from?: 'ble' | 'file' | 'strava' };
+  kcalMethod?: 'met' | 'hr' | 'device' | 'power';
+  /** Indoor / stationary bike variant (type === 'indoor-cycle'). */
+  bikeKind?: BikeKind;
+  avgWatts?: number;
+  maxWatts?: number;
+  /** Resistance level as shown on the bike console (unitless; bikes differ). */
+  resistance?: number;
+  /** Dedupe key: 'file:<sha256>' or 'strava:<id>' */
+  extId?: string;
+  device?: string; // e.g. "Garmin Forerunner 265" (from the file) or the BLE sensor name
+  laps?: Lap[];
 }
+export interface Lap { sec: number; distanceM?: number; avgHr?: number; maxHr?: number }
 
 export type LatLng = [number, number];
 /** e = active (moving-clock) ms since start, d = cumulative metres — lets splits be recomputed for any unit */

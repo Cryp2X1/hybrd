@@ -4,6 +4,7 @@ import { COLLECTIONS, type Collection, type DataState, type Profile, type Rec } 
 import { useAuth } from './auth';
 import { getSupabase, TABLES } from './supabase';
 import { localeUnits } from './calc';
+import { useStrava, stravaVisible, isStravaId, hideStravaActivity, autoSync } from './strava';
 
 export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [] });
 export const defaultProfile = (): Profile => ({
@@ -164,6 +165,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [ns, flush]);
 
   const upsert: StoreCtx['upsert'] = useCallback((col, rec) => {
+    if (isStravaId(rec.id)) return; // Strava data stays in its 7-day device cache — never stored or synced as HYBRD data
     const r = { ...rec, updatedAt: Date.now() } as Rec;
     setData((d) => {
       const arr = (d[col] as Rec[]).filter((x) => x.id !== r.id);
@@ -174,6 +176,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [queue, persist]);
 
   const remove: StoreCtx['remove'] = useCallback((col, id) => {
+    if (isStravaId(id)) { if (col === 'workouts') hideStravaActivity(id); return; }
     setData((d) => {
       const nd = { ...d, [col]: (d[col] as Rec[]).map((x) => (x.id === id ? { ...x, deleted: true, updatedAt: Date.now() } : x)) } as DataState;
       dataRef.current = nd; return nd;
@@ -223,11 +226,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     for (const col of COLLECTIONS) for (const r of all[col] as Rec[]) if (!r.deleted) remove(col, r.id);
   }, [remove]);
 
+  const strava = useStrava();
+  useEffect(() => { if (ready && profile.onboarded && strava.connected) autoSync(profile); }, [ready, strava.connected]); // eslint-disable-line react-hooks/exhaustive-deps
   const visible = useMemo(() => {
     const v = {} as DataState;
     for (const col of COLLECTIONS) (v as unknown as Record<string, Rec[]>)[col] = (data[col] as Rec[]).filter((r) => !r.deleted);
+    // Strava activities (device-only cache) are shown alongside, minus any that duplicate your own workouts
+    const sv = stravaVisible(v.workouts);
+    if (sv.workouts.length) { v.workouts = [...v.workouts, ...sv.workouts]; v.routes = [...v.routes, ...sv.routes]; }
     return v;
-  }, [data]);
+  }, [data, strava.cache, strava.meta.hidden]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: StoreCtx = {
     ready, ns, data: visible, profile, syncStatus, syncError, hasLocalData,

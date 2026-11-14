@@ -373,3 +373,58 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .sp-uri { display: block; padding: 10px 12px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line2); font-family: var(--mono); font-size: 12.5px; word-break: break-all; user-select: all; margin-bottom: 8px; }
 .sp-live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-left: 2px; animation: blink 1.4s infinite; }
 @media (max-width: 480px) { .page-actions .btn-l { display: none; } .page-actions .btn.sm { padding: 0 11px; } }
+
+/* ---------- heart rate ---------- */
+.hr-panel { display: flex; flex-direction: column; gap: 6px; }
+.hr-row { display: flex; align-items: center; gap: 14px; }
+.hr-bpm { font-family: var(--head); font-size: 44px; line-height: 1; display: flex; align-items: center; gap: 8px; color: #ff4d6d; min-width: 132px; }
+.hr-bpm small { font-family: var(--body); font-size: 13px; color: var(--mut); }
+.hr-bpm.dim { color: var(--mut2); }
+.hr-meta { min-width: 0; }
+.hr-unsupported { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 12px; background: #1a1408; border: 1px solid #3a3200; }
+.zone-strip { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; height: 18px; margin-top: 4px; }
+.zone-strip span { font-family: var(--mono); font-size: 10px; color: #0a0a0a; text-align: center; line-height: 18px; border-radius: 4px; opacity: .85; }
+.zone-strip i { position: absolute; top: -4px; width: 4px; height: 26px; margin-left: -2px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 2px #0a0a0a; transition: left .4s; }
+.hr-live { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line2); background: var(--card); margin: 8px 0; }
+.hr-live-n { font-family: var(--head); font-size: 34px; display: flex; align-items: center; gap: 6px; color: #ff4d6d; }
+.hr-live-n small { font-family: var(--body); font-size: 12px; color: var(--mut); }
+.hr-live-z { font-size: 14px; }
+.hr-live .hr-chart { grid-column: 1 / -1; }
+.hr-chart { width: 100%; display: block; border-radius: 10px; background: #0f0f0f; }
+.btn.hr-on { color: #ff4d6d; border-color: #5a1f2a; }
+.zone-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.zone-bar { display: flex; align-items: center; gap: 8px; }
+.zone-bar .pillar-track { flex: 1; }
+
+/* ---------- devices / strava / import ---------- */
+.src-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--card2); border: 1px solid var(--line2); color: var(--mut); margin-left: 6px; vertical-align: middle; }
+.src-badge.strava { color: #FC5200; border-color: #5a2a12; background: #1a0f08; }
+.view-on-strava { color: #FC5200; font-weight: 700; text-decoration: underline; }
+.strava-connect-btn { display: inline-block; padding: 0; background: none; border: 0; line-height: 0; }
+.strava-connect-btn img { height: 48px; width: auto; }
+.strava-setup { padding: 12px; border-radius: 12px; background: #1a1408; border: 1px solid #3a3200; }
+.strava-setup p { margin: 6px 0 10px; }
+.pwrd-strava { display: block; opacity: .9; }
+.ok-text { color: var(--ok); }
+.consent .cues li { margin-bottom: 8px; }
+.drop-zone { border: 2px dashed var(--line2); border-radius: 16px; padding: 22px 16px; text-align: center; background: var(--card); transition: border-color .15s, background .15s; }
+.drop-zone.over { border-color: var(--y); background: #1a1800; }
+.drop-zone input { display: none; }
+.imp-card { border: 1px solid var(--line2); border-radius: 14px; padding: 12px; margin-bottom: 10px; background: var(--card); }
+.imp-card.off { opacity: .6; }
+.imp-head { display: flex; gap: 10px; align-items: flex-start; }
+.imp-head input[type=checkbox] { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--y); flex: none; }
+.imp-title { flex: 1; min-width: 0; }
+.imp-title b { display: block; }
+.imp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.imp-stats div { background: var(--bg2); border-radius: 10px; padding: 8px; }
+.imp-stats b { display: block; font-family: var(--mono); font-size: 15px; }
+.imp-stats span { font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; }
+.imp-warn { color: #f5c542; font-size: 12.5px; margin: 4px 0; }
+.imp-err { color: #ff8a8a; }
+.laps-table { width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 6px; }
+.laps-table td, .laps-table th { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; font-family: var(--mono); }
+.laps-table th { color: var(--mut); font-weight: 600; font-family: var(--body); font-size: 11px; text-transform: uppercase; }
+.laps-table td:first-child, .laps-table th:first-child { text-align: left; }
+.save-bar { position: sticky; bottom: calc(76px + var(--sab)); z-index: 5; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 14px; background: #101010ee; border: 1px solid var(--line2); backdrop-filter: blur(6px); }
+@media (min-width: 960px) { .save-bar { bottom: 12px; } }

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { attachHr } from '../lib/hr';
+import { HrButton, HrLive } from '../components/HeartRate';
 import { MusicButton } from '../components/Music';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { programById } from '../data/programs';
@@ -55,9 +57,9 @@ export default function Logger() {
 
   const save = () => {
     const exercises = d.exercises.map((e) => ({ ...e, sets: e.sets.filter((s) => s.done || s.reps || s.timeSec || s.distanceM || s.weightKg) })).filter((e) => e.sets.length);
-    const dist = exercises.reduce((a, e) => a + e.sets.reduce((b, s) => b + (['run-easy', 'run-tempo', 'run-intervals', 'walk', 'bike'].includes(e.exId) ? s.distanceM || 0 : 0), 0), 0);
+    const dist = exercises.reduce((a, e) => a + e.sets.reduce((b, s) => b + (['run-easy', 'run-tempo', 'run-intervals', 'walk', 'bike', 'indoor-bike', 'stationary-bike'].includes(e.exId) ? s.distanceM || 0 : 0), 0), 0);
     const w: Workout = { id: uid(), updatedAt: Date.now(), date: new Date(d.startedAt).toISOString(), type: d.type, title: d.title || 'Workout', durationSec: dur, rpe: d.rpe, exercises, notes: d.notes || undefined, source: d.source, distanceM: dist || undefined };
-    w.kcal = estKcal(w, profile.weightKg);
+    attachHr(w, profile, d.startedAt);
     upsert<Workout>('workouts', w);
     localStorage.removeItem(KEY);
     cue('done'); toast('Workout saved');
@@ -72,7 +74,8 @@ export default function Logger() {
   const list = EXERCISES.filter((e) => !pq || e.name.toLowerCase().includes(pq.toLowerCase()) || e.muscles.toLowerCase().includes(pq.toLowerCase()));
 
   return (
-    <Page title={d.title || 'Workout'} kicker={`Live · ${fmtTime(elapsed)}`} back="/train" actions={<><MusicButton /><button className="btn sm y" onClick={save}><Icon name="check" size={18} />Finish</button></>}>
+    <Page title={d.title || 'Workout'} kicker={`Live · ${fmtTime(elapsed)}`} back="/train" actions={<><HrButton /><MusicButton /><button className="btn sm y" onClick={save}><Icon name="check" size={18} />Finish</button></>}>
+      <HrLive />
       {restLeft > 0 && <Banner tone="yellow"><b>Rest {fmtTime(restLeft)}</b> — next set when it hits zero. <button className="link" style={{ color: '#0a0a0a', textDecoration: 'underline' }} onClick={() => setD((x) => ({ ...x, restEndsAt: undefined }))}>Skip</button></Banner>}
       <Card>
         <label className="field"><span>Title</span><input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} /></label>
