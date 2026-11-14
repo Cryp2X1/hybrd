@@ -1,0 +1,1394 @@
+[
+ {
+  "id": "pre-oats",
+  "name": "Banana Honey Oats",
+  "cat": "pre",
+  "tags": [
+   "pre-workout",
+   "budget",
+   "vegetarian"
+  ],
+  "serves": 1,
+  "minutes": 8,
+  "ingredients": [
+   {
+    "label": "⅔ cup rolled oats",
+    "grams": 60,
+    "fdcId": 173904,
+    "usda": "Cereals, oats, regular and quick, not fortified, dry"
+   },
+   {
+    "label": "1 cup 1% milk",
+    "grams": 240,
+    "fdcId": 170872,
+    "usda": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D"
+   },
+   {
+    "label": "1 medium banana",
+    "grams": 118,
+    "fdcId": 173944,
+    "usda": "Bananas, raw"
+   },
+   {
+    "label": "1 tbsp honey",
+    "grams": 21,
+    "fdcId": 169640,
+    "usda": "Honey"
+   },
+   {
+    "label": "pinch cinnamon",
+    "grams": 1,
+    "fdcId": 171320,
+    "usda": "Spices, cinnamon, ground"
+   }
+  ],
+  "steps": [
+   "Simmer oats in milk 4–5 min (or microwave 2 min).",
+   "Top with sliced banana, honey and cinnamon."
+  ],
+  "why": "Mostly carbohydrate with some protein and little fat or fibre overload — a common choice 2–4 h before training, when the position stands suggest carbohydrate-focused meals.",
+  "sources": [
+   "acsm2016",
+   "issn-timing"
+  ],
+  "perServing": {
+   "kcal": 500,
+   "protein": 17.5,
+   "carbs": 97.6,
+   "fat": 6.7,
+   "fiber": 9.7,
+   "sodium": 111
+  }
+ },
+ {
+  "id": "pre-toast",
+  "name": "PB Banana Toast",
+  "cat": "pre",
+  "tags": [
+   "pre-workout",
+   "budget",
+   "vegetarian",
+   "quick"
+  ],
+  "serves": 1,
+  "minutes": 5,
+  "ingredients": [
+   {
+    "label": "2 slices white bread",
+    "grams": 56,
+    "fdcId": 174924,
+    "usda": "Bread, white, commercially prepared (includes soft bread crumbs)"
+   },
+   {
+    "label": "1 tbsp peanut butter",
+    "grams": 16,
+    "fdcId": 172470,
+    "usda": "Peanut butter, smooth style, without salt"
+   },
+   {
+    "label": "1 medium banana",
+    "grams": 118,
+    "fdcId": 173944,
+    "usda": "Bananas, raw"
+   },
+   {
+    "label": "1 tsp honey",
+    "grams": 7,
+    "fdcId": 169640,
+    "usda": "Honey"
+   }
+  ],
+  "steps": [
+   "Toast bread, spread peanut butter, top with banana and a drizzle of honey."
+  ],
+  "why": "Quick-digesting carbs for 1–2 h before a session; white bread keeps fibre lower for sensitive stomachs.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 371,
+   "protein": 9.8,
+   "carbs": 63.9,
+   "fat": 10.4,
+   "fiber": 5.4,
+   "sodium": 279
+  }
+ },
+ {
+  "id": "pre-ricecakes",
+  "name": "Rice Cakes + Jam (30-min snack)",
+  "cat": "pre",
+  "tags": [
+   "pre-workout",
+   "quick",
+   "vegan",
+   "budget"
+  ],
+  "serves": 1,
+  "minutes": 2,
+  "ingredients": [
+   {
+    "label": "3 rice cakes",
+    "grams": 27,
+    "fdcId": 169679,
+    "usda": "Snacks, rice cakes, brown rice, corn"
+   },
+   {
+    "label": "1 tbsp jam",
+    "grams": 20,
+    "fdcId": 169641,
+    "usda": "Jams and preserves"
+   },
+   {
+    "label": "½ banana",
+    "grams": 60,
+    "fdcId": 173944,
+    "usda": "Bananas, raw"
+   }
+  ],
+  "steps": [
+   "Spread jam on rice cakes, add banana slices."
+  ],
+  "why": "Very low fat and fibre — a light top-up 30–60 min before hard intervals or a HYROX session.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 213,
+   "protein": 3.0,
+   "carbs": 49.4,
+   "fat": 1.1,
+   "fiber": 2.6,
+   "sodium": 52
+  }
+ },
+ {
+  "id": "pre-bagel",
+  "name": "Race-Morning Bagel",
+  "cat": "pre",
+  "tags": [
+   "pre-workout",
+   "endurance",
+   "vegetarian"
+  ],
+  "serves": 1,
+  "minutes": 5,
+  "ingredients": [
+   {
+    "label": "1 plain bagel",
+    "grams": 105,
+    "fdcId": 174899,
+    "usda": "Bagels, plain, enriched, with calcium propionate (includes onion, poppy, sesame)"
+   },
+   {
+    "label": "1 tbsp peanut butter",
+    "grams": 16,
+    "fdcId": 172470,
+    "usda": "Peanut butter, smooth style, without salt"
+   },
+   {
+    "label": "2 tsp honey",
+    "grams": 14,
+    "fdcId": 169640,
+    "usda": "Honey"
+   },
+   {
+    "label": "1 medium banana",
+    "grams": 118,
+    "fdcId": 173944,
+    "usda": "Bananas, raw"
+   }
+  ],
+  "steps": [
+   "Toast bagel, add peanut butter and honey; eat banana alongside."
+  ],
+  "why": "About 1–1.5 g carbohydrate per kg for a 70 kg athlete, 2–3 h before a long run, ride or race (ACSM: 1–4 g/kg 1–4 h before).",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 520,
+   "protein": 16.0,
+   "carbs": 97.0,
+   "fat": 9.9,
+   "fiber": 5.6,
+   "sodium": 448
+  }
+ },
+ {
+  "id": "post-chicken-bowl",
+  "name": "Chicken Rice Power Bowl",
+  "cat": "post",
+  "tags": [
+   "post-workout",
+   "high-protein",
+   "meal-prep"
+  ],
+  "serves": 1,
+  "minutes": 25,
+  "ingredients": [
+   {
+    "label": "150 g cooked chicken breast",
+    "grams": 150,
+    "fdcId": 171477,
+    "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted"
+   },
+   {
+    "label": "1 cup cooked white rice",
+    "grams": 200,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   },
+   {
+    "label": "1 cup broccoli",
+    "grams": 90,
+    "fdcId": 169967,
+    "usda": "Broccoli, cooked, boiled, drained, without salt"
+   },
+   {
+    "label": "⅓ avocado",
+    "grams": 50,
+    "fdcId": 171705,
+    "usda": "Avocados, raw, all commercial varieties"
+   },
+   {
+    "label": "1 tbsp soy sauce",
+    "grams": 16,
+    "fdcId": 174277,
+    "usda": "Soy sauce made from soy and wheat (shoyu)"
+   },
+   {
+    "label": "squeeze of lime",
+    "grams": 10,
+    "fdcId": 168156,
+    "usda": "Lime juice, raw"
+   }
+  ],
+  "steps": [
+   "Cook rice; roast or pan-cook chicken; steam broccoli.",
+   "Assemble with avocado, soy sauce and lime."
+  ],
+  "why": "~55 g protein plus plenty of carbohydrate to start glycogen recovery — above the 20–40 g per-meal range, so it also covers bigger athletes.",
+  "sources": [
+   "issn-protein",
+   "issn-timing"
+  ],
+  "perServing": {
+   "kcal": 630,
+   "protein": 56.4,
+   "carbs": 68.8,
+   "fat": 13.8,
+   "fiber": 7.3,
+   "sodium": 1032
+  }
+ },
+ {
+  "id": "post-salmon",
+  "name": "Salmon, Sweet Potato & Greens",
+  "cat": "post",
+  "tags": [
+   "post-workout",
+   "omega-3"
+  ],
+  "serves": 1,
+  "minutes": 30,
+  "ingredients": [
+   {
+    "label": "140 g salmon fillet",
+    "grams": 140,
+    "fdcId": 175168,
+    "usda": "Fish, salmon, Atlantic, farmed, cooked, dry heat"
+   },
+   {
+    "label": "1 large sweet potato",
+    "grams": 200,
+    "fdcId": 168483,
+    "usda": "Sweet potato, cooked, baked in skin, flesh, without salt"
+   },
+   {
+    "label": "2 cups spinach",
+    "grams": 60,
+    "fdcId": 168462,
+    "usda": "Spinach, raw"
+   },
+   {
+    "label": "1 tsp olive oil",
+    "grams": 5,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   },
+   {
+    "label": "1 tbsp lemon juice",
+    "grams": 15,
+    "fdcId": 167747,
+    "usda": "Lemon juice, raw"
+   }
+  ],
+  "steps": [
+   "Bake sweet potato 40 min at 200 °C / 400 °F (or microwave 8 min).",
+   "Bake salmon 12–15 min.",
+   "Wilt spinach in oil, finish with lemon."
+  ],
+  "why": "Quality protein, starchy carbohydrate and vegetables in one plate.",
+  "sources": [
+   "issn-protein",
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 530,
+   "protein": 36.7,
+   "carbs": 44.6,
+   "fat": 22.7,
+   "fiber": 8.0,
+   "sodium": 205
+  }
+ },
+ {
+  "id": "post-tuna-pasta",
+  "name": "Tuna Tomato Pasta",
+  "cat": "post",
+  "tags": [
+   "post-workout",
+   "budget",
+   "high-protein"
+  ],
+  "serves": 1,
+  "minutes": 15,
+  "ingredients": [
+   {
+    "label": "1½ cups cooked pasta",
+    "grams": 220,
+    "fdcId": 169737,
+    "usda": "Pasta, cooked, enriched, without added salt"
+   },
+   {
+    "label": "1 can tuna (drained)",
+    "grams": 140,
+    "fdcId": 171986,
+    "usda": "Fish, tuna, light, canned in water, without salt, drained solids"
+   },
+   {
+    "label": "½ cup crushed tomatoes",
+    "grams": 120,
+    "fdcId": 170501,
+    "usda": "Tomatoes, crushed, canned"
+   },
+   {
+    "label": "1 clove garlic",
+    "grams": 5,
+    "fdcId": 169230,
+    "usda": "Garlic, raw"
+   },
+   {
+    "label": "1 tsp olive oil",
+    "grams": 5,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   },
+   {
+    "label": "1 cup spinach",
+    "grams": 30,
+    "fdcId": 168462,
+    "usda": "Spinach, raw"
+   }
+  ],
+  "steps": [
+   "Boil pasta. Sauté garlic in oil, add tomatoes and simmer 5 min.",
+   "Stir in tuna and spinach, toss with pasta."
+  ],
+  "why": "Cheap pantry protein + carbs. Canned tuna is one of the lowest-cost protein sources per gram.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 607,
+   "protein": 51.6,
+   "carbs": 79.5,
+   "fat": 8.6,
+   "fiber": 7.0,
+   "sodium": 320
+  }
+ },
+ {
+  "id": "post-eggs",
+  "name": "Eggs, Toast & Fruit",
+  "cat": "post",
+  "tags": [
+   "post-workout",
+   "budget",
+   "vegetarian",
+   "breakfast"
+  ],
+  "serves": 1,
+  "minutes": 10,
+  "ingredients": [
+   {
+    "label": "3 large eggs",
+    "grams": 150,
+    "fdcId": 171287,
+    "usda": "Egg, whole, raw, fresh"
+   },
+   {
+    "label": "2 slices whole-wheat toast",
+    "grams": 64,
+    "fdcId": 172688,
+    "usda": "Bread, whole-wheat, commercially prepared"
+   },
+   {
+    "label": "1 cup strawberries",
+    "grams": 150,
+    "fdcId": 167762,
+    "usda": "Strawberries, raw"
+   },
+   {
+    "label": "1 cup spinach",
+    "grams": 30,
+    "fdcId": 168462,
+    "usda": "Spinach, raw"
+   }
+  ],
+  "steps": [
+   "Scramble eggs with spinach, serve with toast and berries."
+  ],
+  "why": "Whole eggs give ~19 g high-quality protein with leucine; toast and fruit add carbohydrate.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 431,
+   "protein": 28.8,
+   "carbs": 41.0,
+   "fat": 17.1,
+   "fiber": 7.5,
+   "sodium": 529
+  }
+ },
+ {
+  "id": "post-burrito",
+  "name": "Turkey & Bean Burrito",
+  "cat": "post",
+  "tags": [
+   "post-workout",
+   "meal-prep"
+  ],
+  "serves": 1,
+  "minutes": 15,
+  "ingredients": [
+   {
+    "label": "1 large flour tortilla",
+    "grams": 70,
+    "fdcId": 175037,
+    "usda": "Tortillas, ready-to-bake or -fry, flour, refrigerated"
+   },
+   {
+    "label": "100 g cooked ground turkey",
+    "grams": 100,
+    "fdcId": 171506,
+    "usda": "Turkey, Ground, cooked"
+   },
+   {
+    "label": "½ cup black beans",
+    "grams": 90,
+    "fdcId": 175188,
+    "usda": "Beans, black turtle, mature seeds, canned"
+   },
+   {
+    "label": "⅓ cup cooked rice",
+    "grams": 80,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   },
+   {
+    "label": "¼ cup salsa",
+    "grams": 60,
+    "fdcId": 174524,
+    "usda": "Sauce, salsa, ready-to-serve"
+   },
+   {
+    "label": "2 tbsp cheddar",
+    "grams": 14,
+    "fdcId": 170899,
+    "usda": "Cheese, cheddar, sharp, sliced"
+   }
+  ],
+  "steps": [
+   "Warm everything, roll it up. Make 5 at once and freeze."
+  ],
+  "why": "Portable recovery meal combining protein and carbohydrate.",
+  "sources": [
+   "issn-timing"
+  ],
+  "perServing": {
+   "kcal": 678,
+   "protein": 45.0,
+   "carbs": 76.3,
+   "fat": 21.4,
+   "fiber": 10.1,
+   "sodium": 1456
+  }
+ },
+ {
+  "id": "budget-beans-rice",
+  "name": "Black Beans & Rice",
+  "cat": "budget",
+  "tags": [
+   "budget",
+   "vegan",
+   "meal-prep"
+  ],
+  "serves": 2,
+  "minutes": 20,
+  "ingredients": [
+   {
+    "label": "1 can black beans (with liquid)",
+    "grams": 260,
+    "fdcId": 175188,
+    "usda": "Beans, black turtle, mature seeds, canned"
+   },
+   {
+    "label": "2 cups cooked rice",
+    "grams": 400,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   },
+   {
+    "label": "½ onion",
+    "grams": 80,
+    "fdcId": 170000,
+    "usda": "Onions, raw"
+   },
+   {
+    "label": "½ bell pepper",
+    "grams": 75,
+    "fdcId": 170108,
+    "usda": "Peppers, sweet, red, raw"
+   },
+   {
+    "label": "2 tsp olive oil",
+    "grams": 9,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   },
+   {
+    "label": "¼ cup salsa",
+    "grams": 60,
+    "fdcId": 174524,
+    "usda": "Sauce, salsa, ready-to-serve"
+   }
+  ],
+  "steps": [
+   "Sauté onion and pepper in oil, add beans and simmer 5 min.",
+   "Serve over rice with salsa."
+  ],
+  "why": "Plant protein plus carbohydrate for well under the cost of a takeaway; add eggs or cheese to raise protein.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 453,
+   "protein": 14.5,
+   "carbs": 85.9,
+   "fat": 5.7,
+   "fiber": 11.8,
+   "sodium": 718
+  }
+ },
+ {
+  "id": "budget-lentil-curry",
+  "name": "Lentil Spinach Curry",
+  "cat": "budget",
+  "tags": [
+   "budget",
+   "vegan",
+   "meal-prep",
+   "high-fibre"
+  ],
+  "serves": 3,
+  "minutes": 35,
+  "ingredients": [
+   {
+    "label": "3 cups cooked lentils",
+    "grams": 600,
+    "fdcId": 172421,
+    "usda": "Lentils, mature seeds, cooked, boiled, without salt"
+   },
+   {
+    "label": "1 cup crushed tomatoes",
+    "grams": 240,
+    "fdcId": 170501,
+    "usda": "Tomatoes, crushed, canned"
+   },
+   {
+    "label": "1 onion",
+    "grams": 110,
+    "fdcId": 170000,
+    "usda": "Onions, raw"
+   },
+   {
+    "label": "3 cloves garlic",
+    "grams": 9,
+    "fdcId": 169230,
+    "usda": "Garlic, raw"
+   },
+   {
+    "label": "2 tsp curry powder",
+    "grams": 6,
+    "fdcId": 170924,
+    "usda": "Spices, curry powder"
+   },
+   {
+    "label": "1 tbsp oil",
+    "grams": 14,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   },
+   {
+    "label": "3 cups spinach",
+    "grams": 90,
+    "fdcId": 168462,
+    "usda": "Spinach, raw"
+   },
+   {
+    "label": "3 cups cooked rice",
+    "grams": 600,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   }
+  ],
+  "steps": [
+   "Sauté onion, garlic and curry powder in oil.",
+   "Add tomatoes and lentils, simmer 15 min, stir in spinach.",
+   "Serve over rice. Keeps 4 days in the fridge."
+  ],
+  "why": "High-fibre, high-carb batch meal; lentils add ~18 g protein per cooked cup.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 591,
+   "protein": 26.4,
+   "carbs": 109.0,
+   "fat": 6.8,
+   "fiber": 20.5,
+   "sodium": 182
+  }
+ },
+ {
+  "id": "budget-fried-rice",
+  "name": "Egg Fried Rice",
+  "cat": "budget",
+  "tags": [
+   "budget",
+   "vegetarian",
+   "quick"
+  ],
+  "serves": 1,
+  "minutes": 12,
+  "ingredients": [
+   {
+    "label": "1¼ cups cooked rice (day-old)",
+    "grams": 250,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   },
+   {
+    "label": "2 eggs",
+    "grams": 100,
+    "fdcId": 171287,
+    "usda": "Egg, whole, raw, fresh"
+   },
+   {
+    "label": "¾ cup frozen mixed vegetables",
+    "grams": 100,
+    "fdcId": 170472,
+    "usda": "Vegetables, mixed, frozen, cooked, boiled, drained, without salt"
+   },
+   {
+    "label": "1 tbsp soy sauce",
+    "grams": 16,
+    "fdcId": 174277,
+    "usda": "Soy sauce made from soy and wheat (shoyu)"
+   },
+   {
+    "label": "1 tsp oil",
+    "grams": 5,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   }
+  ],
+  "steps": [
+   "Scramble eggs in a hot pan, add vegetables and rice.",
+   "Stir-fry 4 min, season with soy sauce."
+  ],
+  "why": "Uses leftover rice and frozen veg — fast carbohydrate refuel after a long session.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 586,
+   "protein": 23.5,
+   "carbs": 85.1,
+   "fat": 15.4,
+   "fiber": 5.5,
+   "sodium": 1058
+  }
+ },
+ {
+  "id": "budget-potato-eggs",
+  "name": "Potato & Egg Hash",
+  "cat": "budget",
+  "tags": [
+   "budget",
+   "vegetarian"
+  ],
+  "serves": 1,
+  "minutes": 20,
+  "ingredients": [
+   {
+    "label": "1 large potato",
+    "grams": 250,
+    "fdcId": 170030,
+    "usda": "Potatoes, Russet, flesh and skin, baked"
+   },
+   {
+    "label": "2 eggs",
+    "grams": 100,
+    "fdcId": 171287,
+    "usda": "Egg, whole, raw, fresh"
+   },
+   {
+    "label": "¼ onion",
+    "grams": 40,
+    "fdcId": 170000,
+    "usda": "Onions, raw"
+   },
+   {
+    "label": "⅓ pepper",
+    "grams": 50,
+    "fdcId": 170108,
+    "usda": "Peppers, sweet, red, raw"
+   },
+   {
+    "label": "2 tsp oil",
+    "grams": 9,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   }
+  ],
+  "steps": [
+   "Dice and pan-fry potato 12 min, add onion and pepper.",
+   "Make wells and cook the eggs on top."
+  ],
+  "why": "Potatoes are one of the cheapest carbohydrate sources and provide potassium.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 489,
+   "protein": 20.0,
+   "carbs": 60.9,
+   "fat": 18.9,
+   "fiber": 7.5,
+   "sodium": 181
+  }
+ },
+ {
+  "id": "protein-yogurt",
+  "name": "Greek Yogurt Berry Bowl",
+  "cat": "protein",
+  "tags": [
+   "high-protein",
+   "quick",
+   "vegetarian",
+   "breakfast"
+  ],
+  "serves": 1,
+  "minutes": 3,
+  "ingredients": [
+   {
+    "label": "1 cup nonfat Greek yogurt",
+    "grams": 250,
+    "fdcId": 170894,
+    "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)"
+   },
+   {
+    "label": "½ cup blueberries",
+    "grams": 75,
+    "fdcId": 171711,
+    "usda": "Blueberries, raw"
+   },
+   {
+    "label": "2 tsp honey",
+    "grams": 14,
+    "fdcId": 169640,
+    "usda": "Honey"
+   },
+   {
+    "label": "10 almonds",
+    "grams": 14,
+    "fdcId": 170567,
+    "usda": "Nuts, almonds"
+   },
+   {
+    "label": "1 tbsp chia",
+    "grams": 10,
+    "fdcId": 170554,
+    "usda": "Seeds, chia seeds, dried"
+   }
+  ],
+  "steps": [
+   "Layer yogurt, berries, nuts and chia; drizzle honey."
+  ],
+  "why": "~30 g protein — a convenient dose in the ISSN 20–40 g range.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 362,
+   "protein": 30.7,
+   "carbs": 38.6,
+   "fat": 11.3,
+   "fiber": 7.0,
+   "sodium": 93
+  }
+ },
+ {
+  "id": "protein-cottage",
+  "name": "Cottage Cheese & Pineapple",
+  "cat": "protein",
+  "tags": [
+   "high-protein",
+   "quick",
+   "vegetarian",
+   "bedtime"
+  ],
+  "serves": 1,
+  "minutes": 2,
+  "ingredients": [
+   {
+    "label": "1 cup 2% cottage cheese",
+    "grams": 226,
+    "fdcId": 172182,
+    "usda": "Cheese, cottage, lowfat, 2% milkfat"
+   },
+   {
+    "label": "pinch cinnamon",
+    "grams": 1,
+    "fdcId": 171320,
+    "usda": "Spices, cinnamon, ground"
+   },
+   {
+    "label": "1 cup pineapple",
+    "grams": 165,
+    "fdcId": 169124,
+    "usda": "Pineapple, raw, all varieties"
+   }
+  ],
+  "steps": [
+   "Top cottage cheese with fruit and cinnamon."
+  ],
+  "why": "Casein-rich protein; the ISSN notes pre-sleep casein (30–40 g) can support overnight muscle protein synthesis.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 268,
+   "protein": 24.4,
+   "carbs": 33.3,
+   "fat": 5.4,
+   "fiber": 2.8,
+   "sodium": 698
+  }
+ },
+ {
+  "id": "protein-overnight-oats",
+  "name": "Overnight Protein Oats",
+  "cat": "protein",
+  "tags": [
+   "high-protein",
+   "meal-prep",
+   "breakfast"
+  ],
+  "serves": 1,
+  "minutes": 5,
+  "ingredients": [
+   {
+    "label": "½ cup oats",
+    "grams": 50,
+    "fdcId": 173904,
+    "usda": "Cereals, oats, regular and quick, not fortified, dry"
+   },
+   {
+    "label": "¾ cup 1% milk",
+    "grams": 200,
+    "fdcId": 170872,
+    "usda": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D"
+   },
+   {
+    "label": "1 scoop whey protein",
+    "grams": 30,
+    "fdcId": 173180,
+    "usda": "Beverages, Protein powder whey based"
+   },
+   {
+    "label": "1 tbsp chia",
+    "grams": 10,
+    "fdcId": 170554,
+    "usda": "Seeds, chia seeds, dried"
+   },
+   {
+    "label": "½ cup berries",
+    "grams": 75,
+    "fdcId": 171711,
+    "usda": "Blueberries, raw"
+   }
+  ],
+  "steps": [
+   "Stir everything in a jar, refrigerate overnight."
+  ],
+  "why": "Make-ahead breakfast with ~39 g protein and slow carbs.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 470,
+   "protein": 39.0,
+   "carbs": 60.8,
+   "fat": 9.0,
+   "fiber": 11.2,
+   "sodium": 140
+  }
+ },
+ {
+  "id": "protein-tofu-scramble",
+  "name": "Tofu Scramble",
+  "cat": "protein",
+  "tags": [
+   "high-protein",
+   "vegan"
+  ],
+  "serves": 1,
+  "minutes": 12,
+  "ingredients": [
+   {
+    "label": "200 g firm tofu",
+    "grams": 200,
+    "fdcId": 172475,
+    "usda": "Tofu, raw, firm, prepared with calcium sulfate"
+   },
+   {
+    "label": "2 cups spinach",
+    "grams": 60,
+    "fdcId": 168462,
+    "usda": "Spinach, raw"
+   },
+   {
+    "label": "½ bell pepper",
+    "grams": 75,
+    "fdcId": 170108,
+    "usda": "Peppers, sweet, red, raw"
+   },
+   {
+    "label": "1 tsp oil",
+    "grams": 5,
+    "fdcId": 171413,
+    "usda": "Oil, olive, salad or cooking"
+   },
+   {
+    "label": "1 slice whole-wheat toast",
+    "grams": 32,
+    "fdcId": 172688,
+    "usda": "Bread, whole-wheat, commercially prepared"
+   }
+  ],
+  "steps": [
+   "Crumble tofu into a hot oiled pan with pepper; cook 6 min.",
+   "Add spinach and season (turmeric, salt, pepper)."
+  ],
+  "why": "Plant protein option; combine with other protein foods across the day.",
+  "sources": [
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 446,
+   "protein": 41.1,
+   "carbs": 25.9,
+   "fat": 24.0,
+   "fiber": 9.4,
+   "sodium": 224
+  }
+ },
+ {
+  "id": "drink-choc-milk",
+  "name": "Chocolate Milk Recovery",
+  "cat": "drink",
+  "tags": [
+   "post-workout",
+   "drink",
+   "budget",
+   "quick"
+  ],
+  "serves": 1,
+  "minutes": 1,
+  "ingredients": [
+   {
+    "label": "2 cups low-fat chocolate milk",
+    "grams": 480,
+    "fdcId": 170881,
+    "usda": "Milk, chocolate, lowfat, with added vitamin A and vitamin D"
+   }
+  ],
+  "steps": [
+   "Chill and drink within ~1–2 h after training."
+  ],
+  "why": "Provides carbohydrate and protein together (≈3:1), the ISSN recovery option of carbohydrate + protein when the next session is soon.",
+  "sources": [
+   "issn-timing"
+  ],
+  "perServing": {
+   "kcal": 307,
+   "protein": 16.8,
+   "carbs": 49.0,
+   "fat": 5.3,
+   "fiber": 0.5,
+   "sodium": 312
+  }
+ },
+ {
+  "id": "drink-recovery-shake",
+  "name": "Banana Berry Recovery Shake",
+  "cat": "drink",
+  "tags": [
+   "post-workout",
+   "drink",
+   "high-protein"
+  ],
+  "serves": 1,
+  "minutes": 3,
+  "ingredients": [
+   {
+    "label": "1 scoop whey protein",
+    "grams": 30,
+    "fdcId": 173180,
+    "usda": "Beverages, Protein powder whey based"
+   },
+   {
+    "label": "1¼ cups 1% milk",
+    "grams": 300,
+    "fdcId": 170872,
+    "usda": "Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D"
+   },
+   {
+    "label": "1 banana",
+    "grams": 118,
+    "fdcId": 173944,
+    "usda": "Bananas, raw"
+   },
+   {
+    "label": "⅔ cup strawberries",
+    "grams": 100,
+    "fdcId": 167762,
+    "usda": "Strawberries, raw"
+   },
+   {
+    "label": "2 tbsp oats",
+    "grams": 20,
+    "fdcId": 173904,
+    "usda": "Cereals, oats, regular and quick, not fortified, dry"
+   }
+  ],
+  "steps": [
+   "Blend until smooth."
+  ],
+  "why": "~40 g protein + ~60 g carbohydrate in a glass.",
+  "sources": [
+   "issn-timing",
+   "issn-protein"
+  ],
+  "perServing": {
+   "kcal": 444,
+   "protein": 38.3,
+   "carbs": 65.0,
+   "fat": 5.4,
+   "fiber": 8.0,
+   "sodium": 182
+  }
+ },
+ {
+  "id": "drink-diy-electrolyte",
+  "name": "DIY Sports Drink (≈6% carbs)",
+  "cat": "drink",
+  "tags": [
+   "hydration",
+   "endurance",
+   "budget",
+   "electrolytes"
+  ],
+  "serves": 1,
+  "minutes": 2,
+  "ingredients": [
+   {
+    "label": "≈ 1¾ cups water",
+    "grams": 440,
+    "fdcId": 173647,
+    "usda": "Beverages, water, tap, drinking"
+   },
+   {
+    "label": "½ cup orange juice",
+    "grams": 120,
+    "fdcId": 169099,
+    "usda": "Orange juice, canned, unsweetened"
+   },
+   {
+    "label": "4 tsp sugar",
+    "grams": 20,
+    "fdcId": 169655,
+    "usda": "Sugars, granulated"
+   },
+   {
+    "label": "¼ tsp salt (scant)",
+    "grams": 1.2,
+    "fdcId": 173468,
+    "usda": "Salt, table"
+   }
+  ],
+  "steps": [
+   "Stir until dissolved. Makes ~560 ml (≈ 19 oz).",
+   "Sip ~150–350 ml every 15–20 min during long sessions."
+  ],
+  "why": "Around 6% carbohydrate with ~490 mg sodium per bottle — in line with the 6–8% carbohydrate-electrolyte solutions in the ISSN and ACSM position stands.",
+  "sources": [
+   "issn-timing",
+   "acsm-fluid"
+  ],
+  "perServing": {
+   "kcal": 134,
+   "protein": 0.8,
+   "carbs": 33.2,
+   "fat": 0.1,
+   "fiber": 0.4,
+   "sodium": 488
+  }
+ },
+ {
+  "id": "drink-coconut-lime",
+  "name": "Coconut Water Lime Cooler",
+  "cat": "drink",
+  "tags": [
+   "hydration",
+   "electrolytes",
+   "light"
+  ],
+  "serves": 1,
+  "minutes": 2,
+  "ingredients": [
+   {
+    "label": "1 can coconut water",
+    "grams": 330,
+    "fdcId": 174831,
+    "usda": "Beverages, Coconut water, ready-to-drink, unsweetened"
+   },
+   {
+    "label": "juice of ½ lime",
+    "grams": 15,
+    "fdcId": 168156,
+    "usda": "Lime juice, raw"
+   },
+   {
+    "label": "pinch of salt",
+    "grams": 0.6,
+    "fdcId": 173468,
+    "usda": "Salt, table"
+   }
+  ],
+  "steps": [
+   "Mix and serve over ice."
+  ],
+  "why": "Natural potassium; the pinch of salt adds sodium, the main electrolyte lost in sweat. Lower in carbohydrate than a sports drink.",
+  "sources": [
+   "acsm-fluid"
+  ],
+  "perServing": {
+   "kcal": 63,
+   "protein": 0.7,
+   "carbs": 15.1,
+   "fat": 0.0,
+   "fiber": 0.1,
+   "sodium": 319
+  }
+ },
+ {
+  "id": "drink-tart-cherry",
+  "name": "Tart Cherry Spritzer",
+  "cat": "drink",
+  "tags": [
+   "drink",
+   "recovery"
+  ],
+  "serves": 1,
+  "minutes": 1,
+  "ingredients": [
+   {
+    "label": "1 cup tart cherry juice",
+    "grams": 240,
+    "fdcId": 167807,
+    "usda": "Cherry juice, tart"
+   },
+   {
+    "label": "½ cup sparkling water",
+    "grams": 120,
+    "fdcId": 173647,
+    "usda": "Beverages, water, tap, drinking"
+   }
+  ],
+  "steps": [
+   "Mix juice with sparkling water."
+  ],
+  "why": "A carbohydrate-containing recovery drink; evidence for tart cherry and muscle soreness is mixed — enjoy it as a drink, not a cure.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 142,
+   "protein": 0.7,
+   "carbs": 32.9,
+   "fat": 1.2,
+   "fiber": 0.0,
+   "sodium": 14
+  }
+ },
+ {
+  "id": "fuel-dates",
+  "name": "Mid-Run Dates",
+  "cat": "fuel",
+  "tags": [
+   "endurance",
+   "during",
+   "vegan",
+   "budget"
+  ],
+  "serves": 1,
+  "minutes": 0,
+  "ingredients": [
+   {
+    "label": "2 medjool dates",
+    "grams": 48,
+    "fdcId": 168191,
+    "usda": "Dates, medjool"
+   },
+   {
+    "label": "tiny pinch of salt",
+    "grams": 0.3,
+    "fdcId": 173468,
+    "usda": "Salt, table"
+   }
+  ],
+  "steps": [
+   "Pit and carry in a small bag; eat one every ~20–30 min on long efforts."
+  ],
+  "why": "~36 g carbohydrate — roughly one hour’s worth at the 30–60 g/h rate for 1–2.5 h efforts.",
+  "sources": [
+   "acsm2016",
+   "issn-timing"
+  ],
+  "perServing": {
+   "kcal": 133,
+   "protein": 0.9,
+   "carbs": 36.0,
+   "fat": 0.0,
+   "fiber": 3.2,
+   "sodium": 117
+  }
+ },
+ {
+  "id": "fuel-rice-balls",
+  "name": "Salted Rice Balls",
+  "cat": "fuel",
+  "tags": [
+   "endurance",
+   "during",
+   "budget",
+   "vegan"
+  ],
+  "serves": 4,
+  "minutes": 15,
+  "ingredients": [
+   {
+    "label": "2 cups cooked white rice",
+    "grams": 400,
+    "fdcId": 168878,
+    "usda": "Rice, white, long-grain, regular, enriched, cooked"
+   },
+   {
+    "label": "2 tbsp jam or honey",
+    "grams": 40,
+    "fdcId": 169641,
+    "usda": "Jams and preserves"
+   },
+   {
+    "label": "¼ tsp salt",
+    "grams": 1.5,
+    "fdcId": 173468,
+    "usda": "Salt, table"
+   }
+  ],
+  "steps": [
+   "Mix warm rice with salt; form 4 balls around a little jam.",
+   "Wrap in foil for rides."
+  ],
+  "why": "Real-food fuel for long rides: ~35 g carbohydrate per ball, with some sodium.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 158,
+   "protein": 2.7,
+   "carbs": 35.1,
+   "fat": 0.3,
+   "fiber": 0.5,
+   "sodium": 150
+  }
+ },
+ {
+  "id": "fuel-pretzel-raisin",
+  "name": "Pretzel & Raisin Mix",
+  "cat": "fuel",
+  "tags": [
+   "endurance",
+   "during",
+   "vegan",
+   "budget"
+  ],
+  "serves": 1,
+  "minutes": 1,
+  "ingredients": [
+   {
+    "label": "1 oz pretzels",
+    "grams": 30,
+    "fdcId": 167555,
+    "usda": "Snacks, pretzels, hard, plain, salted"
+   },
+   {
+    "label": "¼ cup raisins",
+    "grams": 40,
+    "fdcId": 168164,
+    "usda": "Raisins, golden, seedless"
+   }
+  ],
+  "steps": [
+   "Mix in a zip bag."
+  ],
+  "why": "Salty + sweet carbohydrate (~55 g) that’s easy to carry on long hikes and rides.",
+  "sources": [
+   "acsm2016"
+  ],
+  "perServing": {
+   "kcal": 236,
+   "protein": 4.3,
+   "carbs": 56.1,
+   "fat": 0.9,
+   "fiber": 2.3,
+   "sodium": 382
+  }
+ }
+]

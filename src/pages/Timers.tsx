@@ -1,0 +1,127 @@
+import { useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Page, Segmented, Card, HoldButton, NumberStepper, Banner } from '../components/ui';
+import { Icon } from '../components/Icon';
+import { useClock, useSequence, usePersisted, type Phase } from '../lib/timer';
+import { fmtMs, fmtTime, estKcal } from '../lib/calc';
+import { useStore, uid } from '../lib/store';
+import type { Workout, WorkoutType } from '../lib/types';
+import { useToast } from '../lib/toast';
+import HyroxSim from './HyroxSim';
+import { isIOS, isStandalone } from '../lib/cues';
+
+type T = 'stopwatch' | 'countdown' | 'interval' | 'tabata' | 'emom' | 'amrap' | 'hyrox';
+
+function useSaveTimed() {
+  const { upsert, profile } = useStore();
+  const toast = useToast();
+  const nav = useNavigate();
+  return (title: string, type: WorkoutType, sec: number, notes?: string) => {
+    const w: Workout = { id: uid(), updatedAt: Date.now(), date: new Date(Date.now() - sec * 1000).toISOString(), type, title, durationSec: Math.round(sec), rpe: 8, notes, source: 'timer' };
+    w.kcal = estKcal(w, profile.weightKg);
+    upsert<Workout>('workouts', w); toast('Saved to history'); nav(`/train/workout/${w.id}`);
+  };
+}
+
+function Stopwatch() {
+  const c = useClock('hybrd:t:stopwatch');
+  const save = useSaveTimed();
+  const laps = c.c.laps;
+  return (
+    <div className="session">
+      <Card className="hero"><div className="big-num" style={{ fontSize: 'clamp(56px, 17vw, 120px)' }}>{fmtMs(c.ms)}</div><div className="big-sub">{c.active ? 'Running' : c.c.startedAt ? 'Paused' : 'Stopwatch'}</div></Card>
+      <div className="controls">
+        {!c.c.startedAt ? <div><button className="ctrl y" onClick={c.start} aria-label="Start"><Icon name="play" size={30} fill /></button><div className="ctrl-l">Start</div></div> : <>
+          <div><button className="ctrl" onClick={c.lap} disabled={!c.active} aria-label="Lap"><Icon name="lap" size={26} /></button><div className="ctrl-l">Lap</div></div>
+          <div>{c.active ? <button className="ctrl y" onClick={c.pause} aria-label="Pause"><Icon name="pause" size={30} fill /></button> : <button className="ctrl y" onClick={c.resume} aria-label="Resume"><Icon name="play" size={30} fill /></button>}<div className="ctrl-l">{c.active ? 'Pause' : 'Resume'}</div></div>
+          <HoldButton onHold={c.reset} label="Hold to reset" icon="undo" />
+        </>}
+      </div>
+      {laps.length > 0 && <Card><div className="lap-list">{laps.map((l, i) => ({ i, l, d: l - (laps[i - 1] || 0) })).reverse().map(({ i, l, d }) => <div key={i}><span>Lap {i + 1}</span><span className="muted">{fmtMs(d)}</span><span>{fmtMs(l)}</span></div>)}</div></Card>}
+      {c.c.startedAt > 0 && !c.active && c.ms > 30000 && <button className="btn block" onClick={() => { save('Stopwatch session', 'cardio', c.ms / 1000, laps.length ? `Laps: ${laps.map((l, i) => fmtTime((l - (laps[i - 1] || 0)) / 1000)).join(', ')}` : undefined); c.reset(); }}>Save as workout</button>}
+    </div>
+  );
+}
+
+function SequenceView({ id, phases, title, type, countRounds }: { id: string; phases: Phase[]; title: string; type: WorkoutType; countRounds?: boolean }) {
+  const s = useSequence(`hybrd:t:${id}`, phases);
+  const save = useSaveTimed();
+  const nextPhase = s.seq[s.idx + 1];
+  const pct = s.total ? (s.ms / s.total) * 100 : 0;
+  const workSec = phases.filter((p) => p.kind === 'work').reduce((a, p) => a + p.sec, 0) + phases.filter((p) => p.kind === 'rest').reduce((a, p) => a + p.sec, 0);
+  if (!s.started) return (
+    <div className="session">
+      <Card className="hero"><div className="big-num" style={{ fontSize: 'clamp(64px,20vw,130px)' }}>{fmtTime(workSec)}</div><div className="big-sub">{title} · {phases.length} phase{phases.length > 1 ? 's' : ''}</div></Card>
+      <button className="btn y big block" onClick={s.start}><Icon name="play" fill />Start</button>
+    </div>
+  );
+  return (
+    <div className="session">
+      <div className={`phase-label ${s.done ? 'work' : s.phase.kind}`}>{s.done ? 'Done' : s.phase.label}</div>
+      {s.phase.round && !s.done && <div className="big-sub">Round {s.phase.round} / {s.phase.of}</div>}
+      <div className={`big-num ${s.phase.kind === 'work' && !s.done ? 'y' : ''}`}>{fmtTime(Math.ceil(s.remain / 1000))}</div>
+      <div className="progress-line"><div style={{ width: `${pct}%` }} /></div>
+      <div className="next-up">{s.done ? `Total ${fmtTime(s.total / 1000)}` : nextPhase ? <>Next: <b>{nextPhase.label}</b> · {fmtTime(nextPhase.sec)}</> : 'Last one — finish strong'}</div>
+      {countRounds && !s.done && <div className="row" style={{ justifyContent: 'center' }}><button className="btn" onClick={() => s.addRound(-1)}>−</button><div className="center"><div className="big-num" style={{ fontSize: 64 }}>{s.rounds}</div><div className="big-sub">rounds</div></div><button className="btn y" style={{ height: 64, width: 96, fontSize: 18 }} onClick={() => s.addRound(1)}>+1 round</button></div>}
+      <div className="controls">
+        {!s.done && <div>{s.running ? <button className="ctrl y" aria-label="Pause" onClick={s.pause}><Icon name="pause" size={30} fill /></button> : <button className="ctrl y" aria-label="Resume" onClick={s.resume}><Icon name="play" size={30} fill /></button>}<div className="ctrl-l">{s.running ? 'Pause' : 'Resume'}</div></div>}
+        <HoldButton onHold={s.reset} label={s.done ? 'Hold to reset' : 'Hold to stop'} icon={s.done ? 'undo' : 'stop'} />
+      </div>
+      {s.done && <button className="btn y block" onClick={() => { save(title, type, s.total / 1000 - 5, countRounds ? `${s.rounds} rounds` : undefined); s.reset(); }}>Save to history</button>}
+    </div>
+  );
+}
+
+export default function Timers() {
+  const [sp, setSp] = useSearchParams();
+  const t = (sp.get('t') as T) || 'stopwatch';
+  const [cfg, setCfg] = usePersisted('hybrd:t:cfg', () => ({ cdMin: 5, cdSec: 0, work: 40, rest: 20, rounds: 8, emomEvery: 60, emomRounds: 12, amrapMin: 15, tabataBlocks: 1 }));
+  const up = (x: Partial<typeof cfg>) => setCfg((c) => ({ ...c, ...x }));
+  const phases = useMemo<Record<string, Phase[]>>(() => {
+    const intervals = (work: number, rest: number, rounds: number): Phase[] => Array.from({ length: rounds }).flatMap((_, i) => [{ label: 'Work', sec: work, kind: 'work' as const, round: i + 1, of: rounds }, ...(rest && i < rounds - 1 ? [{ label: 'Rest', sec: rest, kind: 'rest' as const, round: i + 1, of: rounds }] : [])]);
+    const tab: Phase[] = [];
+    for (let b = 0; b < cfg.tabataBlocks; b++) { tab.push(...intervals(20, 10, 8).map((p) => ({ ...p, label: p.kind === 'work' ? `Block ${b + 1} · Work` : 'Rest' }))); if (b < cfg.tabataBlocks - 1) tab.push({ label: 'Block rest', sec: 60, kind: 'rest' }); }
+    return {
+      countdown: [{ label: 'Countdown', sec: cfg.cdMin * 60 + cfg.cdSec, kind: 'work' }],
+      interval: intervals(cfg.work, cfg.rest, cfg.rounds),
+      tabata: tab,
+      emom: Array.from({ length: cfg.emomRounds }, (_, i) => ({ label: `Minute ${i + 1}`, sec: cfg.emomEvery, kind: 'work' as const, round: i + 1, of: cfg.emomRounds })),
+      amrap: [{ label: 'AMRAP', sec: cfg.amrapMin * 60, kind: 'work' }],
+    };
+  }, [cfg]);
+
+  return (
+    <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide>
+      <Segmented value={t} onChange={(v) => setSp({ t: v })} options={[{ v: 'stopwatch', label: 'Stopwatch' }, { v: 'countdown', label: 'Countdown' }, { v: 'interval', label: 'Intervals' }, { v: 'tabata', label: 'Tabata' }, { v: 'emom', label: 'EMOM' }, { v: 'amrap', label: 'AMRAP' }, { v: 'hyrox', label: 'HYROX Sim' }]} />
+      {isIOS() && !isStandalone() && <Banner tone="warn">iPhone: sounds work after you tap Start; there’s no vibration on iOS. Add HYBRD to your Home Screen to keep the screen awake (iOS 18.4+).</Banner>}
+      <div className="desk-grid">
+        <div>
+          {t === 'stopwatch' && <Stopwatch />}
+          {t === 'countdown' && <SequenceView key={`cd${cfg.cdMin}${cfg.cdSec}`} id="countdown" phases={phases.countdown} title="Countdown" type="cardio" />}
+          {t === 'interval' && <SequenceView id="interval" phases={phases.interval} title={`Intervals ${cfg.work}/${cfg.rest} × ${cfg.rounds}`} type="cardio" />}
+          {t === 'tabata' && <SequenceView id="tabata" phases={phases.tabata} title={`Tabata × ${cfg.tabataBlocks}`} type="cardio" />}
+          {t === 'emom' && <SequenceView id="emom" phases={phases.emom} title={`EMOM ${Math.round((cfg.emomEvery * cfg.emomRounds) / 60)}`} type="cardio" />}
+          {t === 'amrap' && <SequenceView id="amrap" phases={phases.amrap} title={`AMRAP ${cfg.amrapMin}`} type="cardio" countRounds />}
+          {t === 'hyrox' && <HyroxSim />}
+        </div>
+        <div>
+          {t !== 'hyrox' && t !== 'stopwatch' && <Card>
+            <h3 style={{ marginBottom: 12 }}>Set up</h3>
+            {t === 'countdown' && <><div className="chips" style={{ marginBottom: 12 }}>{[1, 3, 5, 10, 20, 30].map((m) => <button key={m} className={`chip ${cfg.cdMin === m && !cfg.cdSec ? 'on' : ''}`} onClick={() => up({ cdMin: m, cdSec: 0 })}>{m} min</button>)}</div>
+              <div className="row wrap"><NumberStepper label="Min" value={cfg.cdMin} onChange={(v) => up({ cdMin: v })} max={180} /><NumberStepper label="Sec" value={cfg.cdSec} onChange={(v) => up({ cdSec: v })} step={5} max={55} /></div></>}
+            {t === 'interval' && <><div className="chips" style={{ marginBottom: 12 }}>{[[40, 20, 10, 'HIIT 40/20'], [30, 30, 10, '30/30'], [60, 60, 8, '1:1 min'], [90, 30, 6, '90/30']].map(([w, r, n, l]) => <button key={String(l)} className={`chip ${cfg.work === w && cfg.rest === r && cfg.rounds === n ? 'on' : ''}`} onClick={() => up({ work: w as number, rest: r as number, rounds: n as number })}>{l}</button>)}</div>
+              <div className="stack"><NumberStepper label="Work" unit="s" value={cfg.work} onChange={(v) => up({ work: v })} step={5} min={5} max={3600} /><NumberStepper label="Rest" unit="s" value={cfg.rest} onChange={(v) => up({ rest: v })} step={5} max={3600} /><NumberStepper label="Rounds" value={cfg.rounds} onChange={(v) => up({ rounds: v })} min={1} max={99} /></div></>}
+            {t === 'tabata' && <><p className="muted small">Classic Tabata: 20 s all-out, 10 s rest, × 8 (4 min). Stack blocks with 1 min between.</p><NumberStepper label="Blocks" value={cfg.tabataBlocks} onChange={(v) => up({ tabataBlocks: v })} min={1} max={8} /></>}
+            {t === 'emom' && <><p className="muted small">Every minute on the minute: do the work, rest for what’s left of the minute.</p><div className="stack"><NumberStepper label="Every" unit="s" value={cfg.emomEvery} onChange={(v) => up({ emomEvery: v })} step={15} min={15} max={600} /><NumberStepper label="Rounds" value={cfg.emomRounds} onChange={(v) => up({ emomRounds: v })} min={1} max={90} /></div></>}
+            {t === 'amrap' && <><p className="muted small">As many rounds as possible — tap +1 after every round.</p><div className="chips" style={{ marginBottom: 12 }}>{[10, 12, 15, 20, 30].map((m) => <button key={m} className={`chip ${cfg.amrapMin === m ? 'on' : ''}`} onClick={() => up({ amrapMin: m })}>{m} min</button>)}</div><NumberStepper label="Min" value={cfg.amrapMin} onChange={(v) => up({ amrapMin: v })} min={1} max={120} /></>}
+            <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>Changing settings while a timer runs restarts it.</p>
+          </Card>}
+          <Card>
+            <h3 style={{ marginBottom: 8 }}>Cues</h3>
+            <p className="muted small" style={{ margin: 0 }}>5-second get-ready, beeps on the last 3 seconds, a high tone for work, a low tone for rest, vibration on Android, optional voice (Me › Settings). The timer runs on timestamps, so it stays correct if you lock the phone, switch apps or even reload — the clock keeps counting, though sounds can’t play while the screen is off.</p>
+          </Card>
+        </div>
+      </div>
+    </Page>
+  );
+}

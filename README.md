@@ -1,0 +1,17 @@
+# HYBRD — Train · Track · Fuel
+
+Mobile-first, installable web app for hybrid athletes: calisthenics, strength, running, walking, cycling, cardio and HYROX.
+Static site (Vite + React + TypeScript), works offline, accounts via Supabase (free). See **SETUP.md** to connect accounts and publish.
+
+## Features
+- **Hybrid Score** (0–100, last 7 days): Strength, Engine, Consistency and Fuel pillars, with a balance penalty; the formula is shown in-app. Streaks and PRs.
+- **Train**: 50-exercise library with coaching cues; workout builder/logger (sets, reps, weight, time, distance, RPE, rest timer, templates); 9 programs including HYROX (8 × 1 km + 8 stations in the official order, division weights); history with split boards.
+- **Record (GPS)**: run, walk and cycle with accuracy filtering, auto-pause, segments, splits, pace/speed, elevation gain, a Leaflet/OSM map (off by default to keep data use light), hold-to-finish, saved routes and a route history map.
+- **Timers**: stopwatch with laps, countdown, interval/HIIT, Tabata, EMOM, AMRAP and a HYROX sim timer. Based on timestamps so they survive a reload, with beeps, vibration (Android), optional voice and wake-lock.
+- **Fuel**: daily calorie/macro log, an offline USDA SR Legacy list (7,283 foods), Open Food Facts search and barcode lookup, water tracker, 25 researched meals and drinks with USDA-computed macros, a nutrition guide, TDEE (Mifflin-St Jeor) and MET-based burn estimates, and listed sources.
+- **Steps**: live step count and cadence on Walk/Run recordings from the phone's motion sensor (peak-detection pedometer), with a labelled GPS-distance estimate as fallback; daily Steps card (goal ring, add-to or set-day-total entry), 7/30-day chart, goal streak, best day, step calories (estimate) and a small Hybrid Score bonus. The web can't read Apple Health or Google Fit, so whole-day totals are copied in by hand.
+- **Account**: sign up, log in, log out, change password, change email, forgot-password reset, sync. Clearly labeled Local mode until keys are added.
+- **Units**: one-tap mi | km switch on Record (before or during a run; splits are rebuilt from the raw GPS points) and a Units card at the top of Me (mi/km plus a separate lb/kg). Every distance, pace, speed and elevation (ft/m) follows it instantly. Data is always stored in metric. Onboarding asks for units first, defaulting to miles for a US locale.
+- Units mi/km and lb/kg, onboarding, JSON export/import, demo data, and an in-app help page (including the iOS limits).
+
+Not medical advice.
