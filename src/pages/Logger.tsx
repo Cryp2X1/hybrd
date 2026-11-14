@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MusicButton } from '../components/Music';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { programById } from '../data/programs';
 import { EXERCISES, exById, type Metric } from '../data/exercises';
@@ -71,7 +72,7 @@ export default function Logger() {
   const list = EXERCISES.filter((e) => !pq || e.name.toLowerCase().includes(pq.toLowerCase()) || e.muscles.toLowerCase().includes(pq.toLowerCase()));
 
   return (
-    <Page title={d.title || 'Workout'} kicker={`Live · ${fmtTime(elapsed)}`} back="/train" actions={<button className="btn sm y" onClick={save}><Icon name="check" size={18} />Finish</button>}>
+    <Page title={d.title || 'Workout'} kicker={`Live · ${fmtTime(elapsed)}`} back="/train" actions={<><MusicButton /><button className="btn sm y" onClick={save}><Icon name="check" size={18} />Finish</button></>}>
       {restLeft > 0 && <Banner tone="yellow"><b>Rest {fmtTime(restLeft)}</b> — next set when it hits zero. <button className="link" style={{ color: '#0a0a0a', textDecoration: 'underline' }} onClick={() => setD((x) => ({ ...x, restEndsAt: undefined }))}>Skip</button></Banner>}
       <Card>
         <label className="field"><span>Title</span><input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} /></label>

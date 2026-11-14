@@ -37,6 +37,14 @@ const P: Record<string, string> = {
   sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
   lap: 'M12 8v4l2 2M5 3l-2 2M19 3l2 2M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z',
   undo: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
+  music: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+  next: 'M5 4l10 8-10 8zM19 5v14',
+  prev: 'M19 20L9 12l10-8zM5 19V5',
+  phone: 'M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM11 18h2',
+  laptop: 'M4 5h16v11H4zM2 20h20',
+  speaker: 'M6 2h12v20H6zM12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 7h.01',
+  refresh: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
 };
 export function Icon({ name, size = 22, stroke = 2, className, fill }: { name: string; size?: number; stroke?: number; className?: string; fill?: boolean }) {
   return (

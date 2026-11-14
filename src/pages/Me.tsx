@@ -8,6 +8,7 @@ import { DistToggle, WeightToggle } from '../components/UnitToggle';
 import { HYROX_DIVISIONS } from '../data/programs';
 import { unlockAudio, cue } from '../lib/cues';
 import type { Profile } from '../lib/types';
+import { SpotifySettings, MusicPanel } from '../components/Music';
 
 export default function Me() {
   const { profile: p, setProfile } = useStore();
@@ -53,6 +54,14 @@ export default function Me() {
             </div>
             <label className="field"><span>HYROX division</span><select value={p.hyroxDivision} onChange={(e) => setProfile({ hyroxDivision: e.target.value as Profile['hyroxDivision'] })}>{Object.entries(HYROX_DIVISIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
             <Link className="link" to="/fuel/calculator">Age, height, activity & goal →</Link>
+          </Card>
+          <Card className="music-card">
+            <div className="card-head" id="music"><h3>Music · Spotify</h3><span className="muted small">Optional</span></div>
+            <SpotifySettings />
+          </Card>
+          <Card>
+            <h3 style={{ marginBottom: 10 }}>Music player</h3>
+            <MusicPanel />
           </Card>
           <Card>
             <h3 style={{ marginBottom: 4 }}>Cues</h3>

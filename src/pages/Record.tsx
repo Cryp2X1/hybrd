@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { MusicButton } from '../components/Music';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecorder, elapsedMs, type RecType } from '../lib/recorder';
 import { useStore, uid } from '../lib/store';
@@ -84,7 +85,7 @@ export default function Record() {
   };
 
   if (s.status === 'idle') return (
-    <Page title="Record" kicker="GPS · Run · Walk · Ride" actions={<Link className="btn sm" to="/routes"><Icon name="map" size={18} />Routes</Link>}>
+    <Page title="Record" kicker="GPS · Run · Walk · Ride" actions={<><MusicButton /><Link className="btn sm" to="/routes"><Icon name="map" size={18} />Routes</Link></>}>
       <div className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}><Segmented value={s.type} onChange={(v) => r.setup({ type: v })} options={[{ v: 'run', label: 'Run' }, { v: 'walk', label: 'Walk' }, { v: 'cycle', label: 'Ride' }]} /></div>
         <div style={{ paddingTop: 4 }}><DistToggle /></div>
@@ -111,6 +112,7 @@ export default function Record() {
     <div className="page session">
       <div className="row" style={{ flexWrap: 'wrap', rowGap: 8 }}><span className="pill yellow">{s.status === 'recording' ? <><span className="live-dot" />Recording</> : 'Paused'}</span><Pill>{LABEL[s.type]}</Pill>
         <DistToggle />
+        <MusicButton />
         <span className="spacer" />
         {!s.indoor && <Pill tone={s.lastAcc != null && s.lastAcc <= 20 ? 'yellow' : 'dim'}>GPS {s.lastAcc != null ? `±${Math.round(toElev(s.lastAcc, u))} ${elevUnit(u)}` : '…'}</Pill>}
         {wakeLockSupported() && <Pill tone={wake ? 'yellow' : 'dim'}>{wake ? 'Screen on' : 'Screen can sleep'}</Pill>}

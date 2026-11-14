@@ -3,11 +3,23 @@ let ctx: AudioContext | null = null;
 let soundOn = true, voiceOn = false;
 export function setCuePrefs(sound: boolean, voice: boolean) { soundOn = sound; voiceOn = voice; }
 
+// Music ducking: Spotify (if connected) registers a handler that lowers its volume while a voice cue plays.
+let ducker: ((ms: number) => void) | null = null;
+export function setDucker(fn: ((ms: number) => void) | null) { ducker = fn; }
+/**
+ * Audio Session API (Safari 16.4+): mark HYBRD's beeps as "transient" (notification-like) so they play on top of
+ * music from other apps instead of stopping it; the OS may also duck the music briefly. No-op elsewhere.
+ */
+function markTransient() {
+  try { const as = (navigator as unknown as { audioSession?: { type: string } }).audioSession; if (as && as.type !== 'transient') as.type = 'transient'; } catch { /* ignore */ }
+}
+
 /** Call inside a tap handler (Start) — iOS only allows audio unlocked by a user gesture. */
 export function unlockAudio() {
   try {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
+    markTransient();
     if (!ctx) ctx = new AC();
     if (ctx.state === 'suspended') ctx.resume();
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -37,7 +49,7 @@ export function cue(c: Cue) {
 /** Vibration API: Android only (iOS Safari has none) — a bonus, never the only cue. */
 export function vibrate(p: number | number[]) { try { if (soundOn && 'vibrate' in navigator) navigator.vibrate(p); } catch { /* ignore */ } }
 export function say(text: string) {
-  try { if (!voiceOn || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); } catch { /* ignore */ }
+  try { if (!voiceOn || !('speechSynthesis' in window)) return; speechSynthesis.cancel(); ducker?.(900 + text.length * 75); const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); } catch { /* ignore */ }
 }
 
 // ---------- Screen Wake Lock ----------

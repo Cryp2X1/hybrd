@@ -1,4 +1,4 @@
-declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string } } }
+declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; spotifyClientId?: string } } }
 
 const LS_KEY = 'hybrd:backend';
 

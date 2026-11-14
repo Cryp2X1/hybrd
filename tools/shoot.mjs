@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer-core';
 const BASE = 'http://localhost:4173/hybrd/';
 const OUT = new URL('../screenshots/', import.meta.url).pathname;
 const errors = [];
+const thirdParty = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Mocked device location for the run (Austin, TX) — maps and demo routes must follow it, not a fixed city
 const HOME = [30.2672, -97.7431];
@@ -20,7 +21,8 @@ async function run(kind) {
   if (phone) await page.setUserAgent('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36');
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${kind}] console.${m.type()}: ${m.text()} @ ${page.url()}`); });
   page.on('pageerror', (e) => errors.push(`[${kind}] pageerror: ${e.message} @ ${page.url()}`));
-  page.on('requestfailed', (r) => { const u = r.url(); if (!u.includes('tile.openstreetmap.org')) errors.push(`[${kind}] requestfailed: ${u} ${r.failure()?.errorText}`); });
+  // Requests made inside Spotify's own embed iframe are Spotify's (not HYBRD code): listed separately, not counted.
+  page.on('requestfailed', (r) => { const u = r.url(); if (u.includes('tile.openstreetmap.org')) return; if (r.frame() && r.frame() !== page.mainFrame() && !u.startsWith('http://localhost')) { thirdParty.push(`[${kind}] inside ${new URL(r.frame().url()).host} iframe: ${u} ${r.failure()?.errorText}`); return; } errors.push(`[${kind}] requestfailed: ${u} ${r.failure()?.errorText}`); });
   page.on('response', (r) => { if (r.status() >= 400 && !r.url().includes('openstreetmap')) errors.push(`[${kind}] HTTP ${r.status()}: ${r.url()}`); });
   const shot = async (name, full = false) => { await sleep(700); await page.screenshot({ path: `${OUT}${kind}-${name}.png`, fullPage: full }); console.log('shot', kind, name); };
   const go = async (path, wait = 900) => {
@@ -239,3 +241,4 @@ async function run(kind) {
 await run('phone');
 await run('desktop');
 console.log('\nERRORS:', errors.length); errors.forEach((e) => console.log(e));
+if (thirdParty.length) { console.log('third-party iframe notes (not counted):', thirdParty.length); thirdParty.forEach((e) => console.log(' ', e)); }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { MusicButton } from '../components/Music';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Page, Segmented, Card, HoldButton, NumberStepper, Banner } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -91,7 +92,7 @@ export default function Timers() {
   }, [cfg]);
 
   return (
-    <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide>
+    <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide actions={<MusicButton />}>
       <Segmented value={t} onChange={(v) => setSp({ t: v })} options={[{ v: 'stopwatch', label: 'Stopwatch' }, { v: 'countdown', label: 'Countdown' }, { v: 'interval', label: 'Intervals' }, { v: 'tabata', label: 'Tabata' }, { v: 'emom', label: 'EMOM' }, { v: 'amrap', label: 'AMRAP' }, { v: 'hyrox', label: 'HYROX Sim' }]} />
       {isIOS() && !isStandalone() && <Banner tone="warn">iPhone: sounds work after you tap Start; there’s no vibration on iOS. Add HYBRD to your Home Screen to keep the screen awake (iOS 18.4+).</Banner>}
       <div className="desk-grid">

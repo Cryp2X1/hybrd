@@ -329,7 +329,47 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .map-wrap { position: relative; width: 100%; }
 .map-locate { position: absolute; top: 10px; right: 10px; z-index: 500; width: 40px; height: 40px; border-radius: 10px; background: #141414; color: #fff; border: 1px solid #2a2a2a; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 .map-locate:active { transform: scale(.96); }
-.map-locate.busy { color: var(--y); animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .5; } }
+.map-locate.busy { color: var(--y); animation: blink 1s ease-in-out infinite; }
 .map-note { position: absolute; left: 10px; right: 60px; top: 10px; z-index: 500; background: rgba(10,10,10,.9); border: 1px solid #3a3200; color: #ddd; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 10px; }
 .map-note b { color: var(--y); }
+
+/* ---------- music / Spotify ---------- */
+.gap8 { gap: 8px; }
+.sp-panel { display: flex; flex-direction: column; gap: 12px; }
+.sp-cta { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--card2); border: 1px solid var(--line2); }
+.sp-player { display: grid; grid-template-columns: 64px 1fr; grid-template-areas: 'art meta' 'ctrl ctrl'; gap: 10px 12px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, #1a1a1a, #101010); border: 1px solid var(--line2); }
+@media (min-width: 520px) { .sp-player { grid-template-columns: 64px 1fr auto; grid-template-areas: 'art meta ctrl'; align-items: center; } }
+.sp-art { grid-area: art; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; background: var(--card); display: grid; place-items: center; color: var(--mut); }
+.sp-art img { width: 100%; height: 100%; object-fit: contain; }
+.sp-meta { grid-area: meta; min-width: 0; }
+.sp-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-bar { height: 4px; border-radius: 4px; background: #2a2a2a; margin: 8px 0 6px; overflow: hidden; }
+.sp-bar span { display: block; height: 100%; background: var(--y); }
+.sp-dev { color: var(--ok); display: flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11px; }
+.sp-ctrls { grid-area: ctrl; display: flex; gap: 10px; justify-content: center; }
+.sp-ctrls .icon-btn { width: 48px; height: 48px; border-radius: 50%; }
+.sp-ctrls .sp-pp { background: var(--y); color: #0a0a0a; border-color: var(--y); width: 56px; height: 56px; }
+.sp-ctrls button:disabled { opacity: .5; }
+.sp-devices h4 { margin: 0; }
+.sp-dev-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); margin-bottom: 6px; text-align: left; }
+.sp-dev-row > span { flex: 1; min-width: 0; }
+.sp-dev-row.on { border-color: var(--ok); color: var(--ok); }
+.sp-dev-row:disabled { opacity: .5; }
+.sp-browser { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.sp-pl-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 320px; overflow-y: auto; }
+.sp-pl { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.sp-pl-img { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--card2); display: grid; place-items: center; flex: none; }
+.sp-pl-img img { width: 100%; height: 100%; object-fit: contain; }
+.sp-pl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sp-pl-t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-embed { width: 100%; border: 0; border-radius: 12px; background: var(--card); display: block; }
+.sp-more summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+.sp-settings { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.sp-settings .toggle, .sp-settings details, .sp-settings .field { width: 100%; }
+.sp-status { display: flex; align-items: center; gap: 8px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--mut); }
+.sp-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut2); }
+.sp-status .dot.on { background: var(--ok); }
+.sp-uri { display: block; padding: 10px 12px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--line2); font-family: var(--mono); font-size: 12.5px; word-break: break-all; user-select: all; margin-bottom: 8px; }
+.sp-live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-left: 2px; animation: blink 1.4s infinite; }
+@media (max-width: 480px) { .page-actions .btn-l { display: none; } .page-actions .btn.sm { padding: 0 11px; } }
