@@ -6,6 +6,7 @@ import type { Discipline, Goal, Profile, Sex, Units } from '../lib/types';
 import { Icon } from '../components/Icon';
 import { useAuth } from '../lib/auth';
 import { buildSample } from '../lib/sample';
+import { demoCenter } from '../lib/location';
 
 const DISC: { v: Discipline; label: string }[] = [
   { v: 'calisthenics', label: 'Calisthenics' }, { v: 'strength', label: 'Strength' }, { v: 'running', label: 'Running' }, { v: 'walking', label: 'Walking' },
@@ -20,9 +21,15 @@ export default function Onboarding() {
   const u = p.units;
   const up = (x: Partial<Profile>) => setP((c) => ({ ...c, ...x }));
   const t = computeTargets(p);
-  const finish = (sample = false) => {
+  const [busy, setBusy] = useState(false);
+  const finish = async (sample = false) => {
+    if (sample) {
+      // Demo routes are drawn around the user's own area (quick location check, else last known / time-zone guess)
+      setBusy(true);
+      const c = await demoCenter();
+      importJson({ app: 'HYBRD', data: buildSample(p.weightKg, c) }, 'merge');
+    }
     setProfile({ ...p, onboarded: true });
-    if (sample) importJson({ app: 'HYBRD', data: buildSample(p.weightKg) }, 'merge');
   };
   const ftIn = { ft: Math.floor(p.heightCm / 2.54 / 12), inch: Math.round((p.heightCm / 2.54) % 12) };
   const steps = 5;
@@ -98,8 +105,8 @@ export default function Onboarding() {
             <div className="stat"><div className="stat-v">{t.tdee}</div><div className="stat-l">maintenance (TDEE)</div></div>
           </div>
           <p className="muted small">Not medical advice. If you have a health condition, are pregnant, or have a history of disordered eating, talk to a doctor or registered dietitian before changing how you eat.</p>
-          <button className="btn block" onClick={() => finish(true)}>Explore with sample data first</button>
-          <p className="muted small" style={{ marginTop: 6 }}>Adds 4 weeks of clearly-marked demo workouts and meals. Remove them in Me › Data.</p>
+          <button className="btn block" disabled={busy} onClick={() => finish(true)}>{busy ? 'Building demo near you…' : 'Explore with sample data first'}</button>
+          <p className="muted small" style={{ marginTop: 6 }}>Adds 4 weeks of clearly-marked demo workouts and meals, with demo routes drawn around your area (we may ask for location once). Remove them in Me › Data.</p>
         </>}
       </div>
       <div className="onb-foot">

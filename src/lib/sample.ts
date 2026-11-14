@@ -21,10 +21,12 @@ function loop(center: [number, number], radiusM: number, n: number, startT: numb
   return pts;
 }
 
-export function buildSample(weightKg: number): Partial<DataState> {
+/** center = the user's area (see demoCenter) so demo routes show up near them, not in a far-off city. */
+export function buildSample(weightKg: number, center: [number, number]): Partial<DataState> {
   const today = todayKey();
   const workouts: Workout[] = [], routes: GpsRoute[] = [], foods: FoodEntry[] = [], water: WaterDay[] = [], body: BodyLog[] = [];
-  const C: [number, number] = [40.7829, -73.9654]; // Central Park, NYC
+  const C: [number, number] = center;
+  const C2: [number, number] = [center[0] - 0.0117, center[1] - 0.0088]; // rides loop a little south-west
   const plan: [number, Workout['type'], string, number, number, number?][] = [
     // dayOffset, type, title, minutes, rpe, distance km
     [-27, 'calisthenics', 'Calisthenics A · Push + Legs', 40, 7], [-26, 'run', 'Easy Run', 32, 4, 5.1], [-24, 'strength', 'Lower Strength', 55, 8],
@@ -47,7 +49,7 @@ export function buildSample(weightKg: number): Partial<DataState> {
       const r = Math.min(1400, (km * 1000) / (2 * Math.PI * 1.15));
       const laps = Math.max(1, Math.round((km * 1000) / (2 * Math.PI * r * 1.15)));
       let pts: RoutePoint[] = [];
-      for (let l = 0; l < laps; l++) { const seg = loop(type === 'cycle' ? [40.7712, -73.9742] : C, r, 70, pts.length ? pts[pts.length - 1].t : start.getTime(), secPerM, i * 0.3); pts = pts.concat(l ? seg.slice(1) : seg); }
+      for (let l = 0; l < laps; l++) { const seg = loop(type === 'cycle' ? C2 : C, r, 70, pts.length ? pts[pts.length - 1].t : start.getTime(), secPerM, i * 0.3); pts = pts.concat(l ? seg.slice(1) : seg); }
       // keep the demo consistent: distance = the drawn route, and its clock spans exactly the workout duration
       let len = 0; for (let k = 1; k < pts.length; k++) len += haversine(pts[k - 1], pts[k]);
       const t0 = pts[0].t, span = pts[pts.length - 1].t - t0 || 1;

@@ -48,6 +48,8 @@ export default function Help() {
           <li>Auto-pause stops the clock after ~10 s standing still — turn it off for intervals.</li>
           <li>The live map is off by default to save battery and data; tap “Show map” any time.</li>
           <li>Elevation appears only if your phone reports altitude; it’s approximate.</li>
+          <li><b>Maps start where you are.</b> With no route to show, a map asks for your location and centers on you (blue dot + accuracy circle). Tap <b>◎</b> on any map to jump back to yourself. Your last position is remembered on this device only, so maps open there instantly next time.</li>
+          <li>Location off? Maps fall back to your last known position, then a rough area from your phone’s time zone. To allow it: iPhone — Settings › Privacy & Security › Location Services › Safari Websites (or HYBRD) › While Using; Android/Chrome — tap the site icon next to the address › Permissions › Location › Allow.</li>
         </ul>
       </Card>
       <Card>

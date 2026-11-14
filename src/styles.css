@@ -325,3 +325,11 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .steps-break { flex: 1; display: grid; gap: 8px; min-width: 0; }
 .steps-break > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .steps-card .seg { margin: 14px 0 10px; }
+/* map: locate button + location note */
+.map-wrap { position: relative; width: 100%; }
+.map-locate { position: absolute; top: 10px; right: 10px; z-index: 500; width: 40px; height: 40px; border-radius: 10px; background: #141414; color: #fff; border: 1px solid #2a2a2a; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.map-locate:active { transform: scale(.96); }
+.map-locate.busy { color: var(--y); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+.map-note { position: absolute; left: 10px; right: 60px; top: 10px; z-index: 500; background: rgba(10,10,10,.9); border: 1px solid #3a3200; color: #ddd; font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 10px; }
+.map-note b { color: var(--y); }

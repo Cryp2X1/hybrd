@@ -37,7 +37,7 @@ export default function DataPage() {
       <Card>
         <h3 style={{ marginBottom: 8 }}>Sample data</h3>
         <p className="muted small">Four weeks of demo workouts, GPS routes, a HYROX sim and meals so you can see every screen filled in. Every sample item is tagged and removable.</p>
-        {sample.has ? <button className="btn" onClick={() => { sample.clear(); toast('Sample data removed'); }}>Remove sample data</button> : <button className="btn" onClick={() => { sample.load(); toast('Sample data added'); }}>Load sample data</button>}
+        {sample.has ? <button className="btn" onClick={() => { sample.clear(); toast('Sample data removed'); }}>Remove sample data</button> : <button className="btn" onClick={() => { sample.load().then(() => toast('Sample data added')); }}>Load sample data</button>}
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Delete everything</h3>

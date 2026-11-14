@@ -3,6 +3,9 @@ const BASE = 'http://localhost:4173/hybrd/';
 const OUT = new URL('../screenshots/', import.meta.url).pathname;
 const errors = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Mocked device location for the run (Austin, TX) — maps and demo routes must follow it, not a fixed city
+const HOME = [30.2672, -97.7431];
+const near = (attr, lat, lng, tol) => { if (!attr) return false; const [a, b] = attr.split(',').map(Number); return Math.abs(a - lat) < tol && Math.abs(b - lng) < tol; };
 
 async function run(kind) {
   const phone = kind === 'phone';
@@ -11,6 +14,8 @@ async function run(kind) {
   // phone: motion sensors allowed (sensor path); desktop: motion denied (tests the GPS-estimate fallback)
   await ctx.overridePermissions('http://localhost:4173', phone ? ['geolocation', 'accelerometer', 'gyroscope'] : ['geolocation']);
   const page = await ctx.newPage();
+  await page.emulateTimezone('America/Chicago');
+  await page.setGeolocation({ latitude: HOME[0], longitude: HOME[1], accuracy: 12 });
   await page.setViewport(phone ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { width: 1440, height: 900, deviceScaleFactor: 1 });
   if (phone) await page.setUserAgent('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36');
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${kind}] console.${m.type()}: ${m.text()} @ ${page.url()}`); });
@@ -63,10 +68,13 @@ async function run(kind) {
   await page.evaluate(() => { const a = [...document.querySelectorAll('a.row-link')].find((x) => x.textContent.includes('HYROX Simulation')); a && a.click(); });
   await sleep(1000); await shot('13-hyrox-split-board', true);
   await go('/routes', 2500); await shot('14-route-history');
+  const rc = await page.evaluate(() => document.querySelector('.map')?.getAttribute('data-center'));
+  console.log(kind, 'route history center (demo routes)', rc);
+  if (!near(rc, HOME[0], HOME[1], 0.05)) errors.push(`[${kind}] maps: demo routes not near the user (${rc})`);
   await go('/record'); await shot('15-record-idle');
   // live GPS: emulate movement
   const cdp = await page.createCDPSession();
-  let lat = 40.7812, lng = -73.9665;
+  let lat = HOME[0] + 0.004, lng = HOME[1] - 0.003;
   await cdp.send('Emulation.setGeolocationOverride', { latitude: lat, longitude: lng, accuracy: 6 });
   if (phone) await startMotion();
   await clickText('Start Run');
@@ -86,9 +94,9 @@ async function run(kind) {
   if (!before || !after || before.u !== 'mi' || after.u !== 'km' || Math.abs(after.v - before.v * 1.609344) > 0.02) errors.push(`[${kind}] units: live mi->km conversion wrong ${JSON.stringify({ before, after })}`);
   // pause, then load a longer (3.4 km) session so splits are visible, and resume it
   await page.evaluate(() => document.querySelector('button[aria-label="Pause"]')?.click()); await sleep(300);
-  const endPt = await page.evaluate(() => {
+  const endPt = await page.evaluate((home) => {
     const hav = (a, b) => { const R = 6371008.8, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lng - a.lng) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
-    const now = Date.now(), pts = []; let lat = 40.7680, lng = -73.9710, d = 0, e = 0;
+    const now = Date.now(), pts = []; let lat = home[0] - 0.012, lng = home[1] - 0.006, d = 0, e = 0;
     const t0 = now - 1300 * 1000;
     for (let i = 0; d < 3400; i++) {
       const v = 3.0 + 0.25 * Math.sin(i / 40); // ~5:20–5:50 /km
@@ -101,7 +109,7 @@ async function run(kind) {
     const st = { steps: 4380, motion: 'granted', status: 'paused', type: 'run', indoor: false, autoPause: true, startedAt: pausedAt - E, pausedAt, autoPaused: false, accPauseMs: 0, segments: [pts], distanceM: d, elevGainM: 24, splits: [], splitUnitM: 1000, lastAcc: 5, lastFixAt: pausedAt, gaps: [], error: '', dropped: 0 };
     localStorage.setItem('hybrd:rec', JSON.stringify(st));
     return pts[pts.length - 1];
-  });
+  }, HOME);
   await cdp.send('Emulation.setGeolocationOverride', { latitude: endPt.lat, longitude: endPt.lng, accuracy: 6 });
   await page.goto(BASE + 'record', { waitUntil: 'networkidle0' }); await sleep(800);
   if (phone) await startMotion();
@@ -168,6 +176,64 @@ async function run(kind) {
   await sleep(500);
   const sw = await page.evaluate(async () => !!(await navigator.serviceWorker?.getRegistration()));
   console.log(kind, 'service worker registered:', sw);
+  // --- new user, location allowed: empty maps center on the (mocked) user ---
+  const fresh = async (perms, tz, lastpos) => {
+    const c2 = await browser.createBrowserContext();
+    await c2.overridePermissions('http://localhost:4173', perms);
+    const pg = await c2.newPage();
+    pg.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`[${kind}/fresh] console.${m.type()}: ${m.text()} @ ${pg.url()}`); });
+    pg.on('pageerror', (e) => errors.push(`[${kind}/fresh] pageerror: ${e.message}`));
+    await pg.emulateTimezone(tz);
+    if (perms.includes('geolocation')) await pg.setGeolocation({ latitude: HOME[0] + 0.0021, longitude: HOME[1] + 0.0013, accuracy: 18 });
+    await pg.setViewport(phone ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { width: 1440, height: 900, deviceScaleFactor: 1 });
+    await pg.goto(BASE, { waitUntil: 'networkidle0' });
+    if (lastpos) await pg.evaluate((p) => localStorage.setItem('hybrd:lastpos', JSON.stringify(p)), lastpos);
+    const ct = (t) => pg.evaluate((t) => { const el = [...document.querySelectorAll('button, a')].find((e) => e.textContent.trim().includes(t)); el?.click(); return !!el; }, t);
+    await ct('Get started'); await sleep(300);
+    for (let i = 0; i < 4; i++) { await ct('Continue'); await sleep(250); }
+    await ct('Start training'); await sleep(800);
+    const nav = async (p, w = 2500) => { await pg.evaluate((p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }, '/hybrd' + p); await sleep(w); };
+    return { c2, pg, nav };
+  };
+  {
+    const { c2, pg, nav } = await fresh(['geolocation'], 'America/Chicago');
+    await nav('/routes', 3000);
+    const c = await pg.evaluate(() => document.querySelector('.map')?.getAttribute('data-center'));
+    const dotN = await pg.evaluate(() => document.querySelectorAll('.map path.leaflet-interactive').length);
+    console.log(kind, 'new user routes center', c, 'you-are-here layers', dotN);
+    if (!near(c, HOME[0] + 0.0021, HOME[1] + 0.0013, 0.002) || !c.endsWith(',15') || dotN < 1) errors.push(`[${kind}] maps: empty route history not centered on user (${c}, dot ${dotN})`);
+    await pg.screenshot({ path: `${OUT}${kind}-routes-local.png` }); console.log('shot', kind, 'routes-local');
+    await nav('/record', 900);
+    await pg.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('where am I'))?.click()); await sleep(3000);
+    const c3 = await pg.evaluate(() => document.querySelector('.map')?.getAttribute('data-center'));
+    if (!near(c3, HOME[0] + 0.0021, HOME[1] + 0.0013, 0.002)) errors.push(`[${kind}] maps: record map not centered on user (${c3})`);
+    await pg.evaluate(() => { const m = document.querySelector('.map-wrap'); m?.scrollIntoView({ block: 'center' }); }); await sleep(600);
+    await pg.screenshot({ path: `${OUT}${kind}-record-map-local.png` }); console.log('shot', kind, 'record-map-local');
+    const saved = await pg.evaluate(() => localStorage.getItem('hybrd:lastpos'));
+    if (!saved) errors.push(`[${kind}] maps: last position not remembered`);
+    await c2.close();
+  }
+  // --- location denied, nothing remembered: rough area from the time zone (Madrid), with a how-to note ---
+  {
+    const { c2, pg, nav } = await fresh([], 'Europe/Madrid');
+    await nav('/routes', 2500);
+    const c = await pg.evaluate(() => document.querySelector('.map')?.getAttribute('data-center'));
+    const note = await pg.evaluate(() => document.querySelector('.map-note')?.textContent || '');
+    console.log(kind, 'denied+tz center', c, '|', note.slice(0, 80));
+    if (!near(c, 40.42, -3.7, 0.05) || !/Location is off/.test(note) || !/Europe\/Madrid/.test(note)) errors.push(`[${kind}] maps: tz fallback wrong (${c} / ${note})`);
+    if (!phone) { await pg.screenshot({ path: `${OUT}${kind}-routes-location-denied.png` }); console.log('shot', kind, 'routes-location-denied'); }
+    await c2.close();
+  }
+  // --- location denied but a last known position exists: open there ---
+  {
+    const { c2, pg, nav } = await fresh([], 'Europe/Madrid', { lat: 19.4326, lng: -99.1332, acc: 30, t: Date.now() - 86400000 });
+    await nav('/routes', 2500);
+    const c = await pg.evaluate(() => document.querySelector('.map')?.getAttribute('data-center'));
+    const note = await pg.evaluate(() => document.querySelector('.map-note')?.textContent || '');
+    console.log(kind, 'denied+last center', c, '|', note.slice(0, 60));
+    if (!near(c, 19.4326, -99.1332, 0.01) || !/last known/.test(note)) errors.push(`[${kind}] maps: last-known fallback wrong (${c} / ${note})`);
+    await c2.close();
+  }
   await browser.close();
 }
 await run('phone');

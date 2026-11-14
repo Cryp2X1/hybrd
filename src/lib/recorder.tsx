@@ -3,6 +3,7 @@ import type { RoutePoint, Split, WorkoutType } from './types';
 import { haversine, splitsFromTrack } from './calc';
 import { acquireWakeLock, cue, say } from './cues';
 import { Pedometer, type MotionStatus } from './pedometer';
+import { saveLastPos } from './location';
 
 export type RecType = Extract<WorkoutType, 'run' | 'walk' | 'cycle'>;
 export interface RecState {
@@ -105,6 +106,7 @@ export function RecorderProvider({ children }: { children: ReactNode }) {
     if (!lat && !lng) return;
     if (accuracy > MAX_ACC) { update((x) => ({ ...x, lastAcc: accuracy, dropped: x.dropped + 1, lastFixAt: t })); return; }
     const p: RoutePoint = { lat, lng, alt: altitude, t, acc: Math.round(accuracy) };
+    saveLastPos(p); // maps open here next time (throttled)
     if (st.error) update((x) => ({ ...x, error: '' }));
     update((x) => {
       const segs = x.segments.map((sg) => sg);
