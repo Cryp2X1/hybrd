@@ -290,3 +290,10 @@ Email templates that change password or email must use a `redirectTo` that is on
 - [MDN: Navigator.vibrate()](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate) — not available in iOS Safari
 - [OSMF Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/)
 - [Supabase: Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
+
+## Weight-loss programs (Fuel › Weight loss)
+- Pure logic in `src/lib/wl.ts` (screen, computeWL, buildWeek/solveDay, groceryList, weightTrend, suggest); catalog = `src/data/planCatalog.ts` (recipes.json planner meta + `plan-foods.json`, rebuilt by `python3 tools/build_plan_foods.py`).
+- Pages: `src/pages/WeightLoss.tsx` (`?tab=plan|week|grocery|progress|research`) and `src/pages/WeightLossSetup.tsx`. Entry: `src/components/WLCard.tsx` on Home and Fuel. Fuel/Home targets via `src/lib/fuelTargets.ts` (plan target when "Use in Fuel" is on; burn is not added on top).
+- Collection `wlplans` → table `wl_plans`; weigh-ins reuse `body`. Newest non-deleted plan is active.
+- Safety levels: stop (under 18, pregnant, breastfeeding, ED history) / maintain (BMI < 18.5) / gentle (diabetes, medical, BMI < 20). Suggestions never auto-apply.
+- Tests `tools/test-wl.ts`; screenshots `tools/shoot-wl.mjs`. Routes `fuel/weight-loss(/setup)` are in `tools/postbuild.mjs`.

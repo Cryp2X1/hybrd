@@ -6,7 +6,7 @@ import { getSupabase, TABLES } from './supabase';
 import { localeUnits } from './calc';
 import { useStrava, stravaVisible, isStravaId, hideStravaActivity, autoSync } from './strava';
 
-export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [] });
+export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [] });
 export const defaultProfile = (): Profile => ({
   name: '', sex: 'male', age: 30, heightCm: 175, weightKg: 75, activity: 1.55, goal: 'maintain', units: localeUnits(),
   disciplines: ['hybrid'], weeklySessions: 4, onboarded: false, sound: true, voice: false, hyroxDivision: 'men-open',

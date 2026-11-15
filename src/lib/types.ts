@@ -103,6 +103,7 @@ export interface BurnEntry extends Rec {
   method: 'met' | 'manual';
   sample?: boolean;
 }
+export type { WLPlan } from './wl';
 export interface Template extends Rec { name: string; type: WorkoutType; exercises: ExerciseEntry[]; notes?: string }
 
 export interface DataState {
@@ -114,6 +115,8 @@ export interface DataState {
   templates: Template[];
   steps: StepDay[];
   burns: BurnEntry[];
+  /** Weight-loss programs (Fuel › Weight loss). The newest non-deleted record is the active plan. */
+  wlplans: import('./wl').WLPlan[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans'];

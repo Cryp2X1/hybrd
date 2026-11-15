@@ -21,5 +21,5 @@ export function getSupabase(): Promise<SupabaseClient | null> {
 }
 
 export const TABLES: Record<string, string> = {
-  workouts: 'workouts', routes: 'gps_routes', foods: 'food_logs', water: 'water_logs', body: 'body_logs', templates: 'templates', steps: 'step_logs', burns: 'burn_logs',
+  workouts: 'workouts', routes: 'gps_routes', foods: 'food_logs', water: 'water_logs', body: 'body_logs', templates: 'templates', steps: 'step_logs', burns: 'burn_logs', wlplans: 'wl_plans',
 };

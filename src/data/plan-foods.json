@@ -1,0 +1,4209 @@
+{
+ "source": "USDA FoodData Central SR Legacy (April 2018), per 100 g; computed by tools/build_plan_foods.py",
+ "recipes": [
+  {
+   "id": "wl-egg-white-omelette",
+   "name": "Veggie Egg-White Omelette & Toast",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick",
+    "vegetarian"
+   ],
+   "serves": 1,
+   "minutes": 12,
+   "ingredients": [
+    {
+     "label": "5 egg whites (or ⅔ cup carton whites)",
+     "grams": 165,
+     "fdcId": 172183,
+     "usda": "Egg, white, raw, fresh"
+    },
+    {
+     "label": "1 whole egg",
+     "grams": 50,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "1 cup spinach",
+     "grams": 30,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "½ cup sliced mushrooms",
+     "grams": 50,
+     "fdcId": 169251,
+     "usda": "Mushrooms, white, raw"
+    },
+    {
+     "label": "6 cherry tomatoes",
+     "grams": 60,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "½ tsp olive oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "1 slice whole-wheat toast",
+     "grams": 32,
+     "fdcId": 172688,
+     "usda": "Bread, whole-wheat, commercially prepared"
+    }
+   ],
+   "steps": [
+    "Sauté mushrooms and spinach in the oil for 3 min.",
+    "Pour in the whisked eggs and whites, cook until set and fold.",
+    "Serve with tomatoes and toast."
+   ],
+   "why": "Mostly protein for few calories, with vegetables for volume — protein and fibre both help with fullness while dieting.",
+   "sources": [
+    "wl-wycherley",
+    "wl-dga"
+   ],
+   "perServing": {
+    "kcal": 293,
+    "protein": 31.2,
+    "carbs": 20.2,
+    "fat": 9.6,
+    "fiber": 3.8,
+    "sodium": 520
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [
+     "egg",
+     "gluten"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 12,
+    "carbShare": 0.28
+   }
+  },
+  {
+   "id": "wl-yogurt-berry-oats",
+   "name": "Greek Yogurt, Berries & Oats",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick",
+    "vegetarian",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 4,
+   "ingredients": [
+    {
+     "label": "¾ cup nonfat Greek yogurt",
+     "grams": 200,
+     "fdcId": 170894,
+     "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "⅔ cup frozen blueberries",
+     "grams": 100,
+     "fdcId": 173950,
+     "usda": "Blueberries, frozen, unsweetened (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "⅓ cup rolled oats",
+     "grams": 30,
+     "fdcId": 173904,
+     "usda": "Cereals, oats, regular and quick, not fortified, dry"
+    },
+    {
+     "label": "2 tsp chia seeds",
+     "grams": 8,
+     "fdcId": 170554,
+     "usda": "Seeds, chia seeds, dried"
+    },
+    {
+     "label": "pinch cinnamon",
+     "grams": 1,
+     "fdcId": 171320,
+     "usda": "Spices, cinnamon, ground"
+    }
+   ],
+   "steps": [
+    "Stir oats and chia into the yogurt (or leave overnight).",
+    "Top with thawed berries and cinnamon."
+   ],
+   "why": "About 25 g protein and 8 g fibre — a high-protein, high-fibre start that is easy to scale.",
+   "sources": [
+    "wl-wycherley",
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 324,
+    "protein": 26.1,
+    "carbs": 43.9,
+    "fat": 5.8,
+    "fiber": 9.0,
+    "sodium": 76
+   },
+   "plan": {
+    "slots": [
+     "breakfast",
+     "snack"
+    ],
+    "contains": [
+     "dairy",
+     "gluten"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 4,
+    "carbShare": 0.54
+   }
+  },
+  {
+   "id": "wl-soy-oats",
+   "name": "Soy-Milk Berry Oats",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 6,
+   "ingredients": [
+    {
+     "label": "½ cup rolled oats",
+     "grams": 50,
+     "fdcId": 173904,
+     "usda": "Cereals, oats, regular and quick, not fortified, dry"
+    },
+    {
+     "label": "1 cup soy milk",
+     "grams": 240,
+     "fdcId": 172456,
+     "usda": "Soymilk, original and vanilla, with added calcium, vitamins A and D"
+    },
+    {
+     "label": "½ cup blueberries",
+     "grams": 80,
+     "fdcId": 173950,
+     "usda": "Blueberries, frozen, unsweetened (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "1 tbsp pumpkin seeds",
+     "grams": 15,
+     "fdcId": 170556,
+     "usda": "Seeds, pumpkin and squash seed kernels, dried"
+    },
+    {
+     "label": "pinch cinnamon",
+     "grams": 1,
+     "fdcId": 171320,
+     "usda": "Spices, cinnamon, ground"
+    }
+   ],
+   "steps": [
+    "Simmer oats in soy milk 4–5 min (or microwave 2 min).",
+    "Top with berries, pumpkin seeds and cinnamon."
+   ],
+   "why": "Plant protein from soy milk and seeds plus oat fibre.",
+   "sources": [
+    "wl-turner",
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 420,
+    "protein": 17.7,
+    "carbs": 57.8,
+    "fat": 14.7,
+    "fiber": 9.1,
+    "sodium": 118
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [
+     "gluten",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 6,
+    "carbShare": 0.55
+   }
+  },
+  {
+   "id": "wl-quinoa-apple-bowl",
+   "name": "Warm Quinoa Apple Bowl",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 8,
+   "ingredients": [
+    {
+     "label": "¾ cup cooked quinoa",
+     "grams": 150,
+     "fdcId": 168917,
+     "usda": "Quinoa, cooked"
+    },
+    {
+     "label": "½ apple, diced",
+     "grams": 100,
+     "fdcId": 171688,
+     "usda": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "1 tbsp pumpkin seeds",
+     "grams": 15,
+     "fdcId": 170556,
+     "usda": "Seeds, pumpkin and squash seed kernels, dried"
+    },
+    {
+     "label": "1½ tbsp hemp seeds",
+     "grams": 15,
+     "fdcId": 170148,
+     "usda": "Seeds, hemp seed, hulled"
+    },
+    {
+     "label": "1 tsp maple syrup",
+     "grams": 7,
+     "fdcId": 169661,
+     "usda": "Syrups, maple"
+    },
+    {
+     "label": "pinch cinnamon",
+     "grams": 1,
+     "fdcId": 171320,
+     "usda": "Spices, cinnamon, ground"
+    }
+   ],
+   "steps": [
+    "Warm the quinoa with a splash of water and the apple for 3 min.",
+    "Top with seeds, cinnamon and maple."
+   ],
+   "why": "Free of gluten, dairy, eggs, soy and nuts — seeds supply protein and healthy fats.",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 419,
+    "protein": 16.2,
+    "carbs": 54.2,
+    "fat": 17.7,
+    "fiber": 8.6,
+    "sodium": 14
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 8,
+    "carbShare": 0.52
+   }
+  },
+  {
+   "id": "wl-lox-toast",
+   "name": "Smoked Salmon Yogurt Toast",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick",
+    "omega-3"
+   ],
+   "serves": 1,
+   "minutes": 5,
+   "ingredients": [
+    {
+     "label": "2 slices whole-wheat toast",
+     "grams": 64,
+     "fdcId": 172688,
+     "usda": "Bread, whole-wheat, commercially prepared"
+    },
+    {
+     "label": "¼ cup Greek yogurt (as spread)",
+     "grams": 60,
+     "fdcId": 170894,
+     "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "2 oz smoked salmon",
+     "grams": 60,
+     "fdcId": 173687,
+     "usda": "Fish, salmon, chinook, smoked"
+    },
+    {
+     "label": "⅓ cucumber, sliced",
+     "grams": 50,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 5,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Spread yogurt on the toast, add cucumber and salmon, finish with lemon and pepper."
+   ],
+   "why": "Fish protein and omega-3 fats; smoked salmon is salty, so balance with lower-salt meals.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 273,
+    "protein": 25.4,
+    "carbs": 30.9,
+    "fat": 5.2,
+    "fiber": 4.2,
+    "sodium": 717
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [
+     "dairy",
+     "fish",
+     "gluten"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 5,
+    "carbShare": 0.45
+   }
+  },
+  {
+   "id": "wl-eggs-avocado-plate",
+   "name": "Eggs, Spinach & Avocado Plate",
+   "cat": "plan",
+   "tags": [
+    "lower-carb",
+    "vegetarian",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 10,
+   "ingredients": [
+    {
+     "label": "2 eggs",
+     "grams": 100,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "2 egg whites",
+     "grams": 66,
+     "fdcId": 172183,
+     "usda": "Egg, white, raw, fresh"
+    },
+    {
+     "label": "2 cups spinach",
+     "grams": 60,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "⅓ avocado",
+     "grams": 50,
+     "fdcId": 171705,
+     "usda": "Avocados, raw, all commercial varieties"
+    },
+    {
+     "label": "8 cherry tomatoes",
+     "grams": 80,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "½ tsp olive oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Wilt spinach in the oil, then scramble eggs and whites.",
+    "Serve with avocado and tomatoes."
+   ],
+   "why": "A lower-carb breakfast: protein and fat with vegetables.",
+   "sources": [
+    "wl-dietfits"
+   ],
+   "perServing": {
+    "kcal": 312,
+    "protein": 23.3,
+    "carbs": 10.7,
+    "fat": 20.4,
+    "fiber": 5.6,
+    "sodium": 307
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [
+     "egg"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 10,
+    "carbShare": 0.14
+   }
+  },
+  {
+   "id": "wl-tofu-potato-hash",
+   "name": "Tofu & Potato Breakfast Hash",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-protein"
+   ],
+   "serves": 1,
+   "minutes": 18,
+   "ingredients": [
+    {
+     "label": "180 g firm tofu",
+     "grams": 180,
+     "fdcId": 172475,
+     "usda": "Tofu, raw, firm, prepared with calcium sulfate"
+    },
+    {
+     "label": "1 small baked potato, diced",
+     "grams": 150,
+     "fdcId": 170093,
+     "usda": "Potatoes, baked, flesh and skin, without salt"
+    },
+    {
+     "label": "½ bell pepper",
+     "grams": 75,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "1⅓ cups spinach",
+     "grams": 40,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "1 tsp olive oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Brown the diced potato in the oil 6–8 min.",
+    "Crumble in the tofu with the pepper, cook 5 min, fold in spinach. Season with turmeric, salt and pepper."
+   ],
+   "why": "Gluten-free vegan protein and potato for training mornings.",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 472,
+    "protein": 36.8,
+    "carbs": 42.6,
+    "fat": 21.2,
+    "fiber": 9.9,
+    "sodium": 75
+   },
+   "plan": {
+    "slots": [
+     "breakfast",
+     "lunch"
+    ],
+    "contains": [
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 18,
+    "carbShare": 0.36
+   }
+  },
+  {
+   "id": "wl-oat-pancakes",
+   "name": "Banana Oat Protein Pancakes",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "vegetarian"
+   ],
+   "serves": 1,
+   "minutes": 15,
+   "ingredients": [
+    {
+     "label": "½ cup oats, blended",
+     "grams": 40,
+     "fdcId": 173904,
+     "usda": "Cereals, oats, regular and quick, not fortified, dry"
+    },
+    {
+     "label": "1 egg",
+     "grams": 50,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "3 egg whites",
+     "grams": 99,
+     "fdcId": 172183,
+     "usda": "Egg, white, raw, fresh"
+    },
+    {
+     "label": "½ banana",
+     "grams": 60,
+     "fdcId": 173944,
+     "usda": "Bananas, raw"
+    },
+    {
+     "label": "⅓ cup Greek yogurt (topping)",
+     "grams": 100,
+     "fdcId": 170894,
+     "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "⅓ cup berries",
+     "grams": 50,
+     "fdcId": 173950,
+     "usda": "Blueberries, frozen, unsweetened (Includes foods for USDA's Food Distribution Program)"
+    }
+   ],
+   "steps": [
+    "Blend oats, egg, whites and banana; rest 2 min.",
+    "Cook small pancakes 2 min per side in a non-stick pan.",
+    "Top with yogurt and berries."
+   ],
+   "why": "Pancakes rebuilt around egg whites and yogurt for ~35 g protein.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 412,
+    "protein": 33.4,
+    "carbs": 51.5,
+    "fat": 8.4,
+    "fiber": 6.9,
+    "sodium": 275
+   },
+   "plan": {
+    "slots": [
+     "breakfast"
+    ],
+    "contains": [
+     "dairy",
+     "egg",
+     "gluten"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 15,
+    "carbShare": 0.5
+   }
+  },
+  {
+   "id": "wl-cottage-pear-bowl",
+   "name": "Cottage Cheese, Pear & Seeds",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick",
+    "vegetarian"
+   ],
+   "serves": 1,
+   "minutes": 3,
+   "ingredients": [
+    {
+     "label": "¾ cup 2% cottage cheese",
+     "grams": 200,
+     "fdcId": 172182,
+     "usda": "Cheese, cottage, lowfat, 2% milkfat"
+    },
+    {
+     "label": "1 small pear, sliced",
+     "grams": 140,
+     "fdcId": 169118,
+     "usda": "Pears, raw"
+    },
+    {
+     "label": "2 tsp pumpkin seeds",
+     "grams": 10,
+     "fdcId": 170556,
+     "usda": "Seeds, pumpkin and squash seed kernels, dried"
+    },
+    {
+     "label": "pinch cinnamon",
+     "grams": 1,
+     "fdcId": 171320,
+     "usda": "Spices, cinnamon, ground"
+    }
+   ],
+   "steps": [
+    "Top cottage cheese with pear, seeds and cinnamon."
+   ],
+   "why": "Casein-rich and filling; no cooking and no gluten.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 300,
+    "protein": 24.4,
+    "carbs": 32.8,
+    "fat": 9.7,
+    "fiber": 5.5,
+    "sodium": 618
+   },
+   "plan": {
+    "slots": [
+     "breakfast",
+     "snack"
+    ],
+    "contains": [
+     "dairy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 3,
+    "carbShare": 0.44
+   }
+  },
+  {
+   "id": "wl-egg-muffins",
+   "name": "Turkey & Veggie Egg Muffins",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "meal-prep",
+    "lower-carb"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "3 eggs",
+     "grams": 150,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "2 oz cooked 93% lean ground turkey",
+     "grams": 60,
+     "fdcId": 172851,
+     "usda": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles"
+    },
+    {
+     "label": "1⅓ cups spinach",
+     "grams": 40,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 50,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "2 tbsp shredded cheddar",
+     "grams": 15,
+     "fdcId": 170899,
+     "usda": "Cheese, cheddar, sharp, sliced"
+    }
+   ],
+   "steps": [
+    "Whisk eggs, stir in turkey, chopped spinach and pepper.",
+    "Pour into 4 muffin cups, top with cheese, bake 18–20 min at 180 °C / 350 °F. Keeps 4 days."
+   ],
+   "why": "Batch-cooked protein for busy mornings.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 426,
+    "protein": 40.4,
+    "carbs": 5.8,
+    "fat": 26.6,
+    "fiber": 1.9,
+    "sodium": 397
+   },
+   "plan": {
+    "slots": [
+     "breakfast",
+     "snack"
+    ],
+    "contains": [
+     "dairy",
+     "egg",
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": true,
+    "minutes": 25,
+    "carbShare": 0.05
+   }
+  },
+  {
+   "id": "wl-med-chicken-quinoa",
+   "name": "Mediterranean Chicken Quinoa Bowl",
+   "cat": "plan",
+   "tags": [
+    "mediterranean",
+    "high-protein",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "120 g cooked chicken breast",
+     "grams": 120,
+     "fdcId": 171477,
+     "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted"
+    },
+    {
+     "label": "¾ cup cooked quinoa",
+     "grams": 150,
+     "fdcId": 168917,
+     "usda": "Quinoa, cooked"
+    },
+    {
+     "label": "½ cucumber",
+     "grams": 80,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "8 cherry tomatoes",
+     "grams": 80,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "⅓ cup chickpeas",
+     "grams": 60,
+     "fdcId": 173800,
+     "usda": "Chickpeas (garbanzo beans, bengal gram), mature seeds, canned, drained solids"
+    },
+    {
+     "label": "2 tbsp feta",
+     "grams": 20,
+     "fdcId": 173420,
+     "usda": "Cheese, feta"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "1 tbsp lemon juice",
+     "grams": 15,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Cook quinoa; grill or roast the chicken.",
+    "Toss vegetables and chickpeas with oil and lemon, top with chicken and feta."
+   ],
+   "why": "Olive oil, legumes, vegetables and whole grains — the core of a Mediterranean pattern, which performed well for weight loss in the DIRECT trial.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 602,
+    "protein": 52.1,
+    "carbs": 52.1,
+    "fat": 20.5,
+    "fiber": 9.6,
+    "sodium": 481
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "dairy",
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": false,
+    "med": true,
+    "budget": false,
+    "mealPrep": true,
+    "minutes": 25,
+    "carbShare": 0.35
+   }
+  },
+  {
+   "id": "wl-turkey-chili",
+   "name": "Turkey & Bean Chili",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "meal-prep",
+    "budget",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 35,
+   "ingredients": [
+    {
+     "label": "110 g 93% lean ground turkey (cooked)",
+     "grams": 110,
+     "fdcId": 172851,
+     "usda": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles"
+    },
+    {
+     "label": "½ cup kidney beans",
+     "grams": 130,
+     "fdcId": 174285,
+     "usda": "Beans, kidney, red, mature seeds, canned, drained solids"
+    },
+    {
+     "label": "¾ cup crushed tomatoes",
+     "grams": 200,
+     "fdcId": 170501,
+     "usda": "Tomatoes, crushed, canned"
+    },
+    {
+     "label": "½ small onion",
+     "grams": 60,
+     "fdcId": 170000,
+     "usda": "Onions, raw"
+    },
+    {
+     "label": "½ bell pepper",
+     "grams": 75,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Brown turkey with onion and pepper in the oil.",
+    "Add tomatoes, beans and chili spices; simmer 20 min. Freezes well."
+   ],
+   "why": "High protein and high fibre in one pot — a cheap, filling batch meal.",
+   "sources": [
+    "wl-fiber",
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 547,
+    "protein": 44.8,
+    "carbs": 52.6,
+    "fat": 20.1,
+    "fiber": 13.5,
+    "sodium": 777
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": true,
+    "minutes": 35,
+    "carbShare": 0.38
+   }
+  },
+  {
+   "id": "wl-salmon-potato-beans",
+   "name": "Salmon, Potatoes & Green Beans",
+   "cat": "plan",
+   "tags": [
+    "mediterranean",
+    "omega-3"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "120 g salmon fillet",
+     "grams": 120,
+     "fdcId": 175168,
+     "usda": "Fish, salmon, Atlantic, farmed, cooked, dry heat"
+    },
+    {
+     "label": "1 medium potato",
+     "grams": 200,
+     "fdcId": 170093,
+     "usda": "Potatoes, baked, flesh and skin, without salt"
+    },
+    {
+     "label": "1 cup green beans",
+     "grams": 125,
+     "fdcId": 169141,
+     "usda": "Beans, snap, green, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "1 tsp olive oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 10,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Roast potato wedges 25 min at 220 °C / 425 °F.",
+    "Add salmon for the last 12 min; steam the beans.",
+    "Finish with oil and lemon."
+   ],
+   "why": "Fish twice a week fits Mediterranean-style eating; potatoes are a filling carbohydrate.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 523,
+    "protein": 33.9,
+    "carbs": 52.8,
+    "fat": 20.4,
+    "fiber": 8.4,
+    "sodium": 95
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "fish"
+    ],
+    "lowcarb": false,
+    "med": true,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 25,
+    "carbShare": 0.4
+   }
+  },
+  {
+   "id": "wl-shrimp-stir-fry",
+   "name": "Shrimp Veggie Stir-Fry",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 15,
+   "ingredients": [
+    {
+     "label": "130 g cooked shrimp",
+     "grams": 130,
+     "fdcId": 175180,
+     "usda": "Crustaceans, shrimp, cooked"
+    },
+    {
+     "label": "¾ cup cooked rice",
+     "grams": 150,
+     "fdcId": 168878,
+     "usda": "Rice, white, long-grain, regular, enriched, cooked"
+    },
+    {
+     "label": "1 cup stir-fry vegetables",
+     "grams": 150,
+     "fdcId": 170472,
+     "usda": "Vegetables, mixed, frozen, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "1 tbsp soy sauce",
+     "grams": 16,
+     "fdcId": 174277,
+     "usda": "Soy sauce made from soy and wheat (shoyu)"
+    },
+    {
+     "label": "1 clove garlic",
+     "grams": 5,
+     "fdcId": 169230,
+     "usda": "Garlic, raw"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Stir-fry garlic and vegetables 4 min in the oil.",
+    "Add shrimp and soy sauce for 2 min, serve over rice."
+   ],
+   "why": "Shrimp is very lean protein; vegetables add volume for few calories.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 481,
+    "protein": 41.2,
+    "carbs": 64.6,
+    "fat": 6.1,
+    "fiber": 7.4,
+    "sodium": 1078
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "gluten",
+     "shellfish",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 15,
+    "carbShare": 0.54
+   }
+  },
+  {
+   "id": "wl-lentil-soup",
+   "name": "Lentil & Vegetable Soup",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "meal-prep",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 30,
+   "ingredients": [
+    {
+     "label": "1 cup cooked lentils",
+     "grams": 200,
+     "fdcId": 172421,
+     "usda": "Lentils, mature seeds, cooked, boiled, without salt"
+    },
+    {
+     "label": "1 carrot",
+     "grams": 60,
+     "fdcId": 170393,
+     "usda": "Carrots, raw"
+    },
+    {
+     "label": "½ small onion",
+     "grams": 60,
+     "fdcId": 170000,
+     "usda": "Onions, raw"
+    },
+    {
+     "label": "½ cup crushed tomatoes",
+     "grams": 120,
+     "fdcId": 170501,
+     "usda": "Tomatoes, crushed, canned"
+    },
+    {
+     "label": "1 cup spinach",
+     "grams": 30,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "1¼ cups vegetable broth",
+     "grams": 300,
+     "fdcId": 171583,
+     "usda": "Soup, vegetable broth, ready to serve"
+    },
+    {
+     "label": "1 tsp olive oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Soften onion and carrot in the oil.",
+    "Add broth, tomatoes and lentils; simmer 15 min, stir in spinach."
+   ],
+   "why": "Very high in fibre and low in energy density — soups and legumes help meals feel bigger.",
+   "sources": [
+    "wl-fiber",
+    "wl-huang"
+   ],
+   "perServing": {
+    "kcal": 385,
+    "protein": 22.6,
+    "carbs": 64.1,
+    "fat": 6.8,
+    "fiber": 21.4,
+    "sodium": 1183
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": true,
+    "minutes": 30,
+    "carbShare": 0.67
+   }
+  },
+  {
+   "id": "wl-tofu-veg-rice",
+   "name": "Tofu, Broccoli & Brown Rice",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-protein"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "180 g firm tofu",
+     "grams": 180,
+     "fdcId": 172475,
+     "usda": "Tofu, raw, firm, prepared with calcium sulfate"
+    },
+    {
+     "label": "¾ cup cooked brown rice",
+     "grams": 150,
+     "fdcId": 169704,
+     "usda": "Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "1 cup broccoli",
+     "grams": 100,
+     "fdcId": 169967,
+     "usda": "Broccoli, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 60,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "1 tbsp soy sauce",
+     "grams": 16,
+     "fdcId": 174277,
+     "usda": "Soy sauce made from soy and wheat (shoyu)"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Press and cube tofu, pan-fry in the oil until golden.",
+    "Add broccoli, pepper and soy sauce; serve over rice."
+   ],
+   "why": "Soy protein with whole grains and vegetables.",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 547,
+    "protein": 39.5,
+    "carbs": 55.0,
+    "fat": 22.8,
+    "fiber": 11.2,
+    "sodium": 954
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "gluten",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 20,
+    "carbShare": 0.4
+   }
+  },
+  {
+   "id": "wl-bean-sweet-potato-bowl",
+   "name": "Black Bean & Sweet Potato Bowl",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-fibre",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 15,
+   "ingredients": [
+    {
+     "label": "½ cup black beans",
+     "grams": 130,
+     "fdcId": 175188,
+     "usda": "Beans, black turtle, mature seeds, canned"
+    },
+    {
+     "label": "1 medium sweet potato",
+     "grams": 150,
+     "fdcId": 168483,
+     "usda": "Sweet potato, cooked, baked in skin, flesh, without salt"
+    },
+    {
+     "label": "⅓ cup corn",
+     "grams": 60,
+     "fdcId": 168399,
+     "usda": "Corn, sweet, yellow, frozen, kernels cut off cob, boiled, drained, without salt"
+    },
+    {
+     "label": "¼ cup salsa",
+     "grams": 60,
+     "fdcId": 174524,
+     "usda": "Sauce, salsa, ready-to-serve"
+    },
+    {
+     "label": "1 cup romaine",
+     "grams": 50,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    },
+    {
+     "label": "¼ avocado",
+     "grams": 30,
+     "fdcId": 171705,
+     "usda": "Avocados, raw, all commercial varieties"
+    },
+    {
+     "label": "squeeze of lime",
+     "grams": 10,
+     "fdcId": 168156,
+     "usda": "Lime juice, raw"
+    }
+   ],
+   "steps": [
+    "Microwave the sweet potato 6–8 min and dice.",
+    "Warm beans and corn; assemble on romaine with salsa, avocado and lime."
+   ],
+   "why": "Plant-based, gluten-free and high in fibre.",
+   "sources": [
+    "wl-huang",
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 378,
+    "protein": 14.4,
+    "carbs": 73.2,
+    "fat": 5.6,
+    "fiber": 19.6,
+    "sodium": 987
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 15,
+    "carbShare": 0.77
+   }
+  },
+  {
+   "id": "wl-beef-broccoli",
+   "name": "Lean Beef & Broccoli Rice Bowl",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 15,
+   "ingredients": [
+    {
+     "label": "100 g 90% lean ground beef (cooked)",
+     "grams": 100,
+     "fdcId": 171794,
+     "usda": "Beef, ground, 90% lean meat / 10% fat, crumbles, cooked, pan-browned"
+    },
+    {
+     "label": "¾ cup cooked rice",
+     "grams": 150,
+     "fdcId": 168878,
+     "usda": "Rice, white, long-grain, regular, enriched, cooked"
+    },
+    {
+     "label": "1½ cups broccoli",
+     "grams": 150,
+     "fdcId": 169967,
+     "usda": "Broccoli, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "1 tbsp soy sauce",
+     "grams": 16,
+     "fdcId": 174277,
+     "usda": "Soy sauce made from soy and wheat (shoyu)"
+    },
+    {
+     "label": "1 clove garlic",
+     "grams": 5,
+     "fdcId": 169230,
+     "usda": "Garlic, raw"
+    },
+    {
+     "label": "½ tsp oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Brown beef with garlic; add broccoli and soy sauce for 3 min.",
+    "Serve over rice."
+   ],
+   "why": "Lean red meat for protein and iron, balanced with a big portion of vegetables.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 520,
+    "protein": 37.7,
+    "carbs": 55.5,
+    "fat": 16.2,
+    "fiber": 5.8,
+    "sodium": 1030
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "beef",
+     "gluten",
+     "meat",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 15,
+    "carbShare": 0.43
+   }
+  },
+  {
+   "id": "wl-chicken-fajita-bowl",
+   "name": "Chicken Fajita Rice Bowl",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "130 g cooked chicken breast",
+     "grams": 130,
+     "fdcId": 171477,
+     "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted"
+    },
+    {
+     "label": "⅔ cup cooked rice",
+     "grams": 120,
+     "fdcId": 168878,
+     "usda": "Rice, white, long-grain, regular, enriched, cooked"
+    },
+    {
+     "label": "⅔ bell pepper",
+     "grams": 100,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "½ small onion",
+     "grams": 60,
+     "fdcId": 170000,
+     "usda": "Onions, raw"
+    },
+    {
+     "label": "¼ cup salsa",
+     "grams": 60,
+     "fdcId": 174524,
+     "usda": "Sauce, salsa, ready-to-serve"
+    },
+    {
+     "label": "1 cup romaine",
+     "grams": 40,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    },
+    {
+     "label": "squeeze of lime",
+     "grams": 10,
+     "fdcId": 168156,
+     "usda": "Lime juice, raw"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Sear sliced pepper and onion in the oil with fajita spices.",
+    "Add sliced chicken; serve over rice and romaine with salsa and lime."
+   ],
+   "why": "Gluten-free and high in protein; double the batch for lunches.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 491,
+    "protein": 46.6,
+    "carbs": 51.5,
+    "fat": 10.7,
+    "fiber": 5.6,
+    "sodium": 534
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": true,
+    "minutes": 20,
+    "carbShare": 0.42
+   }
+  },
+  {
+   "id": "wl-tuna-bean-salad",
+   "name": "Tuna & White Bean Salad",
+   "cat": "plan",
+   "tags": [
+    "mediterranean",
+    "high-protein",
+    "quick",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 8,
+   "ingredients": [
+    {
+     "label": "1 can tuna (drained)",
+     "grams": 120,
+     "fdcId": 171986,
+     "usda": "Fish, tuna, light, canned in water, without salt, drained solids"
+    },
+    {
+     "label": "½ cup white beans",
+     "grams": 100,
+     "fdcId": 175204,
+     "usda": "Beans, white, mature seeds, canned"
+    },
+    {
+     "label": "2 cups romaine",
+     "grams": 80,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    },
+    {
+     "label": "8 cherry tomatoes",
+     "grams": 80,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "⅓ cucumber",
+     "grams": 60,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "5 olives",
+     "grams": 15,
+     "fdcId": 169094,
+     "usda": "Olives, ripe, canned (small-extra large)"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "1 tbsp lemon juice",
+     "grams": 15,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Toss everything together; season with pepper and oregano."
+   ],
+   "why": "Pantry protein plus legumes and olive oil — Mediterranean and budget-friendly.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 370,
+    "protein": 40.1,
+    "carbs": 30.2,
+    "fat": 10.4,
+    "fiber": 8.1,
+    "sodium": 522
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "fish"
+    ],
+    "lowcarb": false,
+    "med": true,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 8,
+    "carbShare": 0.33
+   }
+  },
+  {
+   "id": "wl-cod-couscous",
+   "name": "Lemon Cod, Zucchini & Couscous",
+   "cat": "plan",
+   "tags": [
+    "mediterranean",
+    "high-protein"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "150 g cod fillet",
+     "grams": 150,
+     "fdcId": 171956,
+     "usda": "Fish, cod, Atlantic, cooked, dry heat"
+    },
+    {
+     "label": "1 cup cooked couscous",
+     "grams": 150,
+     "fdcId": 169700,
+     "usda": "Couscous, cooked"
+    },
+    {
+     "label": "1 small zucchini",
+     "grams": 120,
+     "fdcId": 169291,
+     "usda": "Squash, summer, zucchini, includes skin, raw"
+    },
+    {
+     "label": "8 cherry tomatoes",
+     "grams": 80,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 10,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Roast zucchini and tomatoes 15 min with half the oil.",
+    "Bake cod 10–12 min with lemon and the rest of the oil; serve on couscous."
+   ],
+   "why": "White fish is one of the leanest proteins available.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 424,
+    "protein": 42.1,
+    "carbs": 42.3,
+    "fat": 9.2,
+    "fiber": 4.3,
+    "sodium": 138
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "fish",
+     "gluten"
+    ],
+    "lowcarb": false,
+    "med": true,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 20,
+    "carbShare": 0.4
+   }
+  },
+  {
+   "id": "wl-chicken-avocado-salad",
+   "name": "Chicken Avocado Salad",
+   "cat": "plan",
+   "tags": [
+    "lower-carb",
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 10,
+   "ingredients": [
+    {
+     "label": "130 g cooked chicken breast",
+     "grams": 130,
+     "fdcId": 171477,
+     "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted"
+    },
+    {
+     "label": "2 cups romaine",
+     "grams": 100,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    },
+    {
+     "label": "⅓ avocado",
+     "grams": 50,
+     "fdcId": 171705,
+     "usda": "Avocados, raw, all commercial varieties"
+    },
+    {
+     "label": "8 cherry tomatoes",
+     "grams": 80,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "⅓ cucumber",
+     "grams": 60,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 10,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Slice chicken and avocado over the greens and vegetables; dress with oil and lemon."
+   ],
+   "why": "Lower-carb: protein, healthy fats and vegetables.",
+   "sources": [
+    "wl-dietfits"
+   ],
+   "perServing": {
+    "kcal": 396,
+    "protein": 43.6,
+    "carbs": 12.7,
+    "fat": 19.6,
+    "fiber": 6.9,
+    "sodium": 113
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 10,
+    "carbShare": 0.13
+   }
+  },
+  {
+   "id": "wl-veggie-frittata",
+   "name": "Zucchini & Feta Frittata",
+   "cat": "plan",
+   "tags": [
+    "lower-carb",
+    "vegetarian",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "3 eggs",
+     "grams": 150,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "3 egg whites",
+     "grams": 99,
+     "fdcId": 172183,
+     "usda": "Egg, white, raw, fresh"
+    },
+    {
+     "label": "½ zucchini",
+     "grams": 80,
+     "fdcId": 169291,
+     "usda": "Squash, summer, zucchini, includes skin, raw"
+    },
+    {
+     "label": "1⅓ cups spinach",
+     "grams": 40,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 50,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "2 tbsp feta",
+     "grams": 20,
+     "fdcId": 173420,
+     "usda": "Cheese, feta"
+    },
+    {
+     "label": "½ tsp olive oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "side salad",
+     "grams": 60,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    }
+   ],
+   "steps": [
+    "Sauté vegetables in an oven-safe pan, pour over the whisked eggs and whites, add feta.",
+    "Bake 12–15 min at 190 °C / 375 °F. Serve with salad."
+   ],
+   "why": "Vegetarian, gluten-free and lower in carbohydrate.",
+   "sources": [
+    "wl-dietfits"
+   ],
+   "perServing": {
+    "kcal": 392,
+    "protein": 35.9,
+    "carbs": 11.4,
+    "fat": 22.5,
+    "fiber": 4.0,
+    "sodium": 650
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner",
+     "breakfast"
+    ],
+    "contains": [
+     "dairy",
+     "egg"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": true,
+    "minutes": 25,
+    "carbShare": 0.12
+   }
+  },
+  {
+   "id": "wl-turkey-meatball-pasta",
+   "name": "Turkey Meatballs & Whole-Wheat Pasta",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 30,
+   "ingredients": [
+    {
+     "label": "110 g lean turkey, rolled into meatballs",
+     "grams": 110,
+     "fdcId": 172851,
+     "usda": "Turkey, ground, 93% lean, 7% fat, pan-broiled crumbles"
+    },
+    {
+     "label": "1¼ cups cooked whole-wheat pasta",
+     "grams": 150,
+     "fdcId": 168910,
+     "usda": "Pasta, whole-wheat, cooked (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "½ cup marinara",
+     "grams": 125,
+     "fdcId": 171192,
+     "usda": "Sauce, pasta, spaghetti/marinara, ready-to-serve"
+    },
+    {
+     "label": "1 cup spinach",
+     "grams": 30,
+     "fdcId": 168462,
+     "usda": "Spinach, raw"
+    },
+    {
+     "label": "1 tbsp parmesan",
+     "grams": 5,
+     "fdcId": 171247,
+     "usda": "Cheese, parmesan, grated"
+    }
+   ],
+   "steps": [
+    "Bake meatballs 15 min at 200 °C / 400 °F.",
+    "Simmer in marinara with spinach; serve over pasta with parmesan."
+   ],
+   "why": "A comfort meal kept lean, with whole-grain pasta for fibre.",
+   "sources": [
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 548,
+    "protein": 42.9,
+    "carbs": 56.2,
+    "fat": 18.8,
+    "fiber": 8.8,
+    "sodium": 765
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "dairy",
+     "gluten",
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": true,
+    "minutes": 30,
+    "carbShare": 0.41
+   }
+  },
+  {
+   "id": "wl-tempeh-bulgur-bowl",
+   "name": "Tempeh Tahini Bulgur Bowl",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-protein",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "100 g tempeh",
+     "grams": 100,
+     "fdcId": 174272,
+     "usda": "Tempeh"
+    },
+    {
+     "label": "¾ cup cooked bulgur",
+     "grams": 150,
+     "fdcId": 170287,
+     "usda": "Bulgur, cooked"
+    },
+    {
+     "label": "2 cups kale",
+     "grams": 40,
+     "fdcId": 168421,
+     "usda": "Kale, raw"
+    },
+    {
+     "label": "1 small carrot, grated",
+     "grams": 50,
+     "fdcId": 170393,
+     "usda": "Carrots, raw"
+    },
+    {
+     "label": "2 tsp tahini",
+     "grams": 10,
+     "fdcId": 170189,
+     "usda": "Seeds, sesame butter, tahini, from roasted and toasted kernels (most common type)"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 10,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Pan-fry sliced tempeh until golden.",
+    "Massage kale with lemon; assemble with bulgur and carrot, drizzle tahini."
+   ],
+   "why": "Fermented soy protein plus whole-grain bulgur.",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 413,
+    "protein": 28.3,
+    "carbs": 44.9,
+    "fat": 17.2,
+    "fiber": 10.8,
+    "sodium": 84
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "gluten",
+     "sesame",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 20,
+    "carbShare": 0.43
+   }
+  },
+  {
+   "id": "wl-chickpea-pita",
+   "name": "Hummus & Chickpea Pita",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "mediterranean",
+    "quick",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 5,
+   "ingredients": [
+    {
+     "label": "1 large whole-wheat pita",
+     "grams": 64,
+     "fdcId": 174916,
+     "usda": "Bread, pita, whole-wheat"
+    },
+    {
+     "label": "2 tbsp hummus",
+     "grams": 30,
+     "fdcId": 174289,
+     "usda": "Hummus, commercial"
+    },
+    {
+     "label": "½ cup chickpeas",
+     "grams": 80,
+     "fdcId": 173800,
+     "usda": "Chickpeas (garbanzo beans, bengal gram), mature seeds, canned, drained solids"
+    },
+    {
+     "label": "⅓ cucumber",
+     "grams": 60,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "6 cherry tomatoes",
+     "grams": 60,
+     "fdcId": 170457,
+     "usda": "Tomatoes, red, ripe, raw, year round average"
+    },
+    {
+     "label": "handful of romaine",
+     "grams": 30,
+     "fdcId": 169247,
+     "usda": "Lettuce, cos or romaine, raw"
+    }
+   ],
+   "steps": [
+    "Spread hummus inside the pita, fill with chickpeas and vegetables."
+   ],
+   "why": "Legumes and whole grains — a quick plant-based lunch.",
+   "sources": [
+    "wl-huang"
+   ],
+   "perServing": {
+    "kcal": 372,
+    "protein": 15.5,
+    "carbs": 62.9,
+    "fat": 9.0,
+    "fiber": 12.4,
+    "sodium": 601
+   },
+   "plan": {
+    "slots": [
+     "lunch"
+    ],
+    "contains": [
+     "gluten",
+     "sesame"
+    ],
+    "lowcarb": false,
+    "med": true,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 5,
+    "carbShare": 0.68
+   }
+  },
+  {
+   "id": "wl-shrimp-zoodles",
+   "name": "Shrimp Marinara Zoodles",
+   "cat": "plan",
+   "tags": [
+    "lower-carb",
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 15,
+   "ingredients": [
+    {
+     "label": "150 g cooked shrimp",
+     "grams": 150,
+     "fdcId": 175180,
+     "usda": "Crustaceans, shrimp, cooked"
+    },
+    {
+     "label": "2 zucchini, spiralized",
+     "grams": 250,
+     "fdcId": 169291,
+     "usda": "Squash, summer, zucchini, includes skin, raw"
+    },
+    {
+     "label": "½ cup marinara",
+     "grams": 125,
+     "fdcId": 171192,
+     "usda": "Sauce, pasta, spaghetti/marinara, ready-to-serve"
+    },
+    {
+     "label": "1 clove garlic",
+     "grams": 5,
+     "fdcId": 169230,
+     "usda": "Garlic, raw"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "1 tbsp parmesan",
+     "grams": 5,
+     "fdcId": 171247,
+     "usda": "Cheese, parmesan, grated"
+    }
+   ],
+   "steps": [
+    "Sauté garlic in the oil, add zucchini noodles for 2–3 min.",
+    "Add marinara and shrimp until hot; top with parmesan."
+   ],
+   "why": "Swapping pasta for zucchini cuts calories and carbohydrate while keeping the volume.",
+   "sources": [
+    "wl-dietfits"
+   ],
+   "perServing": {
+    "kcal": 344,
+    "protein": 42.5,
+    "carbs": 19.7,
+    "fat": 11.6,
+    "fiber": 4.9,
+    "sodium": 824
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "dairy",
+     "shellfish"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 15,
+    "carbShare": 0.23
+   }
+  },
+  {
+   "id": "wl-beef-cauli-rice",
+   "name": "Beef Burrito Bowl with Cauliflower Rice",
+   "cat": "plan",
+   "tags": [
+    "lower-carb",
+    "high-protein"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "110 g 90% lean ground beef (cooked)",
+     "grams": 110,
+     "fdcId": 171794,
+     "usda": "Beef, ground, 90% lean meat / 10% fat, crumbles, cooked, pan-browned"
+    },
+    {
+     "label": "2 cups riced cauliflower",
+     "grams": 200,
+     "fdcId": 169986,
+     "usda": "Cauliflower, raw"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 60,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "¼ onion",
+     "grams": 40,
+     "fdcId": 170000,
+     "usda": "Onions, raw"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "¼ cup salsa",
+     "grams": 60,
+     "fdcId": 174524,
+     "usda": "Sauce, salsa, ready-to-serve"
+    }
+   ],
+   "steps": [
+    "Brown beef with onion, pepper and taco spices.",
+    "Stir-fry cauliflower rice 5 min in the oil; top with beef and salsa."
+   ],
+   "why": "A lower-carb take on a burrito bowl.",
+   "sources": [
+    "wl-dietfits"
+   ],
+   "perServing": {
+    "kcal": 396,
+    "protein": 37.0,
+    "carbs": 21.3,
+    "fat": 19.1,
+    "fiber": 7.1,
+    "sodium": 586
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "beef",
+     "meat"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 20,
+    "carbShare": 0.22
+   }
+  },
+  {
+   "id": "wl-salmon-quinoa-asparagus",
+   "name": "Salmon, Quinoa & Asparagus",
+   "cat": "plan",
+   "tags": [
+    "mediterranean",
+    "omega-3"
+   ],
+   "serves": 1,
+   "minutes": 20,
+   "ingredients": [
+    {
+     "label": "110 g salmon fillet",
+     "grams": 110,
+     "fdcId": 175168,
+     "usda": "Fish, salmon, Atlantic, farmed, cooked, dry heat"
+    },
+    {
+     "label": "⅔ cup cooked quinoa",
+     "grams": 120,
+     "fdcId": 168917,
+     "usda": "Quinoa, cooked"
+    },
+    {
+     "label": "8 asparagus spears",
+     "grams": 120,
+     "fdcId": 168389,
+     "usda": "Asparagus, raw"
+    },
+    {
+     "label": "½ tsp olive oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "squeeze of lemon",
+     "grams": 10,
+     "fdcId": 167747,
+     "usda": "Lemon juice, raw"
+    }
+   ],
+   "steps": [
+    "Roast salmon and asparagus 12 min at 200 °C / 400 °F with the oil.",
+    "Serve on quinoa with lemon."
+   ],
+   "why": "Gluten-free, with omega-3 fats from salmon.",
+   "sources": [
+    "wl-shai"
+   ],
+   "perServing": {
+    "kcal": 423,
+    "protein": 32.3,
+    "carbs": 30.9,
+    "fat": 18.9,
+    "fiber": 5.9,
+    "sodium": 78
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "fish"
+    ],
+    "lowcarb": true,
+    "med": true,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 20,
+    "carbShare": 0.29
+   }
+  },
+  {
+   "id": "wl-lentil-bolognese",
+   "name": "Lentil Mushroom Bolognese",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "high-fibre",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "¾ cup cooked lentils",
+     "grams": 150,
+     "fdcId": 172421,
+     "usda": "Lentils, mature seeds, cooked, boiled, without salt"
+    },
+    {
+     "label": "1 cup cooked whole-wheat pasta",
+     "grams": 140,
+     "fdcId": 168910,
+     "usda": "Pasta, whole-wheat, cooked (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "⅔ cup marinara",
+     "grams": 150,
+     "fdcId": 171192,
+     "usda": "Sauce, pasta, spaghetti/marinara, ready-to-serve"
+    },
+    {
+     "label": "1 cup chopped mushrooms",
+     "grams": 70,
+     "fdcId": 169251,
+     "usda": "Mushrooms, white, raw"
+    },
+    {
+     "label": "1 tsp olive oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Brown mushrooms in the oil, add lentils and marinara; simmer 10 min.",
+    "Serve over pasta."
+   ],
+   "why": "Lentils replace minced meat: more fibre, less fat, lower cost.",
+   "sources": [
+    "wl-huang",
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 517,
+    "protein": 26.2,
+    "carbs": 85.7,
+    "fat": 10.6,
+    "fiber": 20.7,
+    "sodium": 668
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "gluten"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": true,
+    "minutes": 25,
+    "carbShare": 0.66
+   }
+  },
+  {
+   "id": "wl-black-bean-tacos",
+   "name": "Black Bean Corn Tacos",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 12,
+   "ingredients": [
+    {
+     "label": "2 corn tortillas",
+     "grams": 52,
+     "fdcId": 175036,
+     "usda": "Tortillas, ready-to-bake or -fry, corn"
+    },
+    {
+     "label": "½ cup black beans",
+     "grams": 130,
+     "fdcId": 175188,
+     "usda": "Beans, black turtle, mature seeds, canned"
+    },
+    {
+     "label": "½ cup shredded cabbage",
+     "grams": 50,
+     "fdcId": 169975,
+     "usda": "Cabbage, raw"
+    },
+    {
+     "label": "3 tbsp salsa",
+     "grams": 50,
+     "fdcId": 174524,
+     "usda": "Sauce, salsa, ready-to-serve"
+    },
+    {
+     "label": "¼ avocado",
+     "grams": 30,
+     "fdcId": 171705,
+     "usda": "Avocados, raw, all commercial varieties"
+    },
+    {
+     "label": "squeeze of lime",
+     "grams": 10,
+     "fdcId": 168156,
+     "usda": "Lime juice, raw"
+    }
+   ],
+   "steps": [
+    "Warm the tortillas and beans; fill with cabbage, salsa, avocado and lime."
+   ],
+   "why": "Gluten-free (corn tortillas) and plant-based.",
+   "sources": [
+    "wl-huang"
+   ],
+   "perServing": {
+    "kcal": 309,
+    "protein": 12.8,
+    "carbs": 54.4,
+    "fat": 6.5,
+    "fiber": 16.5,
+    "sodium": 889
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 12,
+    "carbShare": 0.7
+   }
+  },
+  {
+   "id": "wl-chicken-traybake",
+   "name": "Chicken & Veg Traybake",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "budget",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 35,
+   "ingredients": [
+    {
+     "label": "130 g chicken breast",
+     "grams": 130,
+     "fdcId": 171477,
+     "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted"
+    },
+    {
+     "label": "1 medium potato",
+     "grams": 200,
+     "fdcId": 170030,
+     "usda": "Potatoes, Russet, flesh and skin, baked"
+    },
+    {
+     "label": "1 large carrot",
+     "grams": 80,
+     "fdcId": 170393,
+     "usda": "Carrots, raw"
+    },
+    {
+     "label": "1 cup broccoli",
+     "grams": 100,
+     "fdcId": 169967,
+     "usda": "Broccoli, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "1½ tsp olive oil",
+     "grams": 7,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Toss potato and carrot chunks in the oil, roast 15 min at 220 °C / 425 °F.",
+    "Add chicken and broccoli, roast 18–20 min more."
+   ],
+   "why": "One tray, simple ingredients, easy to batch for the week.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 534,
+    "protein": 48.6,
+    "carbs": 57.7,
+    "fat": 12.4,
+    "fiber": 10.1,
+    "sodium": 221
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "meat",
+     "poultry"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": true,
+    "minutes": 35,
+    "carbShare": 0.43
+   }
+  },
+  {
+   "id": "wl-seitan-stir-fry",
+   "name": "Seitan Pepper Stir-Fry",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-protein"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "50 g vital wheat gluten (made into seitan)",
+     "grams": 50,
+     "fdcId": 168147,
+     "usda": "Vital wheat gluten"
+    },
+    {
+     "label": "¼ cup vegetable broth",
+     "grams": 60,
+     "fdcId": 171583,
+     "usda": "Soup, vegetable broth, ready to serve"
+    },
+    {
+     "label": "1 tbsp soy sauce",
+     "grams": 16,
+     "fdcId": 174277,
+     "usda": "Soy sauce made from soy and wheat (shoyu)"
+    },
+    {
+     "label": "⅔ bell pepper",
+     "grams": 100,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "1 cup broccoli",
+     "grams": 100,
+     "fdcId": 169967,
+     "usda": "Broccoli, cooked, boiled, drained, without salt"
+    },
+    {
+     "label": "⅔ cup cooked rice",
+     "grams": 120,
+     "fdcId": 168878,
+     "usda": "Rice, white, long-grain, regular, enriched, cooked"
+    },
+    {
+     "label": "1 tsp oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Knead vital wheat gluten with broth and half the soy sauce; simmer the pieces in salted water 15 min (or buy ready seitan).",
+    "Stir-fry with the vegetables and the rest of the soy sauce; serve over rice."
+   ],
+   "why": "Seitan is wheat protein — one of the most protein-dense vegan foods (not for gluten-free diets).",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 458,
+    "protein": 45.7,
+    "carbs": 55.3,
+    "fat": 7.2,
+    "fiber": 6.3,
+    "sodium": 1117
+   },
+   "plan": {
+    "slots": [
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "gluten",
+     "soy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 25,
+    "carbShare": 0.48
+   }
+  },
+  {
+   "id": "wl-lentil-shakshuka",
+   "name": "Lentil Shakshuka",
+   "cat": "plan",
+   "tags": [
+    "vegetarian",
+    "high-protein",
+    "high-fibre",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 25,
+   "ingredients": [
+    {
+     "label": "2 eggs",
+     "grams": 100,
+     "fdcId": 171287,
+     "usda": "Egg, whole, raw, fresh"
+    },
+    {
+     "label": "3 egg whites",
+     "grams": 99,
+     "fdcId": 172183,
+     "usda": "Egg, white, raw, fresh"
+    },
+    {
+     "label": "½ cup cooked lentils",
+     "grams": 100,
+     "fdcId": 172421,
+     "usda": "Lentils, mature seeds, cooked, boiled, without salt"
+    },
+    {
+     "label": "¾ cup crushed tomatoes",
+     "grams": 200,
+     "fdcId": 170501,
+     "usda": "Tomatoes, crushed, canned"
+    },
+    {
+     "label": "½ small onion",
+     "grams": 50,
+     "fdcId": 170000,
+     "usda": "Onions, raw"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 60,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    },
+    {
+     "label": "1 tsp olive oil",
+     "grams": 5,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    }
+   ],
+   "steps": [
+    "Soften onion and pepper in the oil; add tomatoes, lentils, cumin and paprika and simmer 8 min.",
+    "Make wells, add eggs and whites, cover and cook 6–8 min."
+   ],
+   "why": "Eggs plus lentils: protein and fibre without dairy or gluten.",
+   "sources": [
+    "wl-fiber",
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 454,
+    "protein": 36.7,
+    "carbs": 44.3,
+    "fat": 15.9,
+    "fiber": 13.8,
+    "sodium": 685
+   },
+   "plan": {
+    "slots": [
+     "breakfast",
+     "lunch",
+     "dinner"
+    ],
+    "contains": [
+     "egg"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 25,
+    "carbShare": 0.39
+   }
+  },
+  {
+   "id": "wl-apple-pb",
+   "name": "Apple & Peanut Butter",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "quick",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 2,
+   "ingredients": [
+    {
+     "label": "1 medium apple",
+     "grams": 180,
+     "fdcId": 171688,
+     "usda": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "1 tbsp peanut butter",
+     "grams": 16,
+     "fdcId": 172470,
+     "usda": "Peanut butter, smooth style, without salt"
+    }
+   ],
+   "steps": [
+    "Slice the apple and dip."
+   ],
+   "why": "Fibre plus a little fat and protein.",
+   "sources": [
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 189,
+    "protein": 4.1,
+    "carbs": 28.4,
+    "fat": 8.6,
+    "fiber": 5.1,
+    "sodium": 5
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "nuts"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 2,
+    "carbShare": 0.6
+   }
+  },
+  {
+   "id": "wl-hummus-veg",
+   "name": "Hummus & Crunchy Veg",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 5,
+   "ingredients": [
+    {
+     "label": "3 tbsp hummus",
+     "grams": 45,
+     "fdcId": 174289,
+     "usda": "Hummus, commercial"
+    },
+    {
+     "label": "1 carrot, sticks",
+     "grams": 80,
+     "fdcId": 170393,
+     "usda": "Carrots, raw"
+    },
+    {
+     "label": "½ cucumber",
+     "grams": 80,
+     "fdcId": 169225,
+     "usda": "Cucumber, peeled, raw"
+    },
+    {
+     "label": "⅓ bell pepper",
+     "grams": 60,
+     "fdcId": 170108,
+     "usda": "Peppers, sweet, red, raw"
+    }
+   ],
+   "steps": [
+    "Cut vegetables into sticks and dip."
+   ],
+   "why": "High-volume, low-energy-density snack.",
+   "sources": [
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 163,
+    "protein": 5.3,
+    "carbs": 19.8,
+    "fat": 8.5,
+    "fiber": 6.5,
+    "sodium": 251
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "sesame"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 5,
+    "carbShare": 0.49
+   }
+  },
+  {
+   "id": "wl-edamame",
+   "name": "Salted Edamame",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 5,
+   "ingredients": [
+    {
+     "label": "1 cup shelled edamame",
+     "grams": 155,
+     "fdcId": 168411,
+     "usda": "Edamame, frozen, prepared"
+    },
+    {
+     "label": "pinch of salt",
+     "grams": 0.5,
+     "fdcId": 173468,
+     "usda": "Salt, table"
+    }
+   ],
+   "steps": [
+    "Microwave frozen edamame 3–4 min, salt lightly."
+   ],
+   "why": "About 18 g plant protein per cup.",
+   "sources": [
+    "wl-turner"
+   ],
+   "perServing": {
+    "kcal": 188,
+    "protein": 18.4,
+    "carbs": 13.8,
+    "fat": 8.1,
+    "fiber": 8.1,
+    "sodium": 203
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "soy"
+    ],
+    "lowcarb": true,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 5,
+    "carbShare": 0.29
+   }
+  },
+  {
+   "id": "wl-eggs-orange",
+   "name": "Hard-Boiled Eggs & Orange",
+   "cat": "plan",
+   "tags": [
+    "vegetarian",
+    "quick",
+    "budget"
+   ],
+   "serves": 1,
+   "minutes": 2,
+   "ingredients": [
+    {
+     "label": "2 hard-boiled eggs",
+     "grams": 100,
+     "fdcId": 173424,
+     "usda": "Egg, whole, cooked, hard-boiled"
+    },
+    {
+     "label": "1 orange",
+     "grams": 140,
+     "fdcId": 169097,
+     "usda": "Oranges, raw, all commercial varieties"
+    }
+   ],
+   "steps": [
+    "Boil a batch on Sunday; peel and go."
+   ],
+   "why": "Portable protein and fruit.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 221,
+    "protein": 13.9,
+    "carbs": 17.6,
+    "fat": 10.7,
+    "fiber": 3.4,
+    "sodium": 124
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "egg"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 2,
+    "carbShare": 0.32
+   }
+  },
+  {
+   "id": "wl-yogurt-cup",
+   "name": "Greek Yogurt Cup",
+   "cat": "plan",
+   "tags": [
+    "vegetarian",
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 1,
+   "ingredients": [
+    {
+     "label": "1 container nonfat Greek yogurt",
+     "grams": 170,
+     "fdcId": 170894,
+     "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "½ cup berries",
+     "grams": 75,
+     "fdcId": 173950,
+     "usda": "Blueberries, frozen, unsweetened (Includes foods for USDA's Food Distribution Program)"
+    },
+    {
+     "label": "1 tsp honey",
+     "grams": 7,
+     "fdcId": 169640,
+     "usda": "Honey"
+    }
+   ],
+   "steps": [
+    "Top yogurt with berries and honey."
+   ],
+   "why": "~18 g protein for under 150 kcal.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 160,
+    "protein": 17.7,
+    "carbs": 21.0,
+    "fat": 1.1,
+    "fiber": 2.0,
+    "sodium": 62
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "dairy",
+     "honey"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 1,
+    "carbShare": 0.53
+   }
+  },
+  {
+   "id": "wl-popcorn-seeds",
+   "name": "Popcorn & Pumpkin Seeds",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "high-fibre"
+   ],
+   "serves": 1,
+   "minutes": 5,
+   "ingredients": [
+    {
+     "label": "3 cups air-popped popcorn",
+     "grams": 24,
+     "fdcId": 167959,
+     "usda": "Snacks, popcorn, air-popped"
+    },
+    {
+     "label": "1 tbsp pumpkin seeds",
+     "grams": 15,
+     "fdcId": 170556,
+     "usda": "Seeds, pumpkin and squash seed kernels, dried"
+    }
+   ],
+   "steps": [
+    "Air-pop the corn, toss with seeds and a pinch of salt."
+   ],
+   "why": "Whole-grain, high-volume and free of the common allergens.",
+   "sources": [
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 177,
+    "protein": 7.6,
+    "carbs": 20.3,
+    "fat": 8.4,
+    "fiber": 4.4,
+    "sodium": 3
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": false,
+    "minutes": 5,
+    "carbShare": 0.46
+   }
+  },
+  {
+   "id": "wl-mozz-grapes",
+   "name": "Mozzarella Stick & Grapes",
+   "cat": "plan",
+   "tags": [
+    "vegetarian",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 1,
+   "ingredients": [
+    {
+     "label": "1 part-skim mozzarella stick",
+     "grams": 28,
+     "fdcId": 170847,
+     "usda": "Cheese, mozzarella, part skim milk"
+    },
+    {
+     "label": "¾ cup grapes",
+     "grams": 120,
+     "fdcId": 174683,
+     "usda": "Grapes, red or green (European type, such as Thompson seedless), raw"
+    }
+   ],
+   "steps": [
+    "Pack together."
+   ],
+   "why": "Protein plus fruit, no prep.",
+   "sources": [
+    "wl-wycherley"
+   ],
+   "perServing": {
+    "kcal": 154,
+    "protein": 7.6,
+    "carbs": 22.5,
+    "fat": 4.7,
+    "fiber": 1.1,
+    "sodium": 176
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "dairy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 1,
+    "carbShare": 0.58
+   }
+  },
+  {
+   "id": "wl-whey-shake",
+   "name": "Whey Protein Shake",
+   "cat": "plan",
+   "tags": [
+    "high-protein",
+    "quick"
+   ],
+   "serves": 1,
+   "minutes": 2,
+   "ingredients": [
+    {
+     "label": "1 scoop whey protein",
+     "grams": 30,
+     "fdcId": 173180,
+     "usda": "Beverages, Protein powder whey based"
+    },
+    {
+     "label": "1¼ cups water",
+     "grams": 300,
+     "fdcId": 173647,
+     "usda": "Beverages, water, tap, drinking"
+    },
+    {
+     "label": "½ banana",
+     "grams": 60,
+     "fdcId": 173944,
+     "usda": "Bananas, raw"
+    }
+   ],
+   "steps": [
+    "Shake or blend with ice."
+   ],
+   "why": "A convenient 25 g protein top-up when meals fall short.",
+   "sources": [
+    "issn-protein"
+   ],
+   "perServing": {
+    "kcal": 159,
+    "protein": 24.1,
+    "carbs": 15.5,
+    "fat": 0.7,
+    "fiber": 2.5,
+    "sodium": 59
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [
+     "dairy"
+    ],
+    "lowcarb": false,
+    "med": false,
+    "budget": false,
+    "mealPrep": false,
+    "minutes": 2,
+    "carbShare": 0.39
+   }
+  },
+  {
+   "id": "wl-roasted-chickpeas",
+   "name": "Crispy Roasted Chickpeas",
+   "cat": "plan",
+   "tags": [
+    "vegan",
+    "budget",
+    "meal-prep"
+   ],
+   "serves": 1,
+   "minutes": 30,
+   "ingredients": [
+    {
+     "label": "½ cup chickpeas",
+     "grams": 100,
+     "fdcId": 173800,
+     "usda": "Chickpeas (garbanzo beans, bengal gram), mature seeds, canned, drained solids"
+    },
+    {
+     "label": "½ tsp olive oil",
+     "grams": 3,
+     "fdcId": 171413,
+     "usda": "Oil, olive, salad or cooking"
+    },
+    {
+     "label": "pinch of curry powder or paprika",
+     "grams": 1,
+     "fdcId": 170924,
+     "usda": "Spices, curry powder"
+    }
+   ],
+   "steps": [
+    "Pat dry, toss with oil and spice, roast 25 min at 200 °C / 400 °F."
+   ],
+   "why": "Crunchy legume snack with fibre and plant protein.",
+   "sources": [
+    "wl-fiber"
+   ],
+   "perServing": {
+    "kcal": 169,
+    "protein": 7.1,
+    "carbs": 23.1,
+    "fat": 5.9,
+    "fiber": 6.9,
+    "sodium": 247
+   },
+   "plan": {
+    "slots": [
+     "snack"
+    ],
+    "contains": [],
+    "lowcarb": false,
+    "med": false,
+    "budget": true,
+    "mealPrep": true,
+    "minutes": 30,
+    "carbShare": 0.55
+   }
+  }
+ ],
+ "meta": {
+  "pre-oats": {
+   "slots": [
+    "breakfast"
+   ],
+   "contains": [
+    "dairy",
+    "gluten",
+    "honey"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 8,
+   "carbShare": 0.78
+  },
+  "pre-toast": {
+   "slots": [
+    "breakfast",
+    "snack"
+   ],
+   "contains": [
+    "gluten",
+    "honey",
+    "nuts"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 5,
+   "carbShare": 0.69
+  },
+  "pre-ricecakes": {
+   "slots": [
+    "snack"
+   ],
+   "contains": [],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 2,
+   "carbShare": 0.93
+  },
+  "pre-bagel": {
+   "slots": [
+    "breakfast"
+   ],
+   "contains": [
+    "gluten",
+    "honey",
+    "nuts"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 5,
+   "carbShare": 0.75
+  },
+  "post-chicken-bowl": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [
+    "gluten",
+    "meat",
+    "poultry",
+    "soy"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": true,
+   "minutes": 25,
+   "carbShare": 0.44
+  },
+  "post-salmon": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [
+    "fish"
+   ],
+   "lowcarb": false,
+   "med": true,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 30,
+   "carbShare": 0.34
+  },
+  "post-tuna-pasta": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [
+    "fish",
+    "gluten"
+   ],
+   "lowcarb": false,
+   "med": true,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 15,
+   "carbShare": 0.52
+  },
+  "post-eggs": {
+   "slots": [
+    "breakfast"
+   ],
+   "contains": [
+    "egg",
+    "gluten"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 10,
+   "carbShare": 0.38
+  },
+  "post-burrito": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [
+    "dairy",
+    "gluten",
+    "meat",
+    "poultry"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": true,
+   "minutes": 15,
+   "carbShare": 0.45
+  },
+  "budget-beans-rice": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": true,
+   "minutes": 20,
+   "carbShare": 0.76
+  },
+  "budget-lentil-curry": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [],
+   "lowcarb": false,
+   "med": true,
+   "budget": true,
+   "mealPrep": true,
+   "minutes": 35,
+   "carbShare": 0.74
+  },
+  "budget-fried-rice": {
+   "slots": [
+    "lunch",
+    "dinner"
+   ],
+   "contains": [
+    "egg",
+    "gluten",
+    "soy"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 12,
+   "carbShare": 0.58
+  },
+  "budget-potato-eggs": {
+   "slots": [
+    "breakfast",
+    "lunch"
+   ],
+   "contains": [
+    "egg"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 20,
+   "carbShare": 0.5
+  },
+  "protein-yogurt": {
+   "slots": [
+    "breakfast",
+    "snack"
+   ],
+   "contains": [
+    "dairy",
+    "honey",
+    "nuts"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 3,
+   "carbShare": 0.43
+  },
+  "protein-cottage": {
+   "slots": [
+    "snack"
+   ],
+   "contains": [
+    "dairy"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 2,
+   "carbShare": 0.5
+  },
+  "protein-overnight-oats": {
+   "slots": [
+    "breakfast"
+   ],
+   "contains": [
+    "dairy",
+    "gluten"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": true,
+   "minutes": 5,
+   "carbShare": 0.52
+  },
+  "protein-tofu-scramble": {
+   "slots": [
+    "breakfast"
+   ],
+   "contains": [
+    "gluten",
+    "soy"
+   ],
+   "lowcarb": true,
+   "med": false,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 12,
+   "carbShare": 0.23
+  },
+  "drink-choc-milk": {
+   "slots": [
+    "snack"
+   ],
+   "contains": [
+    "dairy"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": true,
+   "mealPrep": false,
+   "minutes": 1,
+   "carbShare": 0.64
+  },
+  "drink-recovery-shake": {
+   "slots": [
+    "snack"
+   ],
+   "contains": [
+    "dairy",
+    "gluten"
+   ],
+   "lowcarb": false,
+   "med": false,
+   "budget": false,
+   "mealPrep": false,
+   "minutes": 3,
+   "carbShare": 0.59
+  }
+ },
+ "sides": [
+  {
+   "id": "side-greek",
+   "label": "Greek yogurt, nonfat",
+   "grams": 170,
+   "fdcId": 170894,
+   "usda": "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)",
+   "role": "protein",
+   "contains": [
+    "dairy"
+   ],
+   "per": {
+    "kcal": 100,
+    "protein": 17.3,
+    "carbs": 6.1,
+    "fat": 0.7,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-cottage",
+   "label": "Cottage cheese, 2%",
+   "grams": 113,
+   "fdcId": 172182,
+   "usda": "Cheese, cottage, lowfat, 2% milkfat",
+   "role": "protein",
+   "contains": [
+    "dairy"
+   ],
+   "per": {
+    "kcal": 92,
+    "protein": 11.8,
+    "carbs": 5.4,
+    "fat": 2.6,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-eggwhite",
+   "label": "Egg whites",
+   "grams": 99,
+   "fdcId": 172183,
+   "usda": "Egg, white, raw, fresh",
+   "role": "protein",
+   "contains": [
+    "egg"
+   ],
+   "per": {
+    "kcal": 51,
+    "protein": 10.8,
+    "carbs": 0.7,
+    "fat": 0.2,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-whey",
+   "label": "Whey protein (in water)",
+   "grams": 30,
+   "fdcId": 173180,
+   "usda": "Beverages, Protein powder whey based",
+   "role": "protein",
+   "contains": [
+    "dairy"
+   ],
+   "per": {
+    "kcal": 106,
+    "protein": 23.4,
+    "carbs": 1.9,
+    "fat": 0.5,
+    "fiber": 0.9
+   }
+  },
+  {
+   "id": "side-tofu",
+   "label": "Firm tofu",
+   "grams": 100,
+   "fdcId": 172475,
+   "usda": "Tofu, raw, firm, prepared with calcium sulfate",
+   "role": "protein",
+   "contains": [
+    "soy"
+   ],
+   "per": {
+    "kcal": 144,
+    "protein": 17.3,
+    "carbs": 2.8,
+    "fat": 8.7,
+    "fiber": 2.3
+   }
+  },
+  {
+   "id": "side-edamame",
+   "label": "Edamame",
+   "grams": 80,
+   "fdcId": 168411,
+   "usda": "Edamame, frozen, prepared",
+   "role": "protein",
+   "contains": [
+    "soy"
+   ],
+   "per": {
+    "kcal": 97,
+    "protein": 9.5,
+    "carbs": 7.1,
+    "fat": 4.2,
+    "fiber": 4.2
+   }
+  },
+  {
+   "id": "side-chicken",
+   "label": "Chicken breast, cooked",
+   "grams": 85,
+   "fdcId": 171477,
+   "usda": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+   "role": "protein",
+   "contains": [
+    "meat",
+    "poultry"
+   ],
+   "per": {
+    "kcal": 140,
+    "protein": 26.3,
+    "carbs": 0.0,
+    "fat": 3.1,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-tuna",
+   "label": "Tuna, canned in water",
+   "grams": 85,
+   "fdcId": 171986,
+   "usda": "Fish, tuna, light, canned in water, without salt, drained solids",
+   "role": "protein",
+   "contains": [
+    "fish"
+   ],
+   "per": {
+    "kcal": 99,
+    "protein": 21.7,
+    "carbs": 0.0,
+    "fat": 0.7,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-lentils",
+   "label": "Lentils, cooked",
+   "grams": 100,
+   "fdcId": 172421,
+   "usda": "Lentils, mature seeds, cooked, boiled, without salt",
+   "role": "protein",
+   "contains": [],
+   "per": {
+    "kcal": 116,
+    "protein": 9.0,
+    "carbs": 20.1,
+    "fat": 0.4,
+    "fiber": 7.9
+   }
+  },
+  {
+   "id": "side-hemp",
+   "label": "Hemp seeds",
+   "grams": 20,
+   "fdcId": 170148,
+   "usda": "Seeds, hemp seed, hulled",
+   "role": "protein",
+   "contains": [],
+   "per": {
+    "kcal": 111,
+    "protein": 6.3,
+    "carbs": 1.7,
+    "fat": 9.8,
+    "fiber": 0.8
+   }
+  },
+  {
+   "id": "side-soyprot",
+   "label": "Soy protein powder (in water)",
+   "grams": 30,
+   "fdcId": 173181,
+   "usda": "Beverages, Protein powder soy based",
+   "role": "protein",
+   "contains": [
+    "soy"
+   ],
+   "per": {
+    "kcal": 116,
+    "protein": 16.7,
+    "carbs": 8.7,
+    "fat": 1.7,
+    "fiber": 2.0
+   }
+  },
+  {
+   "id": "side-apple",
+   "label": "Apple",
+   "grams": 180,
+   "fdcId": 171688,
+   "usda": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 94,
+    "protein": 0.5,
+    "carbs": 24.8,
+    "fat": 0.4,
+    "fiber": 4.3
+   }
+  },
+  {
+   "id": "side-banana",
+   "label": "Banana",
+   "grams": 118,
+   "fdcId": 173944,
+   "usda": "Bananas, raw",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 105,
+    "protein": 1.3,
+    "carbs": 26.9,
+    "fat": 0.4,
+    "fiber": 3.1
+   }
+  },
+  {
+   "id": "side-berries",
+   "label": "Blueberries",
+   "grams": 100,
+   "fdcId": 173950,
+   "usda": "Blueberries, frozen, unsweetened (Includes foods for USDA's Food Distribution Program)",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 51,
+    "protein": 0.4,
+    "carbs": 12.2,
+    "fat": 0.6,
+    "fiber": 2.7
+   }
+  },
+  {
+   "id": "side-rice",
+   "label": "Rice, cooked",
+   "grams": 100,
+   "fdcId": 168878,
+   "usda": "Rice, white, long-grain, regular, enriched, cooked",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 130,
+    "protein": 2.7,
+    "carbs": 28.2,
+    "fat": 0.3,
+    "fiber": 0.4
+   }
+  },
+  {
+   "id": "side-potato",
+   "label": "Baked potato",
+   "grams": 150,
+   "fdcId": 170093,
+   "usda": "Potatoes, baked, flesh and skin, without salt",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 140,
+    "protein": 3.8,
+    "carbs": 31.7,
+    "fat": 0.2,
+    "fiber": 3.3
+   }
+  },
+  {
+   "id": "side-orange",
+   "label": "Orange",
+   "grams": 140,
+   "fdcId": 169097,
+   "usda": "Oranges, raw, all commercial varieties",
+   "role": "carb",
+   "contains": [],
+   "per": {
+    "kcal": 66,
+    "protein": 1.3,
+    "carbs": 16.5,
+    "fat": 0.1,
+    "fiber": 3.4
+   }
+  },
+  {
+   "id": "side-avocado",
+   "label": "Avocado",
+   "grams": 50,
+   "fdcId": 171705,
+   "usda": "Avocados, raw, all commercial varieties",
+   "role": "fat",
+   "contains": [],
+   "per": {
+    "kcal": 80,
+    "protein": 1.0,
+    "carbs": 4.2,
+    "fat": 7.3,
+    "fiber": 3.4
+   }
+  },
+  {
+   "id": "side-oil",
+   "label": "Olive oil drizzle",
+   "grams": 5,
+   "fdcId": 171413,
+   "usda": "Oil, olive, salad or cooking",
+   "role": "fat",
+   "contains": [],
+   "per": {
+    "kcal": 44,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fat": 5.0,
+    "fiber": 0.0
+   }
+  },
+  {
+   "id": "side-almonds",
+   "label": "Almonds",
+   "grams": 14,
+   "fdcId": 170567,
+   "usda": "Nuts, almonds",
+   "role": "fat",
+   "contains": [
+    "nuts"
+   ],
+   "per": {
+    "kcal": 81,
+    "protein": 3.0,
+    "carbs": 3.0,
+    "fat": 7.0,
+    "fiber": 1.8
+   }
+  },
+  {
+   "id": "side-pumpseed",
+   "label": "Pumpkin seeds",
+   "grams": 15,
+   "fdcId": 170556,
+   "usda": "Seeds, pumpkin and squash seed kernels, dried",
+   "role": "fat",
+   "contains": [],
+   "per": {
+    "kcal": 84,
+    "protein": 4.5,
+    "carbs": 1.6,
+    "fat": 7.3,
+    "fiber": 0.9
+   }
+  }
+ ],
+ "aisles": {
+  "173944": "Produce",
+  "171711": "Produce",
+  "167762": "Produce",
+  "168462": "Produce",
+  "169967": "Produce",
+  "171705": "Produce",
+  "170000": "Produce",
+  "167747": "Produce",
+  "168156": "Produce",
+  "170108": "Produce",
+  "169230": "Produce",
+  "169225": "Produce",
+  "170457": "Produce",
+  "169291": "Produce",
+  "170393": "Produce",
+  "171688": "Produce",
+  "169097": "Produce",
+  "169118": "Produce",
+  "174683": "Produce",
+  "169247": "Produce",
+  "169251": "Produce",
+  "169986": "Produce",
+  "168421": "Produce",
+  "169975": "Produce",
+  "168389": "Produce",
+  "170030": "Produce",
+  "170093": "Produce",
+  "168483": "Produce",
+  "169141": "Produce",
+  "171477": "Meat & fish",
+  "172851": "Meat & fish",
+  "171794": "Meat & fish",
+  "171986": "Meat & fish",
+  "175168": "Meat & fish",
+  "171956": "Meat & fish",
+  "173687": "Meat & fish",
+  "175180": "Meat & fish",
+  "170894": "Dairy & eggs",
+  "170872": "Dairy & eggs",
+  "172182": "Dairy & eggs",
+  "170899": "Dairy & eggs",
+  "173420": "Dairy & eggs",
+  "170847": "Dairy & eggs",
+  "171247": "Dairy & eggs",
+  "171287": "Dairy & eggs",
+  "172183": "Dairy & eggs",
+  "173424": "Dairy & eggs",
+  "172475": "Plant protein",
+  "174272": "Plant protein",
+  "168411": "Plant protein",
+  "172456": "Plant protein",
+  "173904": "Grains & bread",
+  "172688": "Grains & bread",
+  "168878": "Grains & bread",
+  "169704": "Grains & bread",
+  "169737": "Grains & bread",
+  "168910": "Grains & bread",
+  "168917": "Grains & bread",
+  "169700": "Grains & bread",
+  "170287": "Grains & bread",
+  "174916": "Grains & bread",
+  "175037": "Grains & bread",
+  "175036": "Grains & bread",
+  "167959": "Grains & bread",
+  "175188": "Cans & jars",
+  "174285": "Cans & jars",
+  "175204": "Cans & jars",
+  "173800": "Cans & jars",
+  "172421": "Cans & jars",
+  "170501": "Cans & jars",
+  "171192": "Cans & jars",
+  "174524": "Cans & jars",
+  "169094": "Cans & jars",
+  "171583": "Cans & jars",
+  "174289": "Cans & jars",
+  "170189": "Cans & jars",
+  "174277": "Cans & jars",
+  "173950": "Frozen",
+  "170472": "Frozen",
+  "168399": "Frozen",
+  "173647": "Other",
+  "168147": "Nuts, seeds & pantry",
+  "173181": "Nuts, seeds & pantry",
+  "172470": "Nuts, seeds & pantry",
+  "170567": "Nuts, seeds & pantry",
+  "170187": "Nuts, seeds & pantry",
+  "173806": "Nuts, seeds & pantry",
+  "170554": "Nuts, seeds & pantry",
+  "170556": "Nuts, seeds & pantry",
+  "170148": "Nuts, seeds & pantry",
+  "171413": "Nuts, seeds & pantry",
+  "169640": "Nuts, seeds & pantry",
+  "169661": "Nuts, seeds & pantry",
+  "171320": "Nuts, seeds & pantry",
+  "170924": "Nuts, seeds & pantry",
+  "173468": "Nuts, seeds & pantry",
+  "173180": "Nuts, seeds & pantry",
+  "174924": "Grains & bread",
+  "169124": "Produce",
+  "167555": "Nuts, seeds & pantry",
+  "174899": "Grains & bread",
+  "169641": "Nuts, seeds & pantry",
+  "169655": "Nuts, seeds & pantry",
+  "168164": "Nuts, seeds & pantry",
+  "167807": "Nuts, seeds & pantry",
+  "169099": "Nuts, seeds & pantry",
+  "174831": "Nuts, seeds & pantry",
+  "170881": "Dairy & eggs",
+  "169679": "Nuts, seeds & pantry",
+  "168191": "Nuts, seeds & pantry",
+  "171506": "Meat & fish"
+ },
+ "names": {
+  "173904": "Rolled oats",
+  "173944": "Bananas",
+  "169640": "Honey",
+  "172470": "Peanut butter",
+  "172688": "Whole-wheat bread",
+  "168878": "White rice (cooked weight)",
+  "169704": "Brown rice (cooked weight)",
+  "171477": "Chicken breast (cooked weight)",
+  "170894": "Nonfat Greek yogurt",
+  "170872": "1% milk",
+  "171287": "Eggs",
+  "172183": "Egg whites",
+  "173424": "Eggs (to hard-boil)",
+  "175188": "Black beans, canned",
+  "172421": "Lentils (cooked weight)",
+  "171986": "Tuna, canned in water",
+  "175168": "Salmon fillet",
+  "170030": "Potatoes",
+  "170093": "Potatoes",
+  "168483": "Sweet potatoes",
+  "169737": "Pasta (cooked weight)",
+  "168910": "Whole-wheat pasta (cooked weight)",
+  "172182": "Cottage cheese, 2%",
+  "171711": "Blueberries",
+  "173950": "Frozen blueberries",
+  "167762": "Strawberries",
+  "168462": "Spinach",
+  "169967": "Broccoli",
+  "171413": "Olive oil",
+  "173468": "Salt",
+  "171705": "Avocados",
+  "175037": "Flour tortillas",
+  "175036": "Corn tortillas",
+  "170899": "Cheddar",
+  "173420": "Feta",
+  "170847": "Mozzarella sticks",
+  "171247": "Parmesan",
+  "172851": "93% lean ground turkey (cooked weight)",
+  "171794": "90% lean ground beef (cooked weight)",
+  "170000": "Onions",
+  "170501": "Crushed tomatoes, canned",
+  "170457": "Cherry tomatoes",
+  "170924": "Curry powder / paprika",
+  "174277": "Soy sauce",
+  "170472": "Frozen mixed vegetables",
+  "167747": "Lemons (juice)",
+  "168156": "Limes (juice)",
+  "170554": "Chia seeds",
+  "170567": "Almonds",
+  "170187": "Walnuts",
+  "173806": "Peanuts",
+  "172475": "Firm tofu",
+  "174272": "Tempeh",
+  "168411": "Frozen shelled edamame",
+  "172456": "Soy milk",
+  "168917": "Quinoa (cooked weight)",
+  "169700": "Couscous (cooked weight)",
+  "170287": "Bulgur (cooked weight)",
+  "174916": "Whole-wheat pitas",
+  "170108": "Bell peppers",
+  "174524": "Salsa",
+  "171320": "Cinnamon",
+  "169230": "Garlic",
+  "173800": "Chickpeas, canned",
+  "174285": "Kidney beans, canned",
+  "175204": "White beans, canned",
+  "175180": "Shrimp, cooked",
+  "171956": "Cod fillet",
+  "173687": "Smoked salmon",
+  "169141": "Green beans",
+  "169291": "Zucchini",
+  "170393": "Carrots",
+  "174289": "Hummus",
+  "171688": "Apples",
+  "169097": "Oranges",
+  "169118": "Pears",
+  "174683": "Grapes",
+  "170556": "Pumpkin seeds",
+  "170148": "Hemp seeds",
+  "171192": "Marinara sauce",
+  "169247": "Romaine lettuce",
+  "169251": "Mushrooms",
+  "169986": "Cauliflower (or riced)",
+  "168421": "Kale",
+  "169094": "Olives",
+  "168399": "Frozen corn",
+  "169975": "Cabbage",
+  "170189": "Tahini",
+  "168147": "Vital wheat gluten",
+  "173181": "Soy protein powder",
+  "168389": "Asparagus",
+  "171583": "Vegetable broth",
+  "167959": "Popcorn kernels",
+  "169661": "Maple syrup",
+  "173180": "Whey protein powder",
+  "173647": "Water",
+  "169225": "Cucumbers",
+  "174924": "White bread",
+  "169124": "Pineapple",
+  "167555": "Pretzels",
+  "174899": "Bagels",
+  "169641": "Jam",
+  "169655": "Sugar",
+  "168164": "Raisins",
+  "167807": "Tart cherry juice",
+  "169099": "Orange juice",
+  "174831": "Coconut water",
+  "170881": "Low-fat chocolate milk",
+  "169679": "Rice cakes",
+  "168191": "Medjool dates",
+  "171506": "Ground turkey (cooked weight)"
+ },
+ "pieces": {
+  "171287": 50,
+  "173424": 50,
+  "173944": 118,
+  "171688": 180,
+  "169097": 140,
+  "169118": 140,
+  "171705": 150,
+  "174916": 64,
+  "174899": 105,
+  "167747": 48,
+  "168156": 44,
+  "170108": 150,
+  "170000": 110,
+  "169225": 300,
+  "168483": 150,
+  "170093": 200,
+  "170030": 200,
+  "169291": 200,
+  "170393": 60,
+  "170847": 28
+ }
+}

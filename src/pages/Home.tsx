@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore, uid } from '../lib/store';
-import { addDays, computeTargets, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu } from '../lib/calc';
+import { addDays, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu } from '../lib/calc';
 import { dayBurn } from '../lib/burn';
 import { BurnRingCard } from '../components/BurnRing';
+import { WLCard } from '../components/WLCard';
+import { fuelTargets } from '../lib/fuelTargets';
 import { PillarBar, ScoreRing, MacroBar } from '../components/charts';
 import { StepsCard } from '../components/StepsCard';
 import { Card, RowLink, Banner } from '../components/ui';
@@ -33,7 +35,7 @@ export default function Home() {
   const today = todayKey();
   const score = useMemo(() => hybridScore(data, profile), [data, profile]);
   const st = useMemo(() => streak(data), [data]);
-  const t = computeTargets(profile);
+  const t = fuelTargets(profile, data, today);
   const tot = dayTotals(data.foods, today);
   const water = data.water.find((w) => w.date === today)?.ml || 0;
   const burned = dayBurn(data, today, profile).active;
@@ -85,7 +87,7 @@ export default function Home() {
           <Card className="click" onClick={() => nav('/fuel')}>
             <div className="card-head"><h3>Today’s fuel</h3><span className="link">Log →</span></div>
             <div className="grid3" style={{ marginBottom: 12 }}>
-              <div className="stat accent"><div className="stat-v">{Math.max(0, t.kcal - tot.kcal + burned)}</div><div className="stat-l">kcal left (est.)</div></div>
+              <div className="stat accent"><div className="stat-v">{Math.max(0, Math.round(t.kcal - tot.kcal + (t.addBurn ? burned : 0)))}</div><div className="stat-l">kcal left (est.)</div></div>
               <div className="stat"><div className="stat-v">{Math.round(tot.kcal)}</div><div className="stat-l">eaten</div></div>
               <div className="stat"><div className="stat-v">{burned}</div><div className="stat-l">active burn est.</div></div>
             </div>
@@ -93,6 +95,8 @@ export default function Home() {
             <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="#f4f4f4" />
             <MacroBar label="Water" value={water / 1000} target={t.waterMl / 1000} unit=" L" color="#60a5fa" />
           </Card>
+
+          <WLCard />
 
           <BurnRingCard />
 
