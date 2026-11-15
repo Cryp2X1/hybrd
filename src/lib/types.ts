@@ -25,6 +25,10 @@ export interface Profile {
   sound?: boolean;
   voice?: boolean;
   hrMax?: number; // user-set max heart rate; otherwise Tanaka 208 − 0.7 × age
+  /** Recent race or time trial used for Expert running paces (Daniels VDOT). */
+  runRef?: { distM: number; sec: number; date?: string };
+  /** Functional threshold power in watts, for %FTP cycling targets (Coggan levels). */
+  ftp?: number;
   updatedAt?: number;
 }
 

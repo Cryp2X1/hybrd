@@ -2,7 +2,7 @@ export type ExCat = 'calisthenics' | 'strength' | 'hyrox' | 'cardio' | 'core';
 export type Metric = 'reps' | 'weight' | 'time' | 'distance';
 export interface Exercise {
   id: string; name: string; cat: ExCat; metric: Metric; muscles: string; equipment: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced'; cues: string[]; easier?: string; harder?: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'; cues: string[]; easier?: string; harder?: string;
 }
 const e = (id: string, name: string, cat: ExCat, metric: Metric, muscles: string, equipment: string, level: Exercise['level'], cues: string[], easier?: string, harder?: string): Exercise =>
   ({ id, name, cat, metric, muscles, equipment, level, cues, easier, harder });
@@ -70,6 +70,14 @@ export const EXERCISES: Exercise[] = [
   e('jump-rope', 'Jump rope', 'cardio', 'time', 'Calves, coordination, engine', 'Rope', 'Beginner', ['Small hops on the balls of the feet', 'Turn the rope with the wrists, elbows close', 'Start with 30–60 s bouts'], 'Single unders with rests', 'Double unders'),
   e('burpee', 'Burpee', 'cardio', 'reps', 'Full body, engine', 'None', 'Beginner', ['Hands down, jump or step back to a plank', 'Chest to floor, then up and jump with a clap overhead', 'Pick a pace you can repeat'], 'Step-back burpee', 'Burpee pull-up'),
   e('mountain-climber', 'Mountain climbers', 'cardio', 'time', 'Core, hip flexors, engine', 'None', 'Beginner', ['Strong plank, hands under shoulders', 'Drive knees toward the chest alternately', 'Keep hips level'], 'Slow climbers', 'Cross-body climbers'),
+  // Expert skills & weighted calisthenics (progressions per S. Low, Overcoming Gravity, 2nd ed., 2016)
+  e('front-lever', 'Front lever (progressions)', 'calisthenics', 'time', 'Lats, core, rear delts, straight-arm strength', 'Pull-up bar or rings', 'Expert', ['Straight arms, shoulders pulled down and back, body hollow', 'Progression: tuck → advanced tuck (flat back) → one-leg / straddle → full', 'Hold the hardest version you can keep clean for the target time; move up when every set hits it', 'Stop the set when the hips drop or the elbows bend'], 'Tuck front lever / hanging tuck raises', 'Full front lever, front lever rows'),
+  e('planche', 'Planche (progressions)', 'calisthenics', 'time', 'Front delts, chest, wrists, core', 'Floor or parallettes', 'Expert', ['Straight, locked elbows; protract (push the floor away) and lean forward', 'Progression: planche lean → tuck → advanced tuck → straddle → full', 'Warm the wrists first; parallettes reduce wrist extension', 'Hold the hardest clean version; add lean before you add leverage'], 'Planche lean / pseudo-planche push-up', 'Straddle or full planche'),
+  e('one-arm-push-up', 'One-arm push-up', 'calisthenics', 'reps', 'Chest, triceps, anti-rotation core', 'None (bench for elevated)', 'Expert', ['Feet wider than hips, working hand under the shoulder', 'Brace so the hips stay square to the floor', 'Lower until the chest is a fist from the floor, press back up', 'Progress: archer → hands-elevated one-arm → floor'], 'Archer or hands-elevated one-arm push-up', 'Feet-together / weighted one-arm push-up'),
+  e('weighted-pull-up', 'Weighted pull-up', 'calisthenics', 'weight', 'Lats, biceps, upper back', 'Pull-up bar + belt, vest or backpack', 'Advanced', ['Full dead hang to chin over the bar on every rep', 'Add load only when bodyweight sets are clean and strict', 'Log the added load (not your bodyweight)'], 'Strict bodyweight pull-up', 'Heavier load / weighted chin-up'),
+  e('weighted-dip', 'Weighted dip', 'calisthenics', 'weight', 'Chest, triceps, shoulders', 'Dip bars + belt or vest', 'Advanced', ['Same depth as a bodyweight dip — shoulders just below elbows', 'Control the descent; no bouncing at the bottom', 'Log the added load'], 'Bodyweight dip', 'Heavier load / ring dip'),
+  e('handstand', 'Handstand hold', 'calisthenics', 'time', 'Shoulders, wrists, balance', 'Wall or floor', 'Advanced', ['Hands shoulder-width, fingers spread, push tall through the shoulders', 'Ribs down, glutes squeezed, body in one line', 'Chest-to-wall first; then kick-ups and freestanding attempts'], 'Chest-to-wall handstand', 'Freestanding handstand'),
+  e('strides', 'Strides', 'cardio', 'time', 'Running form, leg speed', 'Shoes', 'Intermediate', ['15–20 s smooth acceleration to fast, relaxed running — not a sprint', 'Walk or jog back to recover fully', 'Usually 4–8 after an easy run or warm-up'], 'Fewer, shorter strides', 'Strides up a gentle hill'),
 ];
 export const exById = (id: string) => EXERCISES.find((x) => x.id === id);
 export const CATS: { v: ExCat; label: string }[] = [

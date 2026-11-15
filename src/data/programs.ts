@@ -1,10 +1,32 @@
 import type { WorkoutType } from '../lib/types';
+import type { Intensity, PlanStep } from '../lib/intensity';
+import { expertPrograms } from './expert';
 
-export interface Block { exId: string; sets: number; reps?: number; timeSec?: number; distanceM?: number; note?: string }
-export interface Session { id: string; name: string; type: WorkoutType; minutes: number; focus: string; blocks: Block[]; timer?: string }
+/** A block may carry an intensity: a Daniels pace (E/M/T/I/R), a %FTP range (Coggan) or a plain RPE. */
+export interface Block extends Intensity { exId: string; sets: number; reps?: number; timeSec?: number; distanceM?: number; note?: string }
+export interface Session {
+  id: string; name: string; type: WorkoutType; minutes: number; focus: string; blocks: Block[];
+  /** Existing timers: 'interval&…', 'tabata', 'emom', 'amrap', 'hyrox'. */
+  timer?: string;
+  /** Guided interval session for the timer (/timers?t=plan) — warm-up, work/rest steps, cool-down. */
+  plan?: PlanStep[];
+  /** For-time pieces for the guided stopwatch (/timers?t=stopwatch&program=…) — tap Lap as each one is done. */
+  pieces?: string[];
+  /** Cycling sessions that work both indoors and outdoors. */
+  anyBike?: boolean;
+}
+export type Level = 'Beginner' | 'Intermediate' | 'Expert' | 'All levels';
+/** Difficulty tiers shown in Train, easiest first. 'All levels' programs appear under Beginner and Intermediate. */
+export const LEVELS: Exclude<Level, 'All levels'>[] = ['Beginner', 'Intermediate', 'Expert'];
 export interface Program {
-  id: string; name: string; discipline: string; level: string; weeks: number; perWeek: number;
+  id: string; name: string; discipline: string; level: Level; weeks: number; perWeek: number;
   summary: string; progression: string[]; sessions: Session[];
+  /** Expert: what you should already be able to do before starting. */
+  prereqs?: string[];
+  /** Suggested week layout. */
+  week?: string[];
+  /** Source ids from data/sources.ts. */
+  sources?: string[];
 }
 
 export const HYROX_STATIONS = [
@@ -31,7 +53,7 @@ const raceBlocks: Block[] = HYROX_STATIONS.flatMap((s, i) => [
   { exId: s.exId, sets: 1, ...('reps' in s ? { reps: s.reps } : { distanceM: s.distanceM }), note: `Station ${i + 1} — ${s.name} ${s.work}` },
 ]);
 
-export const PROGRAMS: Program[] = [
+const BASE_PROGRAMS: Program[] = [
   {
     id: 'cali-foundations', name: 'Calisthenics Foundations', discipline: 'Calisthenics', level: 'Beginner', weeks: 6, perWeek: 3,
     summary: 'Build the base patterns — push, pull, squat, hinge, core — with nothing but a bar and the floor.',
@@ -146,4 +168,5 @@ export const PROGRAMS: Program[] = [
     ],
   },
 ];
+export const PROGRAMS: Program[] = [...BASE_PROGRAMS, ...expertPrograms(raceBlocks)];
 export const programById = (id: string) => PROGRAMS.find((p) => p.id === id);

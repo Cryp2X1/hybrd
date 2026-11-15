@@ -96,5 +96,5 @@ export function NumberStepper({ value, onChange, step = 1, min = 0, max = 9999, 
     </div>
   );
 }
-export const Pill = ({ children, tone }: { children: ReactNode; tone?: 'yellow' | 'dim' }) => <span className={`pill ${tone || ''}`}>{children}</span>;
+export const Pill = ({ children, tone }: { children: ReactNode; tone?: 'yellow' | 'dim' | 'expert' }) => <span className={`pill ${tone || ''}`}>{children}</span>;
 export const Disclaimer = () => <p className="muted small">Not medical advice. Numbers are estimates from public datasets and position stands; individual needs vary. For a personal plan, see a registered dietitian (look for the CSSD sports credential).</p>;

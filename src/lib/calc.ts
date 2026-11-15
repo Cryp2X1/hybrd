@@ -429,7 +429,8 @@ export function personalRecords(d: DataState, u: Units, wU: Units = u): PR[] {
     for (const ex of w.exercises || []) for (const s of ex.sets) {
       if (s.weightKg && s.reps) {
         better(`w:${ex.exId}`, `${ex.name} — heaviest`, s.weightKg, `${fmtW(s.weightKg, wU)} × ${s.reps}`, w.date);
-        if (s.reps <= 12) { const e = s.weightKg * (1 + s.reps / 30); better(`e:${ex.exId}`, `${ex.name} — est. 1RM`, e, fmtW(e, wU), w.date); }
+        if (s.reps <= 12 && !ex.exId.startsWith('weighted-')) { // added-load lifts: no 1RM estimate
+          const e = s.weightKg * (1 + s.reps / 30); better(`e:${ex.exId}`, `${ex.name} — est. 1RM`, e, fmtW(e, wU), w.date); }
       } else if (s.reps) better(`r:${ex.exId}`, `${ex.name} — most reps`, s.reps, `${s.reps} reps`, w.date);
       if (s.timeSec && !s.reps && !s.distanceM) better(`t:${ex.exId}`, `${ex.name} — longest hold`, s.timeSec, fmtTime(s.timeSec), w.date);
     }

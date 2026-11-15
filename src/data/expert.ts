@@ -1,0 +1,236 @@
+/**
+ * Expert tier programs. Session structures follow published coaching sources (ids → data/sources.ts):
+ *  - Calisthenics: S. Low, Overcoming Gravity (2nd ed., 2016) skill progressions; RPE / reps-in-reserve
+ *    loading from Helms et al. 2016 (Strength Cond J 38(4):42–49).
+ *  - Running: J. Daniels, Daniels' Running Formula (3rd ed., 2014) — E/M/T/I/R paces from VDOT and his
+ *    per-session volume limits (T ≤ 10 %, I ≤ 8 % [max 10 km], R ≤ 5 % [max 8 km], M ≤ 20 % [max 29 km]
+ *    of weekly volume).
+ *  - Cycling: H. Allen & A. Coggan, Training and Racing with a Power Meter (3rd ed., 2019) power levels;
+ *    30/15 short intervals per Rønnestad et al. 2015 (Scand J Med Sci Sports 25(2):143–151).
+ *  - HYROX: official 25/26 HYROX Singles Rulebook (station order, distances, division weights).
+ *  - Hybrid: concurrent-training reviews — Wilson et al. 2012 (J Strength Cond Res 26(8):2293–2307),
+ *    Schumann et al. 2022 (Sports Med 52:601–612).
+ * Numbers here are training prescriptions, not promises of results. No invented stats.
+ */
+import type { Block, Program } from './programs';
+import type { PlanStep, PaceKey } from '../lib/intensity';
+
+const min = (m: number) => m * 60;
+const warm = (m: number, note = 'Easy, build gradually'): PlanStep => ({ label: 'Warm-up', sec: min(m), kind: 'rest', note });
+const cool = (m: number): PlanStep => ({ label: 'Cool-down', sec: min(m), kind: 'rest', note: 'Easy' });
+/** n × (work, rest) — no rest after the last rep */
+function reps(n: number, work: Omit<PlanStep, 'kind'>, rest?: Omit<PlanStep, 'kind'>): PlanStep[] {
+  return Array.from({ length: n }).flatMap((_, i) => [
+    { ...work, kind: 'work' as const, round: i + 1, of: n },
+    ...(rest && i < n - 1 ? [{ ...rest, kind: 'rest' as const, round: i + 1, of: n }] : []),
+  ]);
+}
+const runRep = (n: number, distM: number, pace: PaceKey, defaultSec: number, restSec: number, restNote: string, label: string) =>
+  reps(n, { label, sec: defaultSec, distM, pace }, { label: 'Recovery', sec: restSec, note: restNote });
+const strides = (n: number): PlanStep[] => reps(n, { label: 'Stride', sec: 20, rpe: 'Fast & relaxed' }, { label: 'Walk back', sec: 60, note: 'Full recovery' });
+
+export const EXPERT_SAFETY = [
+  'Expert sessions assume you already meet the prerequisites listed on each program.',
+  'Warm up fully. Scale or swap anything — an easier progression, fewer reps, lighter load, longer rest — whenever form breaks down.',
+  'Stop if you feel pain (not just effort), dizziness or chest discomfort, and get it checked by a qualified professional before continuing.',
+  'General training information, not medical advice.',
+];
+
+export function expertPrograms(hyroxRace: Block[]): Program[] {
+  return [
+    // ---------------------------------------------------------------- Calisthenics
+    {
+      id: 'cali-expert', name: 'Expert Calisthenics: Levers, Planche & Weighted', discipline: 'Calisthenics', level: 'Expert', weeks: 8, perWeek: 4,
+      summary: 'Straight-arm skills (front lever, planche, handstand), strict muscle-ups, one-arm push-ups and pistols, plus heavy weighted pull-ups and dips.',
+      prereqs: ['12+ strict pull-ups, 15+ strict dips and 25+ clean push-ups', 'A 20 s L-sit and a 30 s chest-to-wall handstand', 'Around 6+ months of consistent bar training (e.g. Bar Skills: Pull-up → Muscle-up)', 'Pain-free wrists, elbows and shoulders', 'Suggested readiness checks — common coaching guidelines, not official test standards.'],
+      week: ['Mon · A Pull skill + weighted pull', 'Tue · B Push skill + weighted dip', 'Wed · Off or easy cardio', 'Thu · C Legs + core', 'Fri · D Skill EMOM', 'Sat–Sun · Off or easy cardio'],
+      progression: [
+        'Skills first: muscle-up, lever and planche work go at the start of a session, while you are fresh.',
+        'Holds: 5–8 sets of 5–10 s at the hardest progression you can keep clean (tuck → advanced tuck → straddle → full). When every set reaches 10–12 s, move up a progression and restart at 5 s.',
+        'Weighted pull-ups and dips: 5 × 3–5 at about RPE 8 (≈2 reps in reserve). When every set hits 5 reps, add 1–2.5 kg (2.5–5 lb).',
+        'One-arm push-up and pistol: 3–5 × 3–5 per side. Raise the hand (bench) to make it easier; hold a plate or kettlebell to make the pistol harder.',
+        'Rest 2–3 min between strength and skill sets. Weeks 4 and 8 are deloads: same exercises, about half the sets.',
+        'Straight-arm holds load the elbows and wrists hard — add skill volume slowly and end any set that causes joint pain.',
+      ],
+      sources: ['low-og', 'helms-rir'],
+      sessions: [
+        { id: 'pull', name: 'A · Pull Skill + Weighted Pull', type: 'calisthenics', minutes: 65, focus: 'Muscle-up, front lever, heavy pull-ups', blocks: [
+          { exId: 'scap-pull', sets: 2, reps: 10, note: 'Warm-up, plus 2 easy sets of pull-ups' },
+          { exId: 'muscle-up', sets: 6, reps: 2, note: 'Strict, minimal kip. Scale: low-bar transitions or band', rpe: 'RPE 7–8' },
+          { exId: 'front-lever', sets: 6, timeSec: 8, note: 'Hardest clean progression · 2 min rest' },
+          { exId: 'weighted-pull-up', sets: 5, reps: 4, note: '2–3 min rest', rpe: 'RPE 8' },
+          { exId: 't2b', sets: 3, reps: 10, note: 'Strict, no swing' },
+          { exId: 'hollow', sets: 3, timeSec: 40 }] },
+        { id: 'push', name: 'B · Push Skill + Weighted Dip', type: 'calisthenics', minutes: 65, focus: 'Planche, handstand, one-arm push-up, heavy dips', blocks: [
+          { exId: 'handstand', sets: 5, timeSec: 30, note: 'Wall or freestanding attempts' },
+          { exId: 'planche', sets: 6, timeSec: 8, note: 'Lean → tuck → adv. tuck → straddle · 2 min rest' },
+          { exId: 'weighted-dip', sets: 5, reps: 5, note: '2–3 min rest', rpe: 'RPE 8' },
+          { exId: 'one-arm-push-up', sets: 4, reps: 3, note: 'per side · elevate hand to scale' },
+          { exId: 'hspu', sets: 3, reps: 5, note: 'Strict, to a pad' }] },
+        { id: 'legs', name: 'C · Legs + Core', type: 'calisthenics', minutes: 55, focus: 'Pistols, Nordics, L-sit', blocks: [
+          { exId: 'pistol', sets: 4, reps: 5, note: 'per leg · add a plate/KB once 3 × 8 is clean', rpe: 'RPE 8' },
+          { exId: 'nordic', sets: 4, reps: 4, note: 'Slow 3–5 s lowering; band or partial range to scale' },
+          { exId: 'bulgarian', sets: 3, reps: 8, note: 'per leg, loaded' },
+          { exId: 'l-sit', sets: 5, timeSec: 15, note: 'Progress toward a V-sit' },
+          { exId: 'calf-raise', sets: 3, reps: 15, note: 'Single-leg' }] },
+        { id: 'emom', name: 'D · Skill EMOM 20', type: 'calisthenics', minutes: 32, focus: 'Every minute: muscle-up → lever → planche → HSPU × 5', blocks: [
+          { exId: 'muscle-up', sets: 5, reps: 2 }, { exId: 'front-lever', sets: 5, timeSec: 8 }, { exId: 'planche', sets: 5, timeSec: 8 }, { exId: 'hspu', sets: 5, reps: 3 }],
+          plan: [warm(10, 'Joint prep: wrists, scap pulls, easy holds'),
+            ...Array.from({ length: 20 }, (_, i): PlanStep => {
+              const m = [['Muscle-up × 2', 'Strict; rest for what’s left of the minute'], ['Front lever 8 s', 'Hardest clean progression'], ['Planche 8 s', 'Hardest clean progression'], ['HSPU × 3', 'Strict, to a pad']][i % 4];
+              return { label: m[0], note: m[1], sec: 60, kind: 'work', round: i + 1, of: 20 };
+            }), cool(2)] },
+      ],
+    },
+    // ---------------------------------------------------------------- Running
+    {
+      id: 'run-expert', name: 'Expert Running: Threshold, VO2max & Marathon Pace', discipline: 'Running', level: 'Expert', weeks: 10, perWeek: 6,
+      summary: 'Daniels-style training with paces from your own recent race: cruise intervals, VO2max reps, R-pace speed and long runs with marathon-pace segments.',
+      prereqs: ['Running 5+ days and roughly 50 km (30 mi) or more a week for the last 2–3 months', 'A recent (within ~6 weeks) race or all-out time trial to set your paces', 'Completed intermediate tempo and interval sessions (e.g. 10K Engine) without niggles'],
+      week: ['Mon · Easy + strides', 'Tue · Threshold (cruise intervals or steady tempo)', 'Wed · Easy', 'Thu · VO2max intervals (R-pace speed in weeks 3, 6, 9)', 'Fri · Off or short recovery run', 'Sat · Easy', 'Sun · Long run with M-pace segments'],
+      progression: [
+        'Enter a recent race under “Your targets” — every pace below updates, in mi or km. Without one, use the RPE shown.',
+        'Daniels’ per-session limits: T-pace ≤ 10% of weekly volume · I-pace ≤ 8% (max ~10 km) · R-pace ≤ 5% (max ~8 km) · M-pace in a long run ≤ 20% (max ~29 km / 18 mi).',
+        'Weeks 1–3: 4 × 1600 m T, 5 × 800 m I, long run with 2 × 4 km M.',
+        'Weeks 4–6: 5 × 1600 m T, 5 × 1000 m I, long run with 3 × 4 km M.',
+        'Weeks 7–9: 6 × 1600 m T (or 20 min steady T + 2 × 1600 m), 6 × 1000 m I or 4 × 1200 m I, long run with 3 × 5 km M.',
+        'Week 10: absorb — cut volume about 30%, keep one short T session.',
+        'Keep at least one easy day between quality sessions; most weekly running stays at E. Update paces after a new race — not because one session felt easy.',
+      ],
+      sources: ['daniels'],
+      sessions: [
+        { id: 'cruise', name: 'Cruise Intervals 5 × 1600 m', type: 'run', minutes: 60, focus: 'T pace, 60 s jog between', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 900, pace: 'E', note: 'Warm-up' }, { exId: 'strides', sets: 4, timeSec: 20 },
+          { exId: 'run-tempo', sets: 5, distanceM: 1600, pace: 'T', note: '≈ 1 mi · 60 s jog between' }, { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Cool-down' }],
+          plan: [warm(15, 'E pace'), ...strides(4), ...runRep(5, 1600, 'T', 390, 60, 'Easy jog', 'Threshold'), cool(10)] },
+        { id: 'tempo', name: 'Steady Tempo 20 min', type: 'run', minutes: 50, focus: 'Continuous T pace', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 900, pace: 'E', note: 'Warm-up' }, { exId: 'run-tempo', sets: 1, timeSec: 1200, pace: 'T' }, { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Cool-down' }],
+          plan: [warm(15, 'E pace'), { label: 'Tempo', sec: 1200, kind: 'work', pace: 'T' }, cool(10)] },
+        { id: 'vo2', name: 'VO2max 5 × 1000 m', type: 'run', minutes: 55, focus: 'I pace, jog ≈ the rep time', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 900, pace: 'E', note: 'Warm-up + 4 strides' },
+          { exId: 'run-intervals', sets: 5, distanceM: 1000, pace: 'I', note: 'Jog recovery about equal to the rep time' }, { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Cool-down' }],
+          plan: [warm(15, 'E pace'), ...strides(4), ...runRep(5, 1000, 'I', 240, 180, 'Easy jog, about the rep time', 'Interval'), cool(10)] },
+        { id: 'reps', name: 'R-pace 8 × 400 m', type: 'run', minutes: 50, focus: 'Fast & relaxed, full recovery', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 900, pace: 'E', note: 'Warm-up + 4 strides' },
+          { exId: 'run-intervals', sets: 8, distanceM: 400, pace: 'R', note: '400 m easy jog between (2–3× the rep time)' }, { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Cool-down' }],
+          plan: [warm(15, 'E pace'), ...strides(4), ...runRep(8, 400, 'R', 85, 180, '400 m easy jog', 'Rep'), cool(10)] },
+        { id: 'long', name: 'Long Run with M-pace', type: 'run', minutes: 130, focus: '6 km E · 3 × 4 km M (1 km E float) · 3 km E', blocks: [
+          { exId: 'run-easy', sets: 1, distanceM: 6000, pace: 'E' }, { exId: 'run-tempo', sets: 3, distanceM: 4000, pace: 'M', note: '1 km E float between' }, { exId: 'run-easy', sets: 1, distanceM: 3000, pace: 'E' }] },
+        { id: 'easy', name: 'Easy + Strides', type: 'run', minutes: 55, focus: 'E pace, then 6 strides', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 2700, pace: 'E' }, { exId: 'strides', sets: 6, timeSec: 20, note: 'Walk back between' }] },
+      ],
+    },
+    // ---------------------------------------------------------------- Cycling
+    {
+      id: 'ride-expert', name: 'Expert Cycling: Power Builder', discipline: 'Cycling', level: 'Expert', weeks: 8, perWeek: 4,
+      summary: 'Sweet spot, over-unders, VO2max and 30/15 short intervals for outdoor or indoor riding. Targets in % of FTP (and watts) with RPE when you have no power.',
+      prereqs: ['Riding 6+ hours a week for the last 2–3 months, including hard intervals (e.g. 4 × 4 min) without issues', 'A current FTP from a ramp or 20-min test (FTP ≈ 95% of 20-min average power) — or ride by RPE', 'Indoors: a fan, water, and a trainer or bike that can hold steady resistance'],
+      week: ['Mon · Off', 'Tue · VO2max 5 × 4 min (or 30/15s)', 'Wed · Easy 45–60 min, L2', 'Thu · Sweet spot or over-unders', 'Fri · Off or recovery spin', 'Sat · Long ride, L2 with tempo', 'Sun · Easy or off'],
+      progression: [
+        'Enter your FTP under “Your targets” to see watts; without a power meter, use the RPE shown on each step.',
+        'Sweet spot: 3 × 12 → 3 × 15 → 3 × 20 → 2 × 30 min.',
+        'Over-unders: 3 → 4 → 5 blocks.',
+        'VO2max: 4 × 4 → 5 × 4 → 5 × 5 min, or swap in the 30/15 session.',
+        'Long ride: +15–30 min a week. Weeks 4 and 8 are easier: about 30% less volume.',
+        'Re-test FTP every 6–8 weeks. If you can’t hold an interval’s target, lower it 2–5% rather than cutting the rep short.',
+        'Outdoors, do intervals on a safe, uninterrupted road or climb — not in traffic.',
+      ],
+      sources: ['coggan', 'ronnestad2015'],
+      sessions: [
+        { id: 'ss', name: 'Sweet Spot 3 × 15 min', type: 'indoor-cycle', anyBike: true, minutes: 80, focus: '88–94% FTP, 5 min easy between', blocks: [
+          { exId: 'bike', sets: 1, timeSec: 900, ftp: [56, 75], note: 'Warm-up' }, { exId: 'bike', sets: 3, timeSec: 900, ftp: [88, 94], note: '5 min easy between' }, { exId: 'bike', sets: 1, timeSec: 600, ftp: [40, 55], note: 'Cool-down' }],
+          plan: [warm(15), ...reps(3, { label: 'Sweet spot', sec: 900, ftp: [88, 94] }, { label: 'Easy', sec: 300, ftp: [40, 55] }), cool(10)] },
+        { id: 'ou', name: 'Over-Unders 4 × 9 min', type: 'indoor-cycle', anyBike: true, minutes: 75, focus: '3 × (2 min at 90–95% / 1 min at 105–110%) per block', blocks: [
+          { exId: 'bike', sets: 1, timeSec: 900, ftp: [56, 75], note: 'Warm-up' }, { exId: 'bike', sets: 4, timeSec: 540, ftp: [90, 110], note: 'Each block: 2 min under (90–95%) / 1 min over (105–110%) × 3 · 5 min easy between' }, { exId: 'bike', sets: 1, timeSec: 600, ftp: [40, 55], note: 'Cool-down' }],
+          plan: [warm(15), ...Array.from({ length: 4 }).flatMap((_, b): PlanStep[] => [
+            ...Array.from({ length: 3 }).flatMap((): PlanStep[] => [
+              { label: 'Under', sec: 120, kind: 'work', ftp: [90, 95], round: b + 1, of: 4 },
+              { label: 'Over', sec: 60, kind: 'work', ftp: [105, 110], round: b + 1, of: 4 }]),
+            ...(b < 3 ? [{ label: 'Easy', sec: 300, kind: 'rest' as const, ftp: [40, 55] as [number, number], round: b + 1, of: 4 }] : [])]), cool(10)] },
+        { id: 'vo2', name: 'VO2max 5 × 4 min', type: 'indoor-cycle', anyBike: true, minutes: 65, focus: '106–120% FTP, 4 min easy between', blocks: [
+          { exId: 'bike', sets: 1, timeSec: 900, ftp: [56, 75], note: 'Warm-up with 3 × 1 min builds' }, { exId: 'bike', sets: 5, timeSec: 240, ftp: [106, 120], note: '4 min easy between' }, { exId: 'bike', sets: 1, timeSec: 600, ftp: [40, 55], note: 'Cool-down' }],
+          plan: [warm(15, 'Include 3 × 1 min builds'), ...reps(5, { label: 'VO2max', sec: 240, ftp: [106, 120] }, { label: 'Easy', sec: 240, ftp: [40, 55] }), cool(10)] },
+        { id: '3015', name: 'Short Intervals 3 × 13 × 30/15', type: 'indoor-cycle', anyBike: true, minutes: 60, focus: '30 s hard / 15 s easy, 3 min between sets', blocks: [
+          { exId: 'bike', sets: 1, timeSec: 900, ftp: [56, 75], note: 'Warm-up' }, { exId: 'bike', sets: 39, timeSec: 30, rpe: 'RPE 9 · ≥106% FTP', note: '3 sets of 13 · 15 s easy between reps, 3 min between sets' }, { exId: 'bike', sets: 1, timeSec: 600, ftp: [40, 55], note: 'Cool-down' }],
+          plan: [warm(15), ...Array.from({ length: 3 }).flatMap((_, set): PlanStep[] => [
+            ...reps(13, { label: `Set ${set + 1} · Hard`, sec: 30, rpe: 'RPE 9 · hardest you can repeat for all 13' }, { label: 'Easy', sec: 15, ftp: [40, 55] }),
+            ...(set < 2 ? [{ label: 'Set rest', sec: 180, kind: 'rest' as const, ftp: [40, 55] as [number, number] }] : [])]), cool(10)] },
+        { id: 'long', name: 'Long Ride with Tempo', type: 'cycle', minutes: 210, focus: 'L2 endurance, 3 × 10 min L3 tempo in the 2nd half', blocks: [
+          { exId: 'bike', sets: 1, timeSec: 7200, ftp: [56, 75] }, { exId: 'bike', sets: 3, timeSec: 600, ftp: [76, 90], note: '5 min L2 between' }, { exId: 'bike', sets: 1, timeSec: 2700, ftp: [56, 75] }] },
+      ],
+    },
+    // ---------------------------------------------------------------- HYROX
+    {
+      id: 'hyrox-expert', name: 'Expert HYROX: Race Sharpening', discipline: 'HYROX', level: 'Expert', weeks: 8, perWeek: 5,
+      summary: 'Compromised 1 km repeats at goal race pace, heavy station work at your division standard (Open or Pro), wall-ball/lunge EMOMs and full simulations in the official order.',
+      prereqs: ['Finished a HYROX race or a full simulation at your division’s weights', 'Can run 10 km continuously and complete every station at race standard', 'Several months of HYROX-style training (e.g. HYROX Race Prep)'],
+      week: ['Mon · Station power', 'Tue · Compromised run repeats', 'Wed · Easy run 45 min (E pace)', 'Thu · Wall-ball & lunge EMOM', 'Fri · Off', 'Sat · Roxzone threshold — or a full simulation in weeks 3 and 6', 'Sun · Off'],
+      progression: [
+        'Set a goal 1 km race pace from your last sim. Holding it on tired legs is the skill — note your splits in the HYROX Sim timer.',
+        'Weeks 1–3: compromised repeats × 4 rounds, EMOM 12. Week 3: full simulation.',
+        'Weeks 4–6: × 5 rounds, EMOM 16, heavier sled work. Week 6: full simulation at race weight.',
+        'Week 7: × 6 rounds, race-pace focus.',
+        'Week 8 (race week): about half the volume, short sharp efforts, 2 easy days before the race.',
+        'Station loads follow your division (set it in Me). Pro uses heavier sleds, carries, sandbag and wall ball.',
+        'No sled? Heavy prowler or band-resisted pushes, or loaded walking lunges.',
+      ],
+      sources: ['hyrox-rulebook', 'daniels'],
+      sessions: [
+        { id: 'compromised', name: 'Compromised Run Repeats', type: 'hyrox', minutes: 60, focus: '5 × (1 km at goal pace → 500 m erg → 20 wall balls)', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Warm-up' },
+          { exId: 'run-intervals', sets: 5, distanceM: 1000, note: 'Goal HYROX 1 km pace · 90 s rest after each round' }, { exId: 'skierg', sets: 3, distanceM: 500, note: 'Rounds 1, 3, 5' }, { exId: 'row', sets: 2, distanceM: 500, note: 'Rounds 2, 4' }, { exId: 'wall-ball', sets: 5, reps: 20, note: 'Division ball & target' }],
+          pieces: Array.from({ length: 5 }).flatMap((_, i) => [`R${i + 1} · 1 km run at goal pace`, `R${i + 1} · 500 m ${i % 2 ? 'Row' : 'SkiErg'}`, `R${i + 1} · 20 wall balls`]) },
+        { id: 'power', name: 'Station Power', type: 'hyrox', minutes: 60, focus: 'Heavy sleds, carries, lunges', blocks: [
+          { exId: 'sled-push', sets: 5, distanceM: 25, note: '3 at race weight, then 2 heavier if you keep moving · 2 min rest' },
+          { exId: 'sled-pull', sets: 5, distanceM: 25, note: 'Race weight · hand-over-hand, 2 min rest' },
+          { exId: 'farmers', sets: 4, distanceM: 100, note: 'Race weight, no setting down · 90 s rest' },
+          { exId: 'sb-lunge', sets: 4, distanceM: 25, note: 'Race weight · 90 s rest' },
+          { exId: 'deadlift', sets: 4, reps: 4, rpe: 'RPE 8' }] },
+        { id: 'emom', name: 'Wall-Ball & Lunge EMOM 16', type: 'hyrox', minutes: 30, focus: 'Odd min 15 wall balls · even min 20 m sandbag lunges', blocks: [
+          { exId: 'wall-ball', sets: 8, reps: 15, note: 'Division ball & target' }, { exId: 'sb-lunge', sets: 8, distanceM: 20, note: 'Division sandbag' }],
+          plan: [warm(8, 'Easy row or SkiErg + a few practice reps'),
+            ...Array.from({ length: 16 }, (_, i): PlanStep => (i % 2 === 0
+              ? { label: 'Wall balls × 15', note: 'Division ball · rest the rest of the minute', sec: 60, kind: 'work', round: i + 1, of: 16 }
+              : { label: 'Lunges 20 m', note: 'Sandbag, knee touches each rep', sec: 60, kind: 'work', round: i + 1, of: 16 })), cool(5)] },
+        { id: 'threshold', name: 'Roxzone Threshold', type: 'hyrox', minutes: 55, focus: '3 × (2 km T-pace run → 1000 m row → 40 m burpee broad jumps)', blocks: [
+          { exId: 'run-tempo', sets: 3, distanceM: 2000, pace: 'T', note: '3 min rest after each round' }, { exId: 'row', sets: 3, distanceM: 1000 }, { exId: 'bbj', sets: 3, distanceM: 40 }],
+          pieces: Array.from({ length: 3 }).flatMap((_, i) => [`R${i + 1} · 2 km run at T pace`, `R${i + 1} · 1000 m row`, `R${i + 1} · 40 m burpee broad jumps`]) },
+        { id: 'sim', name: 'Full Simulation at Race Standard', type: 'hyrox', minutes: 90, focus: '8 × 1 km + 8 stations, official order, division weights', timer: 'hyrox', blocks: hyroxRace },
+      ],
+    },
+    // ---------------------------------------------------------------- Hybrid
+    {
+      id: 'hybrid-expert', name: 'Expert Hybrid: Heavy + Engine', discipline: 'Hybrid', level: 'Expert', weeks: 10, perWeek: 6,
+      summary: 'Concurrent training for strength and endurance: heavy lifts or weighted calisthenics, VO2max and threshold running, and a long easy run — ordered so each gets quality.',
+      prereqs: ['A year or more of consistent strength training and running, with solid technique on squat, deadlift and pull-ups', 'Comfortable running 30–40 km (20–25 mi) a week', 'Completed Hybrid Athlete Week or similar without niggles'],
+      week: ['Mon · Heavy lower', 'Tue · VO2max run intervals', 'Wed · Heavy upper / weighted calisthenics', 'Thu · Easy aerobic 50 min (run or ride)', 'Fri · Threshold brick', 'Sat · Long easy run', 'Sun · Off'],
+      progression: [
+        'Hard days hard, easy days easy: heavy legs and hard runs go on different days — or at least 6 h apart if they share a day.',
+        'Same session? Put the priority first. Easy aerobic work goes after lifting, not before.',
+        'Legs beaten up? Swap an easy run for an easy ride — in research reviews, running interfered with strength gains more than cycling did.',
+        'Strength waves: weeks 1–3 build (5 × 5 at RPE 7 → 5 × 4 at RPE 8 → 5 × 3 at RPE 8–9), week 4 deload; weeks 5–7 repeat with more load; weeks 8–9 heavy triples/doubles at RPE 8; week 10 deload.',
+        'Endurance: add about 5–10% weekly run volume in build weeks, cut about 30% in deload weeks.',
+        'Use “Your targets” for run paces. Sleep and food matter more as the weeks stack up.',
+      ],
+      sources: ['wilson2012', 'schumann2022', 'daniels', 'helms-rir'],
+      sessions: [
+        { id: 'lower', name: 'Heavy Lower', type: 'strength', minutes: 65, focus: 'Squat, deadlift, single-leg, Nordic', blocks: [
+          { exId: 'back-squat', sets: 5, reps: 3, rpe: 'RPE 8', note: '3 min rest' }, { exId: 'deadlift', sets: 3, reps: 3, rpe: 'RPE 8', note: 'Or RDL 3 × 6' },
+          { exId: 'bulgarian', sets: 3, reps: 6, note: 'per leg, loaded' }, { exId: 'nordic', sets: 3, reps: 5 }, { exId: 'hollow', sets: 3, timeSec: 40 }] },
+        { id: 'vo2', name: 'VO2max 6 × 800 m', type: 'run', minutes: 50, focus: 'I pace, 2:30 jog between', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 900, pace: 'E', note: 'Warm-up + 4 strides' }, { exId: 'run-intervals', sets: 6, distanceM: 800, pace: 'I', note: '2:30 jog between' }, { exId: 'run-easy', sets: 1, timeSec: 600, pace: 'E', note: 'Cool-down' }],
+          plan: [warm(15, 'E pace'), ...strides(4), ...runRep(6, 800, 'I', 190, 150, 'Easy jog', 'Interval'), cool(10)] },
+        { id: 'upper', name: 'Heavy Upper / Weighted Calisthenics', type: 'strength', minutes: 60, focus: 'Weighted pull-ups, dips or bench, press, carries', blocks: [
+          { exId: 'weighted-pull-up', sets: 5, reps: 4, rpe: 'RPE 8' }, { exId: 'weighted-dip', sets: 5, reps: 5, rpe: 'RPE 8', note: 'Or bench press 5 × 4' },
+          { exId: 'ohp', sets: 3, reps: 6, rpe: 'RPE 7–8' }, { exId: 'farmers', sets: 4, distanceM: 40, note: 'Heavy' }, { exId: 't2b', sets: 3, reps: 10 }] },
+        { id: 'aerobic', name: 'Easy Aerobic 50 min', type: 'run', minutes: 50, focus: 'E pace run — or an L2 ride if legs are heavy', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 3000, pace: 'E' }] },
+        { id: 'brick', name: 'Threshold Brick', type: 'hybrid', minutes: 50, focus: '3 × (1600 m T pace → 20 wall balls → 15 KB swings)', blocks: [
+          { exId: 'run-tempo', sets: 3, distanceM: 1600, pace: 'T', note: '2 min rest after each round' }, { exId: 'wall-ball', sets: 3, reps: 20 }, { exId: 'kb-swing', sets: 3, reps: 15 }],
+          pieces: Array.from({ length: 3 }).flatMap((_, i) => [`R${i + 1} · 1600 m run at T pace`, `R${i + 1} · 20 wall balls`, `R${i + 1} · 15 kettlebell swings`]) },
+        { id: 'long', name: 'Long Easy Run', type: 'run', minutes: 90, focus: 'E pace; last 15 min at M pace in weeks 6–9', blocks: [
+          { exId: 'run-easy', sets: 1, timeSec: 4500, pace: 'E' }, { exId: 'run-tempo', sets: 1, timeSec: 900, pace: 'M', note: 'Weeks 6–9 only' }] },
+      ],
+    },
+  ];
+}

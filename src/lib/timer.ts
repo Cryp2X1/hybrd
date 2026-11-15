@@ -31,7 +31,7 @@ export function useClock(key: string) {
   };
 }
 
-export interface Phase { label: string; sec: number; kind: 'prep' | 'work' | 'rest'; round?: number; of?: number }
+export interface Phase { label: string; sec: number; kind: 'prep' | 'work' | 'rest'; round?: number; of?: number; note?: string }
 export function useSequence(key: string, phases: Phase[], opts: { countIn?: boolean } = {}) {
   const [c, setC] = usePersisted<ClockState & { sig: string; rounds: number }>(key, () => ({ ...idle(), sig: '', rounds: 0 }));
   const sig = phases.map((p) => `${p.kind}${p.sec}`).join('|');
