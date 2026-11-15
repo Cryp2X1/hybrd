@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../lib/store';
-import { daySteps, stepGoalOf, stepKcal, todayKey, prettyDay } from '../lib/calc';
+import { daySteps, stepGoalOf, todayKey, prettyDay } from '../lib/calc';
+import { kcalPerStep, stepBurnKcal, stepBurnSteps } from '../lib/burn';
 import type { StepDay } from '../lib/types';
 import { Card, Segmented } from './ui';
 import { ScoreRing } from './charts';
@@ -17,7 +18,7 @@ export function StepsCard({ date = todayKey(), compact = false }: { date?: strin
   const [mode, setMode] = useState<'add' | 'set'>(ds.mode === 'set' ? 'set' : 'add');
   const [open, setOpen] = useState(!compact);
   const pct = Math.min(100, Math.round((ds.total / goal) * 100));
-  const kcal = stepKcal(ds.outside, profile.weightKg);
+  const kcal = stepBurnKcal(stepBurnSteps(data, date, profile).outside, profile);
   const recs = data.steps.filter((s) => s.date === date);
   const save = () => {
     const v = Math.round(parseFloat(val.replace(/[^\d.]/g, '')) || 0);
@@ -55,7 +56,7 @@ export function StepsCard({ date = todayKey(), compact = false }: { date?: strin
           {recs.length > 0 && <> <button className="link" onClick={clear}>Clear typed steps</button></>}
         </p>
       </>}
-      <p className="muted small" style={{ margin: '8px 0 0' }}>Calories from steps are an estimate (≈0.04 kcal per step × your weight / 70 kg), only for steps outside recorded workouts.</p>
+      <p className="muted small" style={{ margin: '8px 0 0' }}>Calories from steps are an estimate (≈{kcalPerStep(profile).toFixed(3)} kcal per step from your weight and step length), only for steps outside recorded workouts. <Link className="link" to="/burn">Calories burned →</Link></p>
     </Card>
   );
 }

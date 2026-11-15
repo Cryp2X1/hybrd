@@ -283,7 +283,7 @@ export const stepGoalOf = (p: Pick<Profile, 'stepGoal'>) => (p.stepGoal && p.ste
 /** Step length in metres: user-set, or the common height rule of thumb (walk ≈ 0.415 × height, run ≈ 0.65 × height). */
 export const strideM = (p: Pick<Profile, 'heightCm' | 'strideCm'>, type: 'run' | 'walk' | 'cycle') =>
   p.strideCm && p.strideCm > 20 ? (p.strideCm * (type === 'run' ? 0.65 / 0.415 : 1)) / 100 : (p.heightCm * (type === 'run' ? 0.65 : 0.415)) / 100;
-/** ≈0.04 kcal per step for a 70 kg adult, scaled by body weight (estimate; see Sources). */
+/** Legacy gross rule of thumb (≈0.04 kcal/step at 70 kg). The app now uses burn.ts kcalPerStep (ACSM, net of resting). */
 export const KCAL_PER_STEP_70KG = 0.04;
 export const stepKcal = (steps: number, weightKg: number) => Math.round(KCAL_PER_STEP_70KG * steps * (weightKg / 70));
 export interface DaySteps { total: number; activity: number; manual: number; mode: 'add' | 'set' | 'none'; outside: number }
@@ -298,12 +298,7 @@ export function daySteps(d: Pick<DataState, 'workouts' | 'steps'>, key: string):
 }
 /** Calories from steps taken outside recorded activities (those already have their own MET estimate). */
 export const dayStepKcal = (d: Pick<DataState, 'workouts' | 'steps'>, key: string, weightKg: number) => stepKcal(daySteps(d, key).outside, weightKg);
-/** kcal burned estimate for a day: recorded workouts (MET) + steps outside them. */
-export function dayBurned(d: DataState, key: string, weightKg: number) {
-  const work = d.workouts.filter((w) => dayKeyOf(w.date) === key).reduce((a, w) => a + (w.kcal ?? estKcal(w, weightKg)), 0);
-  const steps = dayStepKcal(d, key, weightKg);
-  return { total: work + steps, workouts: work, steps };
-}
+/** Day-level calories burned (resting, active, total) live in burn.ts. */
 export function stepDayKeys(d: Pick<DataState, 'workouts' | 'steps'>) {
   const s = new Set<string>();
   for (const r of d.steps || []) s.add(r.date);

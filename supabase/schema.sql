@@ -15,7 +15,7 @@ create table if not exists public.profiles (
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs'] loop
     execute format($f$
       create table if not exists public.%1$I (
         id          text not null,
@@ -41,6 +41,7 @@ alter table public.water_logs enable row level security;
 alter table public.body_logs  enable row level security;
 alter table public.templates  enable row level security;
 alter table public.step_logs  enable row level security;
+alter table public.burn_logs  enable row level security; -- manual calories-burned entries (Burn tracker)
 
 -- profiles: you can only see / change your own row
 drop policy if exists "profiles_select_own" on public.profiles;
@@ -56,7 +57,7 @@ create policy "profiles_delete_own" on public.profiles for delete to authenticat
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs'] loop
     execute format('drop policy if exists "%1$s_select_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_insert_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_update_own" on public.%1$I', t);
@@ -69,8 +70,8 @@ begin
 end $$;
 
 -- Anonymous (signed-out) visitors get nothing: no policies exist for the anon role.
-revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs from anon;
-grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs to authenticated;
+revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs from anon;
+grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs to authenticated;
 
 -- Create an empty profile row automatically when someone signs up.
 create or replace function public.handle_new_user()
@@ -84,4 +85,4 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
 
 -- Check: every HYBRD table should show rowsecurity = true
 select tablename, rowsecurity from pg_tables where schemaname = 'public'
-  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs');
+  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs');

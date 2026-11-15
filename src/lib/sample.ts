@@ -1,4 +1,4 @@
-import type { BodyLog, DataState, FoodEntry, GpsRoute, RoutePoint, StepDay, WaterDay, Workout } from './types';
+import type { BodyLog, BurnEntry, DataState, FoodEntry, GpsRoute, RoutePoint, StepDay, WaterDay, Workout } from './types';
 import { addDays, dayKeyOf, estKcal, haversine, splitsFromTrack, todayKey } from './calc';
 import recipes from '../data/recipes.json';
 
@@ -119,5 +119,10 @@ export function buildSample(weightKg: number, center: [number, number]): Partial
     const base = 6200 + (Math.abs(off * 7919) % 5) * 1100 + (Math.abs(off * 31) % 3) * 450 + (off === -12 ? 5400 : 0);
     steps.push({ id: `${SAMPLE_TAG}-steps-${day}`, updatedAt: Date.now(), date: day, steps: Math.max(base, act + 2400), mode: 'set', sample: true });
   }
-  return { workouts, routes, foods, water, body, steps };
+  // A couple of activities HYBRD didn't record, added by hand on the Burn page (MET estimates)
+  const burns: BurnEntry[] = [
+    { id: `${SAMPLE_TAG}-burn-yoga`, updatedAt: Date.now(), sample: true, date: addDays(today, -2), activity: 'yoga', label: 'Yoga', minutes: 45, met: 2.5, kcal: Math.round(2.5 * weightKg * 0.75), method: 'met' },
+    { id: `${SAMPLE_TAG}-burn-swim`, updatedAt: Date.now(), sample: true, date: addDays(today, -5), activity: 'swim', label: 'Swimming', minutes: 30, met: 5.8, kcal: Math.round(5.8 * weightKg * 0.5), method: 'met' },
+  ];
+  return { workouts, routes, foods, water, body, steps, burns };
 }

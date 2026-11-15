@@ -23,6 +23,7 @@ const AddFood = lazy(() => import('./pages/AddFood'));
 const RecipeDetail = lazy(() => import('./pages/RecipeDetail'));
 const Calculator = lazy(() => import('./pages/Calculator'));
 const Progress = lazy(() => import('./pages/Progress'));
+const Burn = lazy(() => import('./pages/Burn'));
 const Me = lazy(() => import('./pages/Me'));
 const Auth = lazy(() => import('./pages/Auth'));
 const Account = lazy(() => import('./pages/Account'));
@@ -36,6 +37,7 @@ const NAV = [
   { to: '/record', icon: 'record', label: 'Record' },
   { to: '/timers', icon: 'timer', label: 'Timers' },
   { to: '/fuel', icon: 'fuel', label: 'Fuel' },
+  { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
   { to: '/me', icon: 'me', label: 'Me' },
 ];
@@ -97,6 +99,7 @@ export function App() {
             <Route path="/fuel/recipe/:id" element={<RecipeDetail />} />
             <Route path="/fuel/calculator" element={<Calculator />} />
             <Route path="/progress" element={<Progress />} />
+            <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />
             <Route path="/me/account" element={<Account />} />
             <Route path="/me/data" element={<DataPage />} />

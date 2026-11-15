@@ -5,6 +5,8 @@ import { Page, Card, Segmented, Empty } from '../components/ui';
 import { BarChart, LineChart } from '../components/charts';
 import { Icon } from '../components/Icon';
 import type { BodyLog } from '../lib/types';
+import { Link } from 'react-router-dom';
+import { burnGoalOf, rangeBurn } from '../lib/burn';
 
 export default function Progress() {
   const { data, profile, upsert, setProfile } = useStore();
@@ -29,6 +31,8 @@ export default function Progress() {
   const scoreTrend = useMemo(() => Array.from({ length: 28 }, (_, i) => { const d = addDays(today, i - 27); return { label: new Date(d + 'T12:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), value: hybridScore(data, profile, d).score }; }), [data, profile, today]);
   const t = computeTargets(profile);
   const kcal14 = Array.from({ length: 14 }, (_, i) => { const d = addDays(today, i - 13); return { label: new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'narrow' }), value: Math.round(dayTotals(data.foods, d).kcal) }; });
+  const burnGoal = burnGoalOf(profile);
+  const burn14 = useMemo(() => rangeBurn(data, profile, today, 14), [data, profile, today]);
   const body = [...data.body].sort((a, b) => a.date.localeCompare(b.date)).slice(-20);
   const prs = personalRecords(prRange === '8w' ? { ...data, workouts: data.workouts.filter((w) => dayKeyOf(w.date) >= addDays(today, -56)) } : data, u, wU);
   const total = data.workouts.filter((w) => w.type !== 'rest');
@@ -58,6 +62,11 @@ export default function Progress() {
           </Card>
           <Card><div className="card-head"><h3>Training minutes / week</h3></div><BarChart data={wk.map((w) => ({ label: w.label, value: Math.round(w.min) }))} unit=" min" /></Card>
           <Card><div className="card-head"><h3>Distance / week</h3></div><BarChart data={wk.map((w) => ({ label: w.label, value: +toDist(w.dist, u).toFixed(1) }))} unit={` ${distUnit(u)}`} /></Card>
+          <Card>
+            <div className="card-head"><h3>Active calories burned · 14 days</h3><Link className="link" to="/burn?view=week">Burn →</Link></div>
+            <BarChart data={burn14.days.map((x) => ({ label: new Date(x.date + 'T12:00').toLocaleDateString(undefined, { weekday: 'narrow' }), value: x.active }))} goal={burnGoal} unit=" kcal" />
+            <p className="muted small" style={{ margin: '10px 0 0' }}>Estimates · avg {burn14.avgActive.toLocaleString()} active kcal/day · {burn14.goalDays}/14 days hit your {burnGoal}-kcal goal (dashed line).</p>
+          </Card>
           <Card><div className="card-head"><h3>Calories eaten · 14 days</h3><span className="muted small">target {t.kcal}</span></div><BarChart data={kcal14} /></Card>
         </div>
         <div>

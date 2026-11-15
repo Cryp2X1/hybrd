@@ -466,3 +466,36 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .lap-list > div > span:first-child { flex: 1; min-width: 0; }
 .lap-list > div > span:not(:first-child) { flex: none; font-variant-numeric: tabular-nums; }
 .food-row .fr-k { text-align: right; }
+
+/* ---------- Burn (calories burned) ---------- */
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.burn-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.burn-bar .seg { flex: 1; margin-bottom: 0; min-width: 210px; }
+.burn-mode { flex: none; }
+.burn-hero .pillars { gap: 10px; }
+.burn-comp { display: flex; height: 12px; border-radius: 99px; overflow: hidden; gap: 2px; background: #1b1b1b; margin: 12px 0 8px; }
+.burn-comp > div { min-width: 3px; }
+.burn-parts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.burn-parts > div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+.burn-parts > div span { color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burn-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--mut); margin-top: 8px; }
+.burn-chart .chart-labels span.y { color: var(--y); font-weight: 700; }
+.burn-row { width: 100%; text-align: left; }
+.burn-row .row-ic { width: 34px; height: 34px; border-radius: 10px; background: var(--card2); display: grid; place-items: center; flex: none; color: var(--y); }
+.burn-row .fr-k small { font-size: 11px; }
+.burn-row .fr-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.burn-type { margin-bottom: 12px; }
+.burn-type:last-child { margin-bottom: 0; }
+.burn-est { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; background: var(--card2); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+.burn-est-v { font-family: var(--head); font-size: 34px; line-height: 1.05; color: var(--y); }
+.burn-est-v small { font-family: var(--body); font-size: 13px; color: var(--mut); }
+.burn-info h3 { margin: 18px 0 6px; font-size: 18px; }
+.burn-info p { margin: 0 0 8px; }
+.burn-goal .grid3 .stat-v { font-size: 26px; }
+@media (max-width: 480px) {
+  .burn-parts { grid-template-columns: 1fr; }
+  .burn-est { grid-template-columns: 1fr; }
+  .burn-hero .score-ring { margin: 0 auto; }
+}
+.burn-mode button { text-transform: none; font-family: var(--body); }
+@media (max-width: 480px) { .burn-stats { grid-template-columns: 1fr 1fr; } }

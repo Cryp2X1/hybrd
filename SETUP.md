@@ -19,7 +19,7 @@ Assumed public URL: `https://cryp2x1.github.io/hybrd/`
 1. Left sidebar → **SQL Editor** → **New query**.
 2. Open `supabase/schema.sql` from this folder, copy everything, paste it into the editor.
 3. Click **Run**. You should see "Success". The final result grid lists 8 tables, each with `rowsecurity = true`.
-   - Tables: `profiles`, `workouts`, `gps_routes`, `food_logs`, `water_logs`, `body_logs`, `templates`, `step_logs`. (Already ran an older version? Just run the file again — it is safe to re-run and adds `step_logs`.)
+   - Tables: `profiles`, `workouts`, `gps_routes`, `food_logs`, `water_logs`, `body_logs`, `templates`, `step_logs`, `burn_logs`. (Already ran an older version? Just run the file again — it is safe to re-run and adds `step_logs` and `burn_logs`, the table for manual calories-burned entries.)
    - Every table has RLS on; each user can only read/write their own rows. The `anon` role has no table access.
 
 ## 3. Set the redirect URLs (needed for confirm / reset / change-email links)

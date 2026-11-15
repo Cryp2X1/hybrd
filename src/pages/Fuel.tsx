@@ -4,7 +4,8 @@ import { RECIPES } from '../data/recipes';
 import { GUIDE } from '../data/guide';
 import { SOURCES, sourceById } from '../data/sources';
 import { useStore } from '../lib/store';
-import { addDays, computeTargets, dayTotals, prettyDay, todayKey, dayBurned } from '../lib/calc';
+import { addDays, computeTargets, dayTotals, prettyDay, todayKey } from '../lib/calc';
+import { dayBurn } from '../lib/burn';
 import { StepsCard } from '../components/StepsCard';
 import { Page, Segmented, Card, Banner, Pill, Disclaimer } from '../components/ui';
 import { MacroBar, ScoreRing } from '../components/charts';
@@ -22,8 +23,8 @@ export default function Fuel() {
   const { data, profile, upsert, remove } = useStore();
   const t = computeTargets(profile);
   const tot = dayTotals(data.foods, day);
-  const burnedParts = dayBurned(data, day, profile.weightKg);
-  const burned = burnedParts.total;
+  const burnedParts = dayBurn(data, day, profile);
+  const burned = burnedParts.active;
   const water = data.water.find((w) => w.date === day);
   const ml = water?.ml || 0;
   const setWater = (v: number) => upsert<WaterDay>('water', { id: day, date: day, ml: Math.max(0, v) });
@@ -50,7 +51,7 @@ export default function Fuel() {
                 <MacroBar label="Fat" value={tot.fat} target={t.fat} color="#fb923c" />
               </div>
             </div>
-            <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>Burned today ≈ {burnedParts.workouts} kcal from workouts + {burnedParts.steps} kcal from steps outside them (estimates). Exercise calories are MET-based estimates; many people eat back only part of them. <Link className="link" to="/fuel/calculator">Adjust targets</Link></p>
+            <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>Active burn ≈ {burnedParts.workouts} kcal from workouts + {burnedParts.steps} kcal from steps outside them{burnedParts.manual ? ` + ${burnedParts.manual} kcal added by hand` : ''} (estimates). Your target already covers resting burn, so only active calories are added here; many people eat back only part of them. <Link className="link" to={`/burn?date=${day}`}>Calories burned</Link> · <Link className="link" to="/fuel/calculator">Adjust targets</Link></p>
           </Card>
           <StepsCard key={day} date={day} compact />
           {MEALS.map((m) => {

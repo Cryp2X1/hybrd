@@ -21,6 +21,7 @@ export interface Profile {
   targets?: { kcal?: number; protein?: number; carbs?: number; fat?: number; waterMl?: number };
   hyroxDivision?: 'women-open' | 'men-open' | 'women-pro' | 'men-pro';
   stepGoal?: number; // default 10,000
+  burnGoal?: number; // daily ACTIVE kcal goal (Burn tracker), default 500
   strideCm?: number; // user-set step length; otherwise estimated from height
   sound?: boolean;
   voice?: boolean;
@@ -91,6 +92,17 @@ export interface WaterDay extends Rec { date: string; ml: number; sample?: boole
 export interface BodyLog extends Rec { date: string; weightKg: number }
 /** Steps typed in for a day. mode 'add' = on top of in-app activity steps; 'set' = the full-day total (e.g. from the phone's Health app). */
 export interface StepDay extends Rec { date: string; steps: number; mode: 'add' | 'set'; sample?: boolean }
+/** Calories burned typed in by hand for an activity HYBRD didn't record (Burn tracker). Not a workout: it doesn't touch the Hybrid Score. */
+export interface BurnEntry extends Rec {
+  date: string; // YYYY-MM-DD (local day)
+  activity: string; // key in BURN_ACTIVITIES, or 'other'
+  label: string; // shown name, e.g. "Swimming" or the user's own text
+  minutes: number;
+  kcal: number; // what counts (the MET estimate or the user's override)
+  met?: number; // MET used for the estimate
+  method: 'met' | 'manual';
+  sample?: boolean;
+}
 export interface Template extends Rec { name: string; type: WorkoutType; exercises: ExerciseEntry[]; notes?: string }
 
 export interface DataState {
@@ -101,6 +113,7 @@ export interface DataState {
   body: BodyLog[];
   templates: Template[];
   steps: StepDay[];
+  burns: BurnEntry[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns'];

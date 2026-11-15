@@ -28,7 +28,7 @@ export default function Help() {
           <li>The sensor only works <b>while HYBRD is open and the screen is on</b>. Browsers pause motion and GPS when the screen locks or you switch apps, so steps taken then aren’t counted.</li>
           <li>If motion access is denied or the browser has no sensor (most laptops), steps are <b>estimated</b> from GPS distance ÷ your step length and marked “est.”. Set your step length in Me › Units & goals for better estimates.</li>
           <li><b>The web can’t read Apple Health or Google Fit.</b> For all-day steps, open the Health / Fit app, copy today’s number and use <b>Set day total</b> on the Steps card. In-app walks and runs are already inside that number, so nothing is counted twice. Use <b>Add to today</b> only for steps your phone didn’t see.</li>
-          <li>Calories from steps (≈0.04 kcal per step × weight / 70 kg) are an estimate and only count steps outside recorded workouts, which already have their own estimate.</li>
+          <li>Calories from steps (≈0.0005 × body weight in kg × step length in m per step, from the ACSM walking equation) are an estimate and only count steps outside recorded workouts, which already have their own estimate. The full method is in Burn › How it’s estimated.</li>
         </ul>
       </Card>
       <Card>

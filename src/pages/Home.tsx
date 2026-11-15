@@ -1,7 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore, uid } from '../lib/store';
-import { addDays, computeTargets, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu, dayBurned } from '../lib/calc';
+import { addDays, computeTargets, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu } from '../lib/calc';
+import { dayBurn } from '../lib/burn';
+import { BurnRingCard } from '../components/BurnRing';
 import { PillarBar, ScoreRing, MacroBar } from '../components/charts';
 import { StepsCard } from '../components/StepsCard';
 import { Card, RowLink, Banner } from '../components/ui';
@@ -34,7 +36,7 @@ export default function Home() {
   const t = computeTargets(profile);
   const tot = dayTotals(data.foods, today);
   const water = data.water.find((w) => w.date === today)?.ml || 0;
-  const burned = dayBurned(data, today, profile.weightKg).total;
+  const burned = dayBurn(data, today, profile).active;
   const recent = [...data.workouts].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
   const prs = personalRecords(data, profile.units, wu(profile)).slice(0, 3);
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
@@ -85,12 +87,14 @@ export default function Home() {
             <div className="grid3" style={{ marginBottom: 12 }}>
               <div className="stat accent"><div className="stat-v">{Math.max(0, t.kcal - tot.kcal + burned)}</div><div className="stat-l">kcal left (est.)</div></div>
               <div className="stat"><div className="stat-v">{Math.round(tot.kcal)}</div><div className="stat-l">eaten</div></div>
-              <div className="stat"><div className="stat-v">{burned}</div><div className="stat-l">burned est.</div></div>
+              <div className="stat"><div className="stat-v">{burned}</div><div className="stat-l">active burn est.</div></div>
             </div>
             <MacroBar label="Protein" value={tot.protein} target={t.protein} />
             <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="#f4f4f4" />
             <MacroBar label="Water" value={water / 1000} target={t.waterMl / 1000} unit=" L" color="#60a5fa" />
           </Card>
+
+          <BurnRingCard />
 
           <StepsCard compact />
 
