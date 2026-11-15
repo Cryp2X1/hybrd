@@ -1,1 +1,0 @@
-import{t as e}from"./recipes-C_i9qWv3.js";var t=e,n=e=>t.find(t=>t.id===e);export{n,t};
