@@ -51,6 +51,9 @@ const P: Record<string, string> = {
   speaker: 'M6 2h12v20H6zM12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 7h.01',
   refresh: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
   external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
+  coach: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.2 7.8l-2.6 5.8-5.8 2.6 2.6-5.8z',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+  swap: 'M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7',
 };
 export function Icon({ name, size = 22, stroke = 2, className, fill }: { name: string; size?: number; stroke?: number; className?: string; fill?: boolean }) {
   return (

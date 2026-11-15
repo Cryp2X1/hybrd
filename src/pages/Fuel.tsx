@@ -12,6 +12,7 @@ import { StepsCard } from '../components/StepsCard';
 import { Page, Segmented, Card, Banner, Pill, Disclaimer } from '../components/ui';
 import { MacroBar, ScoreRing } from '../components/charts';
 import { Icon } from '../components/Icon';
+import { CoachCard } from '../components/CoachCard';
 import type { FoodEntry, WaterDay } from '../lib/types';
 
 const RCATS = [{ v: 'all', label: 'All' }, { v: 'pre', label: 'Pre-workout' }, { v: 'post', label: 'Recovery' }, { v: 'protein', label: 'High protein' }, { v: 'drink', label: 'Drinks & hydration' }, { v: 'fuel', label: 'Endurance fuel' }, { v: 'budget', label: 'Budget' }, { v: 'plan', label: 'Weight-loss meals' }];
@@ -38,6 +39,7 @@ export default function Fuel() {
     <Page title="Fuel" kicker="Calories · Macros · Water · Recipes" wide actions={<Link className="btn sm y" to={`/fuel/add?date=${day}`}><Icon name="plus" size={18} />Food</Link>}>
       <Segmented value={tab} onChange={(v) => (v === 'wl' ? nav('/fuel/weight-loss') : setSp({ tab: v }))} options={[{ v: 'today', label: 'Food log' }, { v: 'wl', label: 'Weight loss' }, { v: 'recipes', label: 'Meals & drinks' }, { v: 'guide', label: 'Guide' }, { v: 'sources', label: 'Sources' }]} />
 
+      {tab === 'today' && <CoachCard where="fuel" />}
       {tab === 'today' && <div className="desk-grid">
         <div>
           <div className="row" style={{ marginBottom: 12 }}>

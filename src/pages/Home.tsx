@@ -5,6 +5,8 @@ import { addDays, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridSc
 import { dayBurn } from '../lib/burn';
 import { BurnRingCard } from '../components/BurnRing';
 import { WLCard } from '../components/WLCard';
+import { CoachCard } from '../components/CoachCard';
+import { activeCoachPlan } from '../lib/coach';
 import { fuelTargets } from '../lib/fuelTargets';
 import { PillarBar, ScoreRing, MacroBar } from '../components/charts';
 import { StepsCard } from '../components/StepsCard';
@@ -58,6 +60,8 @@ export default function Home() {
 
       {rec.status !== 'idle' && <Banner tone="yellow"><b>{rec.status === 'recording' ? 'Recording' : 'Paused'} {activityLabel(rec)}</b> · {fmtTime(elapsedMs(rec) / 1000)} · {fmtDist(rec.distanceM, profile.units)} — <Link to="/record">open</Link></Banner>}
 
+      {(!!activeCoachPlan(data.coachplans) || !profile.coachDismissed) && <CoachCard where="home" />}
+
       <div className="desk-grid">
         <div>
           <Card className="hero click" onClick={() => nav('/score')}>
@@ -81,6 +85,7 @@ export default function Home() {
             {!st.doneToday && <div className="row" style={{ marginTop: 12 }}><button className="btn sm y" onClick={() => nav('/train/log')}>Train today</button><button className="btn sm" onClick={logRest}>Log a rest day</button><span className="muted small">Rest days keep the streak.</span></div>}
             {st.doneToday && <p className="muted small" style={{ marginTop: 10, marginBottom: 0 }}>Today’s done. Missed days don’t erase the work — just start again tomorrow.</p>}
           </Card>
+          {!activeCoachPlan(data.coachplans) && profile.coachDismissed && <CoachCard where="home" />}
         </div>
 
         <div>

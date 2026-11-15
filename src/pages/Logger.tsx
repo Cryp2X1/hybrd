@@ -4,6 +4,7 @@ import { HrButton, HrLive } from '../components/HeartRate';
 import { MusicButton } from '../components/Music';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { programById } from '../data/programs';
+import { activeCoachPlan, materialize } from '../lib/coach';
 import { EXERCISES, exById, type Metric } from '../data/exercises';
 import { useStore, uid } from '../lib/store';
 import { estKcal, fmtTime, fromW, toW, wUnit, WORKOUT_TYPES, wu, toShort, fromShort } from '../lib/calc';
@@ -30,12 +31,20 @@ export default function Logger() {
 
   const initial = useMemo<Draft>(() => {
     const saved = localStorage.getItem(KEY);
-    const pid = sp.get('program'), sid = sp.get('session'), tid = sp.get('template'), exq = sp.get('ex');
-    if (saved && !pid && !tid && !exq) { try { return JSON.parse(saved); } catch { /* ignore */ } }
+    const pid = sp.get('program'), sid = sp.get('session'), tid = sp.get('template'), exq = sp.get('ex'), cid = sp.get('coach');
+    if (saved && !pid && !tid && !exq && !cid) { try { return JSON.parse(saved); } catch { /* ignore */ } }
     const base: Draft = { startedAt: Date.now(), title: 'Workout', type: (sp.get('type') as WorkoutType) || 'strength', exercises: [], rpe: 7, notes: '' };
     if (pid && sid) {
       const p = programById(pid), s = p?.sessions.find((x) => x.id === sid);
       if (p && s) return { ...base, title: s.name, type: s.type, source: `program:${p.id}:${s.id}`, exercises: s.blocks.map((b) => ({ exId: b.exId, name: exById(b.exId)?.name || b.exId, note: b.note, sets: Array.from({ length: b.sets }, () => ({ reps: b.reps, timeSec: b.timeSec, distanceM: b.distanceM })) })) };
+    }
+    if (cid) {
+      // HYBRD Coach session: blocks already include the user's swaps, minutes and this week's progression
+      const plan = data.coachplans.find((x) => x.id === cid) || activeCoachPlan(data.coachplans);
+      const w = +(sp.get('w') || 0), wd = +(sp.get('d') || 0);
+      const slotId = plan?.weeks[w]?.layout[wd];
+      const cs = plan && slotId ? materialize(plan, w, slotId) : null;
+      if (plan && cs) return { ...base, title: cs.name, type: cs.type, source: `coach:${plan.id}:${w}:${wd}`, exercises: cs.blocks.map((b) => ({ exId: b.exId, name: exById(b.exId)?.name || b.exId, note: [b.note, b.rpe, b.swappedFrom ? `instead of ${exById(b.swappedFrom)?.name || b.swappedFrom}` : ''].filter(Boolean).join(' · ') || undefined, sets: Array.from({ length: b.sets }, () => ({ reps: b.reps, timeSec: b.timeSec, distanceM: b.distanceM })) })) };
     }
     if (tid) { const t = data.templates.find((x) => x.id === tid); if (t) return { ...base, title: t.name, type: t.type, source: `template:${t.id}`, exercises: t.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s, done: false })) })) }; }
     if (exq) { const e = exById(exq); if (e) return { ...base, title: e.name, type: e.cat === 'cardio' ? 'cardio' : e.cat === 'hyrox' ? 'hyrox' : e.cat === 'calisthenics' || e.cat === 'core' ? 'calisthenics' : 'strength', exercises: [{ exId: e.id, name: e.name, sets: [{}, {}, {}] }] }; }

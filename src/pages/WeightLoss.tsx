@@ -40,11 +40,11 @@ export const RESEARCH: { title: string; body: string; src: string[] }[] = [
 ];
 export const RESEARCH_IDS = Array.from(new Set(RESEARCH.flatMap((r) => r.src)));
 
-function SrcPills({ ids }: { ids: string[] }) {
+export function SrcPills({ ids }: { ids: string[] }) {
   return <div className="tag-row" style={{ marginTop: 10 }}>{ids.map((s) => { const x = sourceById(s); return x ? <a key={s} className="pill yellow" href={x.url} target="_blank" rel="noopener">{x.cite.split(/[.,]/)[0]}…</a> : null; })}</div>;
 }
 
-function Macros({ t, small }: { t: { kcal: number; protein: number; carbs: number; fat: number }; small?: boolean }) {
+export function Macros({ t, small }: { t: { kcal: number; protein: number; carbs: number; fat: number }; small?: boolean }) {
   return <div className={`wl-macros ${small ? 'sm' : ''}`}><span><b>{r0(t.kcal)}</b> kcal</span><span><b>{r0(t.protein)}</b>g P</span><span><b>{r0(t.carbs)}</b>g C</span><span><b>{r0(t.fat)}</b>g F</span></div>;
 }
 
@@ -57,7 +57,7 @@ function Research() {
   </div>;
 }
 
-function MealRow({ m, onLog, onSwap, logged }: { m: PlanMeal; onLog?: () => void; onSwap?: () => void; logged?: boolean }) {
+export function MealRow({ m, onLog, onSwap, logged }: { m: PlanMeal; onLog?: () => void; onSwap?: () => void; logged?: boolean }) {
   const r = recipe(m.recipeId);
   const mm = mealMacro(CATALOG, m);
   return <div className="wl-meal">

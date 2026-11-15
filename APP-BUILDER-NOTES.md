@@ -297,3 +297,20 @@ Email templates that change password or email must use a `redirectTo` that is on
 - Collection `wlplans` → table `wl_plans`; weigh-ins reuse `body`. Newest non-deleted plan is active.
 - Safety levels: stop (under 18, pregnant, breastfeeding, ED history) / maintain (BMI < 18.5) / gentle (diabetes, medical, BMI < 20). Suggestions never auto-apply.
 - Tests `tools/test-wl.ts`; screenshots `tools/shoot-wl.mjs`. Routes `fuel/weight-loss(/setup)` are in `tools/postbuild.mjs`.
+
+
+## HYBRD Coach (`/coach`)
+
+- Files: `src/lib/coach.ts` (pure, deterministic generator + check-in rules + "why"), `src/pages/CoachSetup.tsx` (intake), `src/pages/Coach.tsx` (plan / weeks / food / why / check-in), `src/components/CoachCard.tsx` (Home, Train, Fuel), `src/lib/entitlements.ts`. Logger accepts `?coach=<planId>&w=<week>&d=<weekday>` and saves with source `coach:<id>:<w>:<wd>`.
+- Not AI: no model, no server, no API cost. Same answers + seed → same plan. UI copy says "rule-based planner … not AI, and not medical advice".
+- Storage: collection `coachplans` → table `coach_plans` (same row shape and RLS as the other tables; `supabase/schema.sql` is idempotent). Newest non-deleted plan is active. The plan stores slots + per-week layout/volume/adjustment; sessions are materialized on the fly, so edits, check-ins and pain swaps stay consistent.
+- Level rules: strength Expert = 30+ push-ups, 12+ pull-ups and 1+ year; Intermediate = 12+ push-ups and 3+ pull-ups (or 20+ push-ups with no bar). Endurance Expert = 10K with 5K ≤ 25 min and 1+ year; Intermediate = 5K/10K (5K < 35 min) or a mile ≤ 9 min. Caps: new → Beginner; pregnant → Beginner; injury, medical/diabetes or under 18 → Intermediate. Goal picks which level drives the plan; HYROX/brick/HIIT use the lower of the two.
+- Swaps: equipment needs per exercise (gym implies bar/dumbbells/bike/treadmill); injury avoid-lists per area; ordered alternatives searched breadth-first, then a safe category fallback; regressions for < 5 push-ups (incline) and 0 pull-ups (Australian rows). Knee issues turn runs into rides/walks except for run-race goals (unless pain is reported in a check-in).
+- Schedule: days spread so hard sessions are never back to back (when possible), strength never the day before quality/long work, long session last; volume 1 → 1.05 → 1.1 → 0.7 (deload) and repeats; races of 6+ weeks end with a taper; HYROX race plans place a sim in the last build week of each block. Minutes are a hard cap.
+- Check-ins (applied to next week, logged in the changelog): sharp or repeat pain → deload + see a physio/doctor; any pain → swaps for that area + hold; too hard with low energy / high soreness / < 50% done → ~25% lighter; too hard or < 50% done → hold (twice → suggest fewer days); too easy with ≥ 75% done → +5%, twice in a row → next level.
+- Nutrition: reuses `wl.ts` (screen, computeWL, buildWeek, exclusions). Fat loss → WL targets; muscle → maintenance + 250 kcal (+150 Expert, none if BMI ≥ 30); otherwise maintenance. Under 18 / pregnancy / breastfeeding / eating disorder → no calorie numbers. PAR-Q positive → no plan at all. Fuel target precedence: weight-loss plan → coach plan (if "Use in Fuel") → profile.
+
+### Premium later (not built — everything is free now)
+
+- `src/lib/entitlements.ts` lists every coach feature (`coach.plan`, `coach.regenerate`, `coach.edit`, `coach.checkin`, `coach.nutrition`, `coach.mealplan`, `coach.why`) with `free: true`, and the UI already asks `can(feature)` before showing them. No paywall, prices or "Premium" badges are shown anywhere.
+- To launch a tier later: flip chosen features to `free: false`, make `getEntitlements()` read a server-verified entitlement (e.g. a `entitlements` table written only by a Stripe or RevenueCat webhook — never trust a client flag), and add the upgrade screen where `can()` returns false. Keep existing users' plans readable (gate creation/edits, not access to data they made). Check app-store rules if it ships as a native wrapper (in-app purchase requirements).

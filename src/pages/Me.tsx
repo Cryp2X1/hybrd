@@ -38,6 +38,7 @@ export default function Me() {
           <Card>
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
+            <RowLink to="/coach" icon="coach" title="HYBRD Coach" sub="Your personal training & nutrition plan" />
             <RowLink to="/progress" icon="progress" title="Progress & PRs" sub="Charts, records, body weight" />
             <RowLink to="/timers" icon="timer" title="Timers" sub="Stopwatch, intervals, EMOM, AMRAP, HYROX" />
             <RowLink to="/routes" icon="map" title="Route history" sub="Every GPS activity on one map" />

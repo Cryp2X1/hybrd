@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { ACTIVITY_LEVELS, computeTargets, fromW, toW, wu, wUnit, localeUnits } from '../lib/calc';
 import type { Discipline, Goal, Profile, Sex, Units } from '../lib/types';
@@ -22,6 +22,7 @@ export default function Onboarding() {
   const up = (x: Partial<Profile>) => setP((c) => ({ ...c, ...x }));
   const t = computeTargets(p);
   const [busy, setBusy] = useState(false);
+  const nav = useNavigate();
   const finish = async (sample = false) => {
     if (sample) {
       // Demo routes are drawn around the user's own area (quick location check, else last known / time-zone guess)
@@ -30,6 +31,8 @@ export default function Onboarding() {
       importJson({ app: 'HYBRD', data: buildSample(p.weightKg, c) }, 'merge');
     }
     setProfile({ ...p, onboarded: true });
+    // First run with no plan: offer HYBRD Coach (skippable). Sample-data explorers land on Home.
+    if (!sample) nav('/coach?welcome=1', { replace: true });
   };
   const ftIn = { ft: Math.floor(p.heightCm / 2.54 / 12), inch: Math.round((p.heightCm / 2.54) % 12) };
   const steps = 5;

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CoachCard } from '../components/CoachCard';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PROGRAMS, LEVELS, type Program } from '../data/programs';
 import { ExpertNote } from '../components/Expert';
@@ -30,6 +31,7 @@ export default function Train() {
       <Segmented value={tab} onChange={(v) => setSp({ tab: v })} options={[{ v: 'programs', label: 'Programs' }, { v: 'library', label: 'Exercises' }, { v: 'templates', label: 'My workouts' }, { v: 'history', label: 'History' }]} />
 
       {tab === 'programs' && <>
+        <CoachCard where="train" />
         <div data-testid="level-filter"><Segmented small value={level} onChange={(v) => setSp(v === 'all' ? { tab: 'programs' } : { tab: 'programs', level: v })} options={[{ v: 'all', label: 'All levels' }, ...LEVELS.map((l) => ({ v: l, label: l }))]} /></div>
         {level === 'Expert' && <>
           <ExpertNote compact />

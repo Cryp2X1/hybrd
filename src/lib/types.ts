@@ -30,6 +30,8 @@ export interface Profile {
   runRef?: { distM: number; sec: number; date?: string };
   /** Functional threshold power in watts, for %FTP cycling targets (Coggan levels). */
   ftp?: number;
+  /** Hides the first-run HYBRD Coach prompt on Home (the smaller entry card stays). */
+  coachDismissed?: boolean;
   updatedAt?: number;
 }
 
@@ -104,6 +106,7 @@ export interface BurnEntry extends Rec {
   sample?: boolean;
 }
 export type { WLPlan } from './wl';
+export type { CoachPlan } from './coach';
 export interface Template extends Rec { name: string; type: WorkoutType; exercises: ExerciseEntry[]; notes?: string }
 
 export interface DataState {
@@ -117,6 +120,8 @@ export interface DataState {
   burns: BurnEntry[];
   /** Weight-loss programs (Fuel › Weight loss). The newest non-deleted record is the active plan. */
   wlplans: import('./wl').WLPlan[];
+  /** HYBRD Coach plans (rule-based training + nutrition plan). The newest non-deleted record is the active plan. */
+  coachplans: import('./coach').CoachPlan[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans'];

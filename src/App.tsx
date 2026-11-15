@@ -32,9 +32,12 @@ const Account = lazy(() => import('./pages/Account'));
 const DataPage = lazy(() => import('./pages/DataPage'));
 const Help = lazy(() => import('./pages/Help'));
 const ScorePage = lazy(() => import('./pages/ScorePage'));
+const Coach = lazy(() => import('./pages/Coach'));
+const CoachSetup = lazy(() => import('./pages/CoachSetup'));
 
 const NAV = [
   { to: '/', icon: 'home', label: 'Home', end: true },
+  { to: '/coach', icon: 'coach', label: 'Coach' },
   { to: '/train', icon: 'train', label: 'Train' },
   { to: '/record', icon: 'record', label: 'Record' },
   { to: '/timers', icon: 'timer', label: 'Timers' },
@@ -83,11 +86,13 @@ export function App() {
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><ModeChip /></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} />Coach</NavLink><ModeChip /></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/score" element={<ScorePage />} />
+            <Route path="/coach" element={<Coach />} />
+            <Route path="/coach/start" element={<CoachSetup />} />
             <Route path="/train" element={<Train />} />
             <Route path="/train/program/:id" element={<ProgramDetail />} />
             <Route path="/train/exercise/:id" element={<ExerciseDetail />} />
