@@ -8,7 +8,7 @@ import { useStore } from '../lib/store';
 import { Page, Segmented, Card, RowLink, Empty, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { activityLabel, fmtDist, fmtTime, isBikeType, isGpsType, typeLabel, WORKOUT_TYPES, todayKey } from '../lib/calc';
-import { PHASE_LABEL, activeUltra, currentWeekIdx, daysBetween, planOf } from '../lib/ultra';
+import { PHASE_LABEL, activeUltra, currentWeekIdx, daysBetween, fmtByuWorkoutDist, isByuWorkout, planOf, resolveByuUnit } from '../lib/ultra';
 import { SourceBadge } from '../components/Strava';
 
 type Tab = 'programs' | 'library' | 'templates' | 'history';
@@ -88,7 +88,7 @@ export default function Train() {
       {tab === 'history' && <>
         <Segmented small value={ftype} onChange={setFtype} options={[{ v: 'all', label: 'All' }, ...WORKOUT_TYPES.filter((w) => w.v !== 'rest').map((w) => ({ v: w.v as string, label: w.label }))]} />
         <Card>
-          {hist.length ? hist.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={<>{w.title}<SourceBadge w={w} /></>} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.kcal ? ` · ~${w.kcal} kcal est.` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
+          {hist.length ? hist.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={<>{w.title}<SourceBadge w={w} /></>} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.kcal ? ` · ~${w.kcal} kcal est.` : ''}`} right={w.distanceM ? (isByuWorkout(w) ? fmtByuWorkoutDist(w.distanceM, resolveByuUnit(profile)) : fmtDist(w.distanceM, profile.units)) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
             : <Empty title="No workouts yet" icon="train">Your history shows up here.</Empty>}
         </Card>
         <div className="row gap8 wrap" style={{ justifyContent: 'space-between' }}><Link className="link" to="/routes">Route map of all GPS activities →</Link><Link className="link" to="/me/import" data-testid="history-import">Import watch files · Strava →</Link></div>

@@ -140,7 +140,7 @@ async function run(kind) {
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(1200);
   const yards = await page.$eval('[data-testid="byu-yards"]', (e) => e.textContent).catch(() => '');
   const dist = await page.$eval('[data-testid="byu-dist"]', (e) => e.textContent).catch(() => '');
-  check(yards.startsWith('3') && /20\.12 km|12\.5 mi/.test(dist), `Backyard: ${yards} yards · ${dist} (3 × 6.7056 km = 20.12 km = 12.5 mi)`);
+  check(yards.startsWith('3') && /20\.117 km|12\.5 mi|20,117 m|66,000 ft/.test(dist), `Backyard: ${yards} yards · ${dist} (3 yards in the chosen unit)`);
   await page.evaluate(() => { const m = 60000, now = Date.now(), st = now - (3 * 60 + 20) * m; localStorage.setItem('hybrd:t:byu', JSON.stringify({ start: st, finishes: [st + 48 * m, st + 60 * m + 51 * m, st + 120 * m + 49 * m], stopped: null, lapMin: 50, goal: 24 })); });
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(1200);
   check(!!(await page.$('[data-testid="byu-finish"]')), 'Backyard: on yard 4 → Finished yard button');

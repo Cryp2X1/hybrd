@@ -4,7 +4,7 @@ import { useStore } from '../lib/store';
 import { KM_PER_MI, ZONES, hrMaxOf, todayKey } from '../lib/calc';
 import { profilePaces, fmtPaceKm } from '../lib/intensity';
 import {
-  PHASE_LABEL, WEEKDAYS, YARD_KM, activeUltra, currentWeekIdx, daysBetween, dayTargets, estRaceHours, fmtPace, fuelPlan, lapPaceSec, planOf,
+  PHASE_LABEL, WEEKDAYS, YARD_EXPLAIN, activeUltra, currentWeekIdx, daysBetween, dayTargets, estRaceHours, fmtByuDist, fmtByuPace, fuelPlan, lapPaceSec, loopDist, planOf,
   sweatRate, unitText, type Climate, type DaySession, type FuelPrefs, type GutLevel, type Plan, type UltraSaved,
 } from '../lib/ultra';
 import {
@@ -14,6 +14,7 @@ import { sourceById } from '../data/sources';
 import { can } from '../lib/entitlements';
 import { Page, Card, Banner, Disclaimer, Segmented, Sheet, Pill } from '../components/ui';
 import { SrcPills } from '../components/SrcPills';
+import { ByuUnitToggle, ByuYardTable, useByuUnit } from '../components/ByuUnits';
 import { TargetsCard } from '../components/Expert';
 import { Icon } from '../components/Icon';
 import { useToast } from '../lib/toast';
@@ -35,6 +36,7 @@ export default function Ultra() {
   const plan = useMemo(() => (saved ? planOf(saved) : null), [saved]);
   const today = todayKey();
   const imp = profile.units === 'imperial';
+  const [byuU] = useByuUnit();
   const dU = imp ? 'mi' : 'km';
   const d = (km: number) => `${Math.round((imp ? km / KM_PER_MI : km) * 10) / 10} ${dU}`;
   const ut = (x: string) => unitText(x, imp);
@@ -136,9 +138,14 @@ export default function Ultra() {
         </Card>
       </div>
       <div className="stack">
-        {saved.target === 'byu' && <Link to={`/timers?t=backyard&yards=${saved.yards}&lap=${saved.quiz.lapMin}`} className="card hero click" style={{ display: 'block' }} data-testid="ultra-byu-card">
-          <div className="row"><div style={{ flex: 1 }}><div className="kicker">Backyard</div><h3>Lap timer</h3><p className="muted small" style={{ margin: '6px 0 0' }}>An hourly bell countdown, your lap time, rest left, yards done and total distance. {YARD_KM} km in {saved.quiz.lapMin} min = {fmtPace(lapPaceSec(saved.quiz.lapMin), imp)}.</p></div><Icon name="timer" size={34} className="y" /></div>
-        </Link>}
+        {saved.target === 'byu' && <>
+          <Link to={`/timers?t=backyard&yards=${saved.yards}&lap=${saved.quiz.lapMin}`} className="card hero click" style={{ display: 'block' }} data-testid="ultra-byu-card">
+            <div className="row"><div style={{ flex: 1 }}><div className="kicker">Backyard · {YARD_EXPLAIN}</div><h3>Lap timer</h3><p className="muted small" style={{ margin: '6px 0 0' }}>An hourly bell countdown, your lap time, rest left, yards done and total distance. {loopDist(byuU)} in {saved.quiz.lapMin} min = {fmtByuPace(lapPaceSec(saved.quiz.lapMin), byuU)}.</p></div><Icon name="timer" size={34} className="y" /></div>
+          </Link>
+          <Card data-testid="ultra-byu-units">
+            <ByuYardTable highlight={saved.yards} />
+          </Card>
+        </>}
         <Card>
           <h3 style={{ marginBottom: 6 }}>Your zones</h3>
           <p className="muted small" style={{ marginTop: 0 }}>Heart-rate zones from {profile.hrMax ? 'your max HR' : `an estimated max HR of ${hrMax} (208 − 0.7 × age)`}. Long runs, back-to-backs and yards stay in Zone 1–2.</p>
@@ -248,9 +255,9 @@ export default function Ultra() {
           <h3 style={{ marginBottom: 8 }}>{byu ? 'Per yard' : 'Per aid-station leg'}</h3>
           <div className="ultra-sched" data-testid="fuel-schedule">
             <div className="hd"><span>{byu ? 'Yard' : 'Leg'}</span><span>Carbs</span><span>Fluid</span><span>Sodium</span><span>Notes</span></div>
-            {segs.map((k) => { const h = byu ? 1 : Math.min(ptH, hours - (k - 1) * ptH); const night = byu ? k >= 12 : (k - 1) * ptH >= 10; const caf = fo.caffeine && (byu ? k >= Math.max(fo.caffeine.startHour, 12) : (k - 1) * ptH >= fo.caffeine.startHour); return <div key={k} className={night ? 'night' : ''}><span>{byu ? `Y${k}` : `${Math.round((k - 1) * ptH * 10) / 10}–${Math.round(Math.min(hours, k * ptH) * 10) / 10} h`}</span><span>{Math.round(fo.carbs[0] * h)}–{Math.round(fo.carbs[1] * h)} g</span><span>{Math.round((fo.fluid[0] * h) / 10) * 10}–{Math.round((fo.fluid[1] * h) / 10) * 10} mL</span><span>{Math.round((fo.sodium[0] * h) / 10) * 10}–{Math.round((fo.sodium[1] * h) / 10) * 10} mg</span><span className="muted">{k === 1 ? 'Start eating in the first 30 min' : night ? `Savoury, warm${caf ? ' · caffeine option' : ''}` : caf ? 'Caffeine option' : byu ? 'Eat on the walk-in' : 'Sweet + savoury mix'}</span></div>; })}
+            {segs.map((k) => { const h = byu ? 1 : Math.min(ptH, hours - (k - 1) * ptH); const night = byu ? k >= 12 : (k - 1) * ptH >= 10; const caf = fo.caffeine && (byu ? k >= Math.max(fo.caffeine.startHour, 12) : (k - 1) * ptH >= fo.caffeine.startHour); return <div key={k} className={night ? 'night' : ''}><span>{byu ? <>Y{k}<small className="muted" style={{ display: 'block' }} data-testid={k === 1 ? 'fuel-yard-dist' : undefined}>{fmtByuDist(k, byuU)}</small></> : `${Math.round((k - 1) * ptH * 10) / 10}–${Math.round(Math.min(hours, k * ptH) * 10) / 10} h`}</span><span>{Math.round(fo.carbs[0] * h)}–{Math.round(fo.carbs[1] * h)} g</span><span>{Math.round((fo.fluid[0] * h) / 10) * 10}–{Math.round((fo.fluid[1] * h) / 10) * 10} mL</span><span>{Math.round((fo.sodium[0] * h) / 10) * 10}–{Math.round((fo.sodium[1] * h) / 10) * 10} mg</span><span className="muted">{k === 1 ? 'Start eating in the first 30 min' : night ? `Savoury, warm${caf ? ' · caffeine option' : ''}` : caf ? 'Caffeine option' : byu ? 'Eat on the walk-in' : 'Sweet + savoury mix'}</span></div>; })}
           </div>
-          {byu && <p className="muted small" style={{ margin: '8px 0 0' }}>Each yard is one hour of fuel. Carry a little for the loop and eat most of it in your between-yards routine. Rows from Y12 on are shaded for the first night.</p>}
+          {byu && <div className="byu-head-units" style={{ marginTop: 8 }}><p className="muted small" style={{ margin: 0 }}>{YARD_EXPLAIN} of {loopDist(byuU)}. Each yard is one hour of fuel. Carry a little for the loop and eat most of it in your between-yards routine. Rows from Y12 on are shaded for the first night.</p><ByuUnitToggle /></div>}
         </Card>
         <Card>
           <h3 style={{ marginBottom: 6 }}>Caffeine</h3>

@@ -4,13 +4,14 @@ import { useStore } from '../lib/store';
 import { fromW, toW, todayKey, wUnit, wu, KM_PER_MI } from '../lib/calc';
 import { profilePaces } from '../lib/intensity';
 import {
-  BYU_YARD_OPTIONS, FIN_LABEL, PHASE_LABEL, REASON_SRC, REASON_TEXT, WEEKDAYS, YARD_KM, YARD_MI, addDaysK, buildPlan, canPlan, fmtPace, lapPaceSec,
-  mondayOf, raceLabel, readiness, screen, type Finished, type RaceId, type UltraQuiz, type UltraSaved,
+  BYU_YARD_OPTIONS, FIN_LABEL, PHASE_LABEL, REASON_SRC, REASON_TEXT, WEEKDAYS, YARD_EXPLAIN, addDaysK, buildPlan, canPlan, fmtByuDist, fmtByuEquals, fmtByuPace, lapPaceSec,
+  loopDist, mondayOf, raceLabel, readiness, screen, type Finished, type RaceId, type UltraQuiz, type UltraSaved,
 } from '../lib/ultra';
 import { can } from '../lib/entitlements';
 import { Page, Card, Banner, Disclaimer, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { SrcPills } from '../components/SrcPills';
+import { ByuUnitToggle, ByuYardTable, useByuUnit } from '../components/ByuUnits';
 import { useToast } from '../lib/toast';
 import type { Profile, Workout } from '../lib/types';
 
@@ -48,6 +49,7 @@ export default function UltraSetup() {
   const toast = useToast();
   const existing = profile.ultra;
   const imp = profile.units === 'imperial';
+  const [byuU] = useByuUnit();
   const dU = imp ? 'mi' : 'km';
   const toU = (km: number) => (imp ? km / KM_PER_MI : km);
   const fromU = (v: number) => (imp ? v * KM_PER_MI : v);
@@ -160,9 +162,11 @@ export default function UltraSetup() {
           <h2 className="wl-q">Your race</h2>
           <div className="wl-opts">{RACE_OPTS.map((r) => chip(q.race, r.v, r.label, (v) => { setPick(null); up({ race: v }); }, r.hint, `ultra-race-${r.v}`))}</div>
           {q.race === 'byu' && <>
-            <div className="field" style={{ marginTop: 12 }}><span>Target yards (hours)</span><div className="chips">{BYU_YARD_OPTIONS.map((y) => chip(q.yards, y, `${y}`, (v) => up({ yards: v }), `${Math.round(imp ? y * YARD_MI : y * YARD_KM)} ${dU}`, `ultra-yards-${y}`))}</div></div>
-            <div className="field"><span>Target yard time</span><div className="chips">{[45, 48, 50, 52, 55].map((m) => chip(q.lapMin, m, `${m} min`, (v) => up({ lapMin: v }), fmtPace(lapPaceSec(m), imp)))}</div></div>
-            <p className="muted small" style={{ margin: 0 }}>Each yard is {YARD_KM} km ({YARD_MI.toFixed(3)} mi) and starts on the hour, so 24 yards = 100 miles. Most runners plan 45–55 min yards. Beating the bell means at least {fmtPace(lapPaceSec(60), imp)}.</p>
+            <div className="byu-head-units" style={{ marginTop: 12 }}><span className="muted small">{YARD_EXPLAIN} of {loopDist(byuU)}.</span><ByuUnitToggle /></div>
+            <div className="field" style={{ marginTop: 12 }}><span>Target yards (hours)</span><div className="chips">{BYU_YARD_OPTIONS.map((y) => chip(q.yards, y, `${y}`, (v) => up({ yards: v }), fmtByuDist(y, byuU), `ultra-yards-${y}`))}</div></div>
+            <div className="field"><span>Target yard time</span><div className="chips">{[45, 48, 50, 52, 55].map((m) => chip(q.lapMin, m, `${m} min`, (v) => up({ lapMin: v }), fmtByuPace(lapPaceSec(m), byuU)))}</div></div>
+            <p className="muted small" style={{ margin: 0 }} data-testid="byu-setup-equals">{fmtByuEquals(q.yards)}. Each yard starts on the hour. Most runners plan 45–55 min yards. Beating the bell means at least {fmtByuPace(lapPaceSec(60), byuU)}.</p>
+            <div style={{ marginTop: 12 }}><ByuYardTable highlight={q.yards} /></div>
           </>}
           <div className="grid2" style={{ marginTop: 12 }}>
             <label className="field"><span>Race date</span><input type="date" data-testid="ultra-date" value={q.raceDate} onChange={(e) => e.target.value && up({ raceDate: e.target.value })} /></label>

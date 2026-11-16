@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore, uid } from '../lib/store';
 import { addDays, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridScore, isBikeType, isGpsType, personalRecords, streak, todayKey, wu } from '../lib/calc';
+import { fmtByuWorkoutDist, isByuWorkout, resolveByuUnit } from '../lib/ultra';
 import { dayBurn } from '../lib/burn';
 import { BurnRingCard } from '../components/BurnRing';
 import { WLCard } from '../components/WLCard';
@@ -118,7 +119,7 @@ export default function Home() {
 
           <Card>
             <div className="card-head"><h3>Recent</h3><Link to="/train?tab=history">History →</Link></div>
-            {recent.length ? recent.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={w.title} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.rpe ? ` · RPE ${w.rpe}` : ''}`} right={w.distanceM ? fmtDist(w.distanceM, profile.units) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
+            {recent.length ? recent.map((w) => <RowLink key={w.id} to={`/train/workout/${w.id}`} icon={isBikeType(w.type) ? 'bike' : isGpsType(w.type) ? 'record' : w.type === 'rest' ? 'sun' : 'train'} title={w.title} sub={`${new Date(w.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${activityLabel(w)}${w.rpe ? ` · RPE ${w.rpe}` : ''}`} right={w.distanceM ? (isByuWorkout(w) ? fmtByuWorkoutDist(w.distanceM, resolveByuUnit(profile)) : fmtDist(w.distanceM, profile.units)) : w.durationSec ? fmtTime(w.durationSec) : ''} />)
               : <p className="muted">Nothing yet. Start with a GPS run, a program session, or a timer workout.</p>}
           </Card>
 

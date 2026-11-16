@@ -3,9 +3,11 @@
 // and timer status, race fuelling bounds, sweat rate, daily targets and the Fuel-targets precedence.
 // Run: node --experimental-strip-types --import ./tools/ts-resolve.mjs tools/test-ultra.ts
 import {
-  YARD_KM, YARD_MI, YARD_M, HOUR_MS, MAX_RAMP, RACES, specOf, byuSpec, screen, canPlan, readiness, buildPlan, planOf, activeUltra, taperFractions,
+  YARD_KM, YARD_MI, YARD_M, YARD_FT, HOUR_MS, MAX_RAMP, RACES, specOf, byuSpec, screen, canPlan, readiness, buildPlan, planOf, activeUltra, taperFractions,
   lapPaceSec, fmtPace, yardsToKm, yardsToMi, byuStatus, fuelPlan, sweatRate, dayTargets, carbGkg, ultraTargetsFor, estRaceHours, allSessions, sessionAt,
-  type UltraQuiz, type UltraSaved, type RaceId, type Terrain,
+  defaultByuUnit, resolveByuUnit, fmtByuNumber, fmtByuDist, fmtByuEquals, fmtByuPace, fmtByuSpeed, fmtByuWorkoutDist, yardsFromDistanceM, yardsToExact,
+  loopDist, LOOP_EQUALS, YARD_EXPLAIN, byuTableYards, BYU_DIST_UNITS, isByuDistUnit, isByuWorkout,
+  type UltraQuiz, type UltraSaved, type RaceId, type Terrain, type ByuDistUnit,
 } from '../src/lib/ultra.ts';
 import { SOURCES } from '../src/data/sources.ts';
 import { ULTRA_RESEARCH, ULTRA_SOURCE_IDS, GEAR, CREW, ACCLIM, RECOVERY, WARNINGS, REAL_FOODS, RACE_WEEK_SRC, raceDayPlan } from '../src/data/ultraContent.ts';
@@ -140,6 +142,30 @@ check('planOf is stable (rebuilds same plan)', JSON.stringify(planOf(saved)) ===
 check('24 yards = 100 miles', Math.abs(24 * YARD_MI - 100) < 1e-9 && yardsToMi(24) === 100);
 check('yard = 6.7056 km = 4.1667 mi', YARD_KM === 6.7056 && Math.abs(YARD_MI - 4.16667) < 1e-4 && YARD_M === 6705.6 && Math.abs(YARD_KM / 1.609344 - YARD_MI) < 0.001);
 check('24 yards ≈ 160.93 km', yardsToKm(24) === 160.93);
+
+// ---- backyard distance units (mi / km / m / ft)
+check('1 yard = 6705.6 m = 22,000 ft exactly', YARD_M === 6705.6 && YARD_FT === 22000 && 24 * YARD_MI === 100 && 24 * YARD_FT === 528000);
+check('yardsToExact: 1 yard', yardsToExact(1, 'mi') === YARD_MI && yardsToExact(1, 'km') === YARD_KM && yardsToExact(1, 'm') === YARD_M && yardsToExact(1, 'ft') === YARD_FT);
+check('loop: 4.167 mi / 6.706 km / 6,706 m / 22,000 ft', loopDist('mi') === '4.167 mi' && loopDist('km') === '6.706 km' && loopDist('m') === '6,706 m' && loopDist('ft') === '22,000 ft', [loopDist('mi'), loopDist('km'), loopDist('m'), loopDist('ft')]);
+check('24 yards = 100 mi = 160.9 km = 160,934 m = 528,000 ft', fmtByuEquals(24) === '24 yards = 100 mi = 160.9 km = 160,934 m = 528,000 ft', fmtByuEquals(24));
+check('1 yard equals line', fmtByuEquals(1) === '1 yard = 4.167 mi = 6.706 km = 6,706 m = 22,000 ft', fmtByuEquals(1));
+check('explainer text', YARD_EXPLAIN === 'A yard = one loop' && LOOP_EQUALS === fmtByuEquals(1));
+check('12 yards: 50 mi / 80.467 km / 80,467 m / 264,000 ft', fmtByuDist(12, 'mi') === '50 mi' && fmtByuDist(12, 'km') === '80.467 km' && fmtByuDist(12, 'm') === '80,467 m' && fmtByuDist(12, 'ft') === '264,000 ft', [fmtByuDist(12, 'mi'), fmtByuDist(12, 'km'), fmtByuDist(12, 'm'), fmtByuDist(12, 'ft')]);
+check('3 yards: 12.5 mi / 20.117 km / 20,117 m / 66,000 ft', fmtByuDist(3, 'mi') === '12.5 mi' && fmtByuDist(3, 'km') === '20.117 km' && fmtByuDist(3, 'm') === '20,117 m' && fmtByuDist(3, 'ft') === '66,000 ft', [fmtByuDist(3, 'mi'), fmtByuDist(3, 'km'), fmtByuDist(3, 'm'), fmtByuDist(3, 'ft')]);
+check('15 yards km uses 1 decimal (≥100 km)', fmtByuNumber(15, 'km') === '100.6', fmtByuNumber(15, 'km'));
+check('thousands separators on m and ft', fmtByuNumber(24, 'm').includes(',') && fmtByuNumber(1, 'ft') === '22,000');
+check('defaultByuUnit follows global setting', defaultByuUnit('imperial') === 'mi' && defaultByuUnit('metric') === 'km');
+check('resolveByuUnit defaults when unset', resolveByuUnit({ units: 'metric' }) === 'km' && resolveByuUnit({ units: 'imperial' }) === 'mi');
+check('resolveByuUnit keeps an explicit pick (does not follow global)', resolveByuUnit({ units: 'metric', byuDistUnit: 'ft' }) === 'ft' && resolveByuUnit({ units: 'imperial', byuDistUnit: 'm' }) === 'm');
+check('invalid byuDistUnit falls back', resolveByuUnit({ units: 'metric', byuDistUnit: 'yd' as unknown as ByuDistUnit }) === 'km');
+check('isByuDistUnit', BYU_DIST_UNITS.every(isByuDistUnit) && !isByuDistUnit('yd') && !isByuDistUnit('imperial'));
+check('pace: m uses /km, ft uses /mi', fmtByuPace(lapPaceSec(50), 'm') === '7:27 /km' && fmtByuPace(lapPaceSec(50), 'ft') === '12:00 /mi' && fmtByuPace(lapPaceSec(50), 'km') === '7:27 /km' && fmtByuPace(lapPaceSec(50), 'mi') === '12:00 /mi');
+check('speed: 50-min yard = 5.00 mph / 2.24 m/s / 7.33 ft/s', fmtByuSpeed(50, 'mi') === '5.00 mph' && fmtByuSpeed(50, 'm') === '2.24 m/s' && fmtByuSpeed(50, 'ft') === '7.33 ft/s', [fmtByuSpeed(50, 'mi'), fmtByuSpeed(50, 'm'), fmtByuSpeed(50, 'ft')]);
+check('yardsFromDistanceM recovers yards from rounded metres', yardsFromDistanceM(Math.round(1 * YARD_M)) === 1 && yardsFromDistanceM(Math.round(3 * YARD_M)) === 3 && yardsFromDistanceM(Math.round(24 * YARD_M)) === 24);
+check('history in chosen unit (rounded stored metres)', fmtByuWorkoutDist(Math.round(3 * YARD_M), 'ft') === '66,000 ft' && fmtByuWorkoutDist(Math.round(24 * YARD_M), 'mi') === '100 mi' && fmtByuWorkoutDist(Math.round(24 * YARD_M), 'm') === '160,934 m');
+check('isByuWorkout only matches source byu', isByuWorkout({ source: 'byu' }) && !isByuWorkout({ source: 'gps' }) && !isByuWorkout({}));
+check('table includes 1, standard targets, and extras', JSON.stringify(byuTableYards(5)) === JSON.stringify([1, 4, 5, 7, 12, 15, 20, 24, 30, 36]));
+
 check('60-min yard = 8:57 /km', fmtPace(lapPaceSec(60)) === '8:57 /km', fmtPace(lapPaceSec(60)));
 check('50-min yard = 7:27 /km, 12:00 /mi', fmtPace(lapPaceSec(50)) === '7:27 /km' && fmtPace(lapPaceSec(50), true) === '12:00 /mi', [fmtPace(lapPaceSec(50)), fmtPace(lapPaceSec(50), true)]);
 const T0 = 1_800_000_000_000, min = 60_000;

@@ -410,3 +410,13 @@ Email templates that change password or email must use a `redirectTo` that is on
   - Finish times and calories are estimates.
   - Plan text is written in metric and converted for imperial display by `unitText`.
   - Apple Health can't be read from the web app.
+
+## Backyard distance units — built 16 Nov 2026
+
+- A backyard **yard is one loop**, not a length unit: 4.167 mi / 6.706 km / 6,706 m / 22,000 ft (exact: 6,705.6 m and 22,000 ft; 24 yards = 100 mi = 160.9 km = 160,934 m = 528,000 ft).
+- Backyard features (lap timer at `/timers?t=backyard`, setup when the race is a backyard, the Plan backyard card, Fuel per-yard schedule, and saved backyard history) have a **mi / km / m / ft** toggle. Yard (loop) counts are unchanged.
+- The toggle defaults from the user's global mi/km setting (`profile.units`) and is persisted per user as `profile.byuDistUnit`. It does **not** change the global units setting used elsewhere.
+- Loop distance, cumulative distance, a yards-to-distance table (thousands separators on m and ft), "A yard = one loop", and pace are all shown in the chosen unit. Pace is per mile for mi and ft, per kilometre for km and m; m/ft also show speed (m/s or ft/s) on the timer setup.
+- Saved backyard workouts (`source: 'byu'`) store metres as before; history (Workout detail, Train history, Home recent) formats them in the chosen backyard unit (yard count is recovered from metres so 22,000 ft/yard stays exact). The timer now also saves per-yard laps.
+- Code: `src/lib/ultra.ts` (`YARD_FT`, `fmtByuDist`, `fmtByuEquals`, `resolveByuUnit`, …), `src/components/ByuUnits.tsx`, timer / setup / plan / history views. Tests in `tools/test-ultra.ts`. Screenshots: `tools/shoot-backyard-units.mjs` → `phone-backyard-units-picker.png`, `phone-backyard-units-m.png`, `phone-backyard-units-ft.png`, `desktop-backyard-units.png`.
+

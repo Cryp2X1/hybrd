@@ -4,6 +4,8 @@ import { useStore } from '../lib/store';
 import { Page, Card, Stat, Empty, Pill } from '../components/ui';
 import { activityLabel, fmtDist, fmtPace, fmtTime, fmtW, isBikeType, isGpsType, paceSec, distUnit, fmtSpeed, fmtShort, splitsFromTrack, splitUnitM, toElev, elevUnit, wu, KM_PER_MI } from '../lib/calc';
 import { DistToggle } from '../components/UnitToggle';
+import { ByuUnitToggle } from '../components/ByuUnits';
+import { YARD_EXPLAIN, fmtByuDist, fmtByuEquals, fmtByuPace, fmtByuWorkoutDist, isByuWorkout, resolveByuUnit, yardsFromDistanceM } from '../lib/ultra';
 import { Icon } from '../components/Icon';
 import { HrSummary } from '../components/HeartRate';
 import { SourceBadge, ViewOnStrava, PoweredByStrava } from '../components/Strava';
@@ -20,10 +22,15 @@ export default function WorkoutDetail() {
   const isStrava = w?.source === 'strava';
   useEffect(() => { if (isStrava) loadStreams(id, profile); }, [id, isStrava]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!w) return <Page title="Not found" back="/train?tab=history"><Empty title="Workout not found" /></Page>;
+  const byu = isByuWorkout(w);
+  const byuU = resolveByuUnit(profile);
   const route = w.routeId ? data.routes.find((r) => r.id === w.routeId) : undefined;
   const isGps = !!w.distanceM && isGpsType(w.type);
   const isIndoorBike = w.type === 'indoor-cycle';
-  const pace = w.distanceM ? paceSec(w.durationSec, w.distanceM, u) : 0;
+  const movingSec = byu && w.laps?.length ? w.laps.reduce((a, l) => a + l.sec, 0) : w.durationSec;
+  const pace = w.distanceM ? (byu ? movingSec / (w.distanceM / 1000) : paceSec(w.durationSec, w.distanceM, u)) : 0;
+  const distStr = w.distanceM ? (byu ? fmtByuWorkoutDist(w.distanceM, byuU) : fmtDist(w.distanceM, u)) : '';
+  const paceStr = w.distanceM ? (byu ? fmtByuPace(pace, byuU) : fmtPace(pace, u)) : '';
   const prevSim = w.source === 'hyrox-sim' ? data.workouts.filter((x) => x.source === 'hyrox-sim' && x.id !== w.id && x.date < w.date).sort((a, b) => b.date.localeCompare(a.date))[0] : undefined;
   const isSim = w.source === 'hyrox-sim';
   // Distance splits follow the current mi/km setting: rebuilt from the raw GPS points when a route exists.
@@ -40,9 +47,9 @@ export default function WorkoutDetail() {
       {(w.source === 'strava' || w.source === 'file') && <div className="row gap8 wrap" style={{ marginBottom: 12, alignItems: 'center' }} data-testid="source-row"><SourceBadge w={w} />{isStrava && <ViewOnStrava w={w} />}{isStrava && strava.busy === 'streams' && <span className="muted small">loading route & heart rate…</span>}</div>}
       <div className="grid3" style={{ marginBottom: 14 }}>
         <Stat label="Time" value={fmtTime(w.durationSec)} accent />
-        {w.distanceM ? <Stat label="Distance" value={fmtDist(w.distanceM, u)} /> : <Stat label="RPE" value={w.rpe ?? '—'} />}
+        {w.distanceM ? <Stat label="Distance" value={distStr} /> : <Stat label="RPE" value={w.rpe ?? '—'} />}
         <Stat label="kcal (est.)" value={w.kcal ?? '—'} />
-        {(isGps || (isIndoorBike && w.distanceM)) && <Stat label={isBikeType(w.type) ? 'Avg speed' : 'Avg pace'} value={isBikeType(w.type) ? fmtSpeed(w.distanceM! / w.durationSec, u) : fmtPace(pace, u)} />}
+        {(isGps || (isIndoorBike && w.distanceM) || (byu && !!w.distanceM)) && <Stat label={isBikeType(w.type) ? 'Avg speed' : 'Avg pace'} value={isBikeType(w.type) ? fmtSpeed(w.distanceM! / w.durationSec, u) : paceStr} />}
         {isGps && <Stat label="Elev. gain" value={w.elevGainM != null ? `${Math.round(toElev(w.elevGainM, u))}` : '—'} unit={elevUnit(u)} />}
         {(isGps || isIndoorBike) && <Stat label="RPE" value={w.rpe ?? '—'} />}
         {!!w.steps && <Stat label={w.stepsSource === 'est' ? 'Steps (est.)' : 'Steps · sensor'} value={w.steps.toLocaleString()} />}
@@ -52,6 +59,10 @@ export default function WorkoutDetail() {
         {w.resistance != null ? <Stat label="Resistance" value={w.resistance} /> : null}
         {!!w.steps && <Stat label="Step length" value={w.distanceM ? `${Math.round((w.distanceM / w.steps) * (u === 'imperial' ? 39.37 : 100))}` : '—'} unit={u === 'imperial' ? 'in' : 'cm'} />}
       </div>
+      {byu && w.distanceM ? <div className="byu-head-units" style={{ margin: '-4px 0 14px' }} data-testid="byu-history-units">
+        <p className="muted small" style={{ margin: 0 }}>{YARD_EXPLAIN}. {fmtByuEquals(yardsFromDistanceM(w.distanceM))}.</p>
+        <ByuUnitToggle />
+      </div> : null}
       {route && <Suspense fallback={<div className="map" style={{ height: 300 }} />}><div style={{ marginBottom: 14 }}><MapView routes={[{ id: route.id, segments: route.segments, highlight: true }]} height={300} /></div></Suspense>}
       {w.hr && <HrSummary hr={w.hr} durationSec={w.durationSec} />}
       {route && route.segments.length > 1 && !isStrava && w.source !== 'file' && <p className="muted small">GPS paused {route.segments.length - 1} time{route.segments.length > 2 ? 's' : ''} (screen off or signal lost) — those gaps aren’t counted in the distance.</p>}
@@ -73,10 +84,10 @@ export default function WorkoutDetail() {
         {slowStation && <p className="muted small" style={{ marginTop: 10, marginBottom: 0 }}>Longest station: <b className="y">{slowStation.label}</b> ({fmtTime(slowStation.sec)}). Station times vary a lot by station — compare each one with your own previous sims.</p>}
       </Card>}
 
-      {w.laps && w.laps.length > 1 && <Card>
+      {w.laps && (w.laps.length > 1 || byu) && <Card data-testid={byu ? 'byu-history-laps' : undefined}>
         <h3 style={{ marginBottom: 6 }}>Laps</h3>
         <table className="laps-table" data-testid="laps"><thead><tr><th>Lap</th><th>Time</th><th>Distance</th><th>Avg HR</th><th>Max HR</th></tr></thead>
-          <tbody>{w.laps.map((l, i) => <tr key={i}><td>{i + 1}</td><td>{fmtTime(l.sec)}</td><td>{l.distanceM ? fmtDist(l.distanceM, u) : '—'}</td><td>{l.avgHr ?? '—'}</td><td>{l.maxHr ?? '—'}</td></tr>)}</tbody></table>
+          <tbody>{w.laps.map((l, i) => <tr key={i}><td>{byu ? `Yard ${i + 1}` : i + 1}</td><td>{fmtTime(l.sec)}</td><td>{l.distanceM ? (byu ? fmtByuDist(i + 1, byuU) : fmtDist(l.distanceM, u)) : '—'}</td><td>{l.avgHr ?? '—'}</td><td>{l.maxHr ?? '—'}</td></tr>)}</tbody></table>
       </Card>}
       {w.exercises && w.exercises.length > 0 && <Card>
         <h3 style={{ marginBottom: 8 }}>Exercises</h3>

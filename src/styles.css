@@ -310,6 +310,17 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .unit-tog { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; flex: none; }
 .unit-tog button { min-width: 46px; padding: 7px 12px; border-radius: 999px; font-family: var(--mono); font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--mut); text-transform: lowercase; }
 .unit-tog button.on { background: var(--y); color: #0a0a0a; }
+.byu-unit-tog button { min-width: 40px; padding: 7px 10px; }
+.byu-table-wrap { margin-top: 4px; }
+.byu-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.byu-conv { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.byu-conv th, .byu-conv td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.byu-conv th:first-child, .byu-conv td:first-child { text-align: left; font-weight: 700; }
+.byu-conv th.cur, .byu-conv td.cur { color: #0a0a0a; background: rgba(255,230,0,.18); font-weight: 700; }
+.byu-conv tr.on td { background: rgba(255,230,0,.07); }
+.byu-conv tr.on td.cur { background: rgba(255,230,0,.22); }
+.byu-head-units { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
 .unit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .unit-row:last-child { border-bottom: 0; padding-bottom: 2px; }
 .unit-row b { display: block; }

@@ -40,6 +40,8 @@ export interface Profile {
   bio?: string;
   /** Train › Ultra & Backyard: screening answers, target race and planner choices (the plan is rebuilt from these). */
   ultra?: import('./ultra').UltraSaved;
+  /** Backyard distance display (mi / km / m / ft). Defaults from `units`; does not change the global mi/km setting. */
+  byuDistUnit?: import('./ultra').ByuDistUnit;
   updatedAt?: number;
 }
 

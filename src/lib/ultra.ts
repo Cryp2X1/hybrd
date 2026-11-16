@@ -23,6 +23,7 @@ import type { Sex } from './types';
 export const YARD_MI = 100 / 24; // 4.1667 mi
 export const YARD_KM = 6.7056; // official metric equivalent
 export const YARD_M = 6705.6;
+export const YARD_FT = 22_000; // exact: (100/24) mi × 5,280 ft/mi
 export const HOUR_MS = 3_600_000;
 export const KM_PER_MI = 1.609344;
 export const MAX_RAMP = 1.1; // weekly volume vs the last full week
@@ -584,6 +585,69 @@ export function byuStatus(t: ByuTimer, now: number): ByuStatus {
 }
 export const yardsToKm = (y: number) => +(y * YARD_KM).toFixed(2);
 export const yardsToMi = (y: number) => +(y * YARD_MI).toFixed(2);
+
+/** Backyard distance display only — does not change the global mi/km setting. */
+export type ByuDistUnit = 'mi' | 'km' | 'm' | 'ft';
+export const BYU_DIST_UNITS: readonly ByuDistUnit[] = ['mi', 'km', 'm', 'ft'];
+export const YARD_EXPLAIN = 'A yard = one loop';
+
+export const isByuDistUnit = (u: unknown): u is ByuDistUnit => u === 'mi' || u === 'km' || u === 'm' || u === 'ft';
+export const defaultByuUnit = (units: 'metric' | 'imperial'): ByuDistUnit => (units === 'imperial' ? 'mi' : 'km');
+export function resolveByuUnit(p: { units: 'metric' | 'imperial'; byuDistUnit?: ByuDistUnit | null }): ByuDistUnit {
+  return isByuDistUnit(p.byuDistUnit) ? p.byuDistUnit : defaultByuUnit(p.units);
+}
+/** Imperial-family units (mi, ft) show pace per mile; metric-family (km, m) show pace per kilometre. */
+export const byuPaceImperial = (unit: ByuDistUnit) => unit === 'mi' || unit === 'ft';
+export const fmtByuPace = (secPerKm: number, unit: ByuDistUnit) => fmtPace(secPerKm, byuPaceImperial(unit));
+
+export function yardsToExact(yards: number, unit: ByuDistUnit): number {
+  switch (unit) {
+    case 'mi': return yards * YARD_MI;
+    case 'km': return yards * YARD_KM;
+    case 'm': return yards * YARD_M;
+    case 'ft': return yards * YARD_FT;
+  }
+}
+
+const trimFixed = (n: number, d: number) => n.toFixed(d).replace(/\.0+$/, '').replace(/(\.[1-9]*)0+$/, '$1');
+const intSep = (n: number) => Math.round(n).toLocaleString('en-US');
+
+/** Formatted number (no unit): 4.167 / 100 / 6.706 / 160.9 / 6,706 / 22,000 */
+export function fmtByuNumber(yards: number, unit: ByuDistUnit): string {
+  const v = yardsToExact(yards, unit);
+  if (unit === 'mi') return trimFixed(Math.round(v * 1000) / 1000, 3);
+  if (unit === 'km') {
+    if (v >= 100) return (Math.round(v * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    return trimFixed(Math.round(v * 1000) / 1000, 3);
+  }
+  return intSep(v);
+}
+export const fmtByuDist = (yards: number, unit: ByuDistUnit) => `${fmtByuNumber(yards, unit)} ${unit}`;
+export const loopDist = (unit: ByuDistUnit) => fmtByuDist(1, unit);
+/** "24 yards = 100 mi = 160.9 km = 160,934 m = 528,000 ft" */
+export const fmtByuEquals = (yards: number) =>
+  `${yards} yard${yards === 1 ? '' : 's'} = ${fmtByuDist(yards, 'mi')} = ${fmtByuDist(yards, 'km')} = ${fmtByuDist(yards, 'm')} = ${fmtByuDist(yards, 'ft')}`;
+export const LOOP_EQUALS = fmtByuEquals(1);
+
+/** Saved backyard workouts store metres (yards × 6705.6, rounded). Recover the yard count so feet stay exact (22,000 / yard). */
+export const yardsFromDistanceM = (m: number) => Math.round(m / YARD_M);
+export const fmtByuWorkoutDist = (distanceM: number, unit: ByuDistUnit) => fmtByuDist(yardsFromDistanceM(distanceM), unit);
+export const isByuWorkout = (w: { source?: string }) => w.source === 'byu';
+
+/** Speed for one yard completed in `lapMin` minutes. Useful when the unit is m or ft (pace is still shown per km / per mi). */
+export function fmtByuSpeed(lapMin: number, unit: ByuDistUnit): string {
+  if (!(lapMin > 0)) return '—';
+  if (unit === 'm') return `${(YARD_M / (lapMin * 60)).toFixed(2)} m/s`;
+  if (unit === 'ft') return `${(YARD_FT / (lapMin * 60)).toFixed(2)} ft/s`;
+  if (unit === 'km') return `${((YARD_KM / lapMin) * 60).toFixed(2)} km/h`;
+  return `${((YARD_MI / lapMin) * 60).toFixed(2)} mph`;
+}
+
+export const BYU_TABLE_YARDS = [1, ...BYU_YARD_OPTIONS];
+export function byuTableYards(extra?: number | number[]): number[] {
+  const more = extra == null ? [] : Array.isArray(extra) ? extra : [extra];
+  return [...new Set([1, ...BYU_YARD_OPTIONS, ...more.filter((n) => n > 0)])].sort((a, b) => a - b);
+}
 
 /** Plan text is written in metric; convert distances, climbs and paces for imperial users. */
 export function unitText(s: string, imperial: boolean) {
