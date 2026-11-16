@@ -22,6 +22,7 @@ export type Feature =
   | 'gallery.photos' // private photo gallery: upload, tags, captions, viewer
   | 'gallery.download' // download originals / ZIP of selected or all
   | 'gallery.compare' // before / after side-by-side compare
+  | 'gallery.videos' // gallery videos: upload / record, poster + duration, player, download, location tags removed
   | 'profile.bio' // Me › Bio (free-form text)
   | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research' // Train › Ultra & Backyard
   | 'social.profile' | 'social.friends' | 'social.invite' | 'social.posts' | 'social.stories' | 'social.reactions' | 'social.saved' | 'social.notifications' | 'social.safety'; // Social: Friends & Stories
@@ -43,6 +44,7 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'gallery.photos': { free: true, label: 'Photo gallery' },
   'gallery.download': { free: true, label: 'Download photos' },
   'gallery.compare': { free: true, label: 'Before / after compare' },
+  'gallery.videos': { free: true, label: 'Gallery videos' },
   'profile.bio': { free: true, label: 'Profile bio' },
   'ultra.plan': { free: true, label: 'Ultra & backyard training plan' },
   'ultra.backyardTimer': { free: true, label: 'Backyard lap timer' },

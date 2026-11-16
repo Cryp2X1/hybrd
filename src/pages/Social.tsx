@@ -227,8 +227,8 @@ function GThumb({ it, onPick }: { it: GalleryItem; onPick: (b: Blob) => void }) 
 }
 function GalleryPicker({ onPick }: { onPick: (b: Blob) => void }) {
   const { items } = useMedia();
-  const list = filterItems(items, 'all');
-  if (!list.length) return <Empty icon="image" title="Your Gallery is empty">Add photos in <Link className="link" to="/me/gallery">Me › Gallery</Link> first.</Empty>;
+  const list = filterItems(items, 'all', 'photo'); // stories are photos only — gallery videos are never offered here
+  if (!list.length) return <Empty icon="image" title="No photos in your Gallery">Add photos in <Link className="link" to="/me/gallery">Me › Gallery</Link> first.</Empty>;
   return <><p className="muted small">Only the photo you pick is shared. The rest of your Gallery stays private.</p><div className="s-gpick">{list.slice(0, 60).map((it) => <GThumb key={it.id} it={it} onPick={onPick} />)}</div></>;
 }
 

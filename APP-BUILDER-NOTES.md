@@ -447,3 +447,45 @@ Email templates that change password or email must use a `redirectTo` that is on
 - There are no push notifications (alerts arrive in-app via realtime or a 60 s poll). There are no DMs and no video.
 - Live-mode "suggested" people are recent public profiles, not friends-of-friends.
 - Demo data stays on the device (Reset/Exit in the banner). A user who enters an under-13 DOB is locked out of Social on that device (by design). Everything else in HYBRD still works.
+
+## Gallery videos (Me › Gallery) — built 16 Nov 2026
+
+**What it is:** the private Gallery at `/me/gallery` now takes videos as well as photos: upload one or many (MP4, MOV/QuickTime, WebM) or record one on a phone (`accept="video/*" capture="environment"`), tag / caption / date them like photos, play them in the full-screen viewer, and download them at original quality. Entitlement `gallery.videos` is `free: true`.
+
+**Files**
+- `src/lib/mp4.ts` (new, pure, unit-tested): ISO BMFF box walking (32/64-bit sizes, size 0 = to end), `sniffContainer` (ftyp brand `qt  ` = MOV, EBML = WebM), `parseMoov` (duration from `mvhd`, display size + rotation from the video `tkhd` matrix, recording date from `mvhd` creation time, GPS telemetry track types), `stripLocationInBox` / `stripVideoLocation` / `hasVideoLocation`.
+- `src/lib/media.ts`: `GalleryItem` gains `kind` ('video'; missing = photo), `duration`, `container`, `localOnly` + `cloudNote`, `telemetry`, `playable`. New `detectKind`, `videoMime`, `checkVideo`, `checkDuration`, `checkMedia`, `fmtDuration`, `typeCounts`, `quotaState`, `isBackedUp`, `cloudPlan`, `zipPlan`, `zipLayout` + `crc32Update`; `filterItems` / `tagCounts` take a type filter; `usage` counts videos; `extFor` knows mp4/mov/webm.
+- `src/lib/gallery.tsx`: `cleanVideo` (location strip on Blob slices), `probeVideo` (hidden `<video>`: duration incl. the MediaRecorder-WebM "seek to the end" trick, size, poster frame), `prepareVideo`; ZIP is now assembled from Blob parts (each original hashed in 8 MB slices, never copied into one array); sync handles device-only videos.
+- `src/pages/Gallery.tsx`: type filter (All / Photos / Videos, `?type=photo|video`, combines with `?tag=`), video tiles (play mark + duration badge), viewer video player, upload sheet video rows + quota warnings, "Too big for one .zip" sheet, Record button.
+
+**Behaviour**
+- Caps: 200 MB and 5:00 per video (`VIDEO_CAP`, `VIDEO_MAX_SECONDS`), 10 videos + 30 photos per batch. Unknown duration (codec the browser can't read) is allowed. AVI / MKV / 3GP refused with a friendly message.
+- Original bytes are kept — **no client-side re-encode**. For videos `orig` = the video file, `disp` = 1600 px poster (WebP/JPEG), `thumb` = 480 px poster; same IndexedDB keys as photos (`g:<id>:orig|disp|thumb`).
+- Poster + duration + size come from the browser; if it can't decode the codec (e.g. iPhone HEVC in Chrome on some systems) the file is still saved with a drawn placeholder poster, `playable: false`, and duration/size from the `moov` box. The viewer then explains and offers the download.
+- Date: `mvhd` recording time → file modified date → today (editable). Labelled "date from video".
+- Viewer: inline `<video controls playsInline autoPlay>` with the poster, **muted by default** (top-bar mute button, `M` key), loop toggle (`L` key), `Space` play/pause, ← → / swipe between photos and videos (drags on the bottom 64 px control bar are not swipes), Esc closes.
+- Downloads: a single video downloads as its original file (`hybrd-<date>-<tag>-<id>.mp4|mov|webm`). Several files → one store-only ZIP while the originals total ≤ 500 MB (`ZIP_MAX`); above that a sheet lists each file for one-by-one download (+ "Photos only as .zip").
+- Storage: the Gallery card shows photos / videos / MB, a browser-storage bar from `navigator.storage.estimate()` and a warning at ≥ 80 %. The upload sheet blocks saving when the batch won't fit (5 % reserve) and warns when it will push usage over 80 %. A `QuotaExceededError` while saving shows a clear message.
+- Compare stays photos-only (button disabled unless exactly two photos are selected). The Social story picker only lists photos.
+
+**Privacy of video metadata**
+- Phones hide the recording location inside MP4/MOV files. Because videos are not re-encoded, HYBRD strips it at byte level before saving or uploading: QuickTime/Android `udta/©xyz`, 3GPP `udta/loci`, iTunes-style `ilst/©xyz`, Apple `meta/keys` + `ilst` entries named `com.apple.quicktime.location.*` (value zeroed, key renamed) and XMP packets that mention GPS. Each blanked box is renamed `free` and zeroed **in place without changing any size**, so `stco/co64` sample offsets stay valid and the audio/video data is byte-for-byte identical. Only the small metadata boxes are read into memory (`moov` is a few MB even for 5 min); the rest of the file is spliced back as Blob slices.
+- Not removable without a remux: GPS **telemetry tracks** (GoPro `gpmd`, Android `camm`). They are detected and the user is warned (upload sheet + viewer). If a file's box structure can't be fully read, the user is told it may still contain location data. WebM has no standard location field.
+- Other metadata (camera make, creation time) is kept.
+
+**Supabase**
+- `gallery_items` gets generated, read-only columns `media_type`, `duration_s`, `poster_path`, `local_only` (from the row JSON; safe to re-run) + index on `(user_id, media_type)`.
+- `user-media` bucket: 50 MB per file (the Free plan's global maximum) and `video/mp4`, `video/quicktime`, `video/webm` allowed. `CLOUD_FILE_CAP` in `media.ts` must match the bucket limit. Pro can raise the global limit (up to 500 GB per file) — raise the bucket limit and `CLOUD_FILE_CAP` together (SETUP.md §10.1).
+- Videos over the cap stay on the device (`localOnly`, "Device only" pill in the viewer when signed in); their poster + thumbnail still upload so other devices show the tile. If the bucket refuses a video (413/415 or a size/MIME message — e.g. schema not re-run), the item is marked device-only with `cloudNote: 'refused'` instead of blocking the sync queue.
+
+**Tests and screenshots**
+- `tools/test-gallery.ts`: 169 checks without the old photo fixture (171 with it). New video checks cover type detection, sniffing, caps, `fmtDuration`, synthetic MOV boxes (duration, rotation, date, every location record, length unchanged, mdat untouched, idempotent, GoPro telemetry detection), real ffmpeg files (Android-style MP4 `loci`, QuickTime `©xyz`, iPhone keys, faststart MP4) checked with `ffprobe` before and after, decode check and identical video frame MD5s, filters / counts / usage, quota states, cloud plan, ZIP size guard and the streamed ZIP layout checked with Python `zipfile`, and schema / SETUP / Social wiring.
+- `tools/sql/test-gallery-video.sql` (run by `tools/test-social-sql.sh`): generated columns on real Postgres, read-only, bucket limits.
+- `tools/shoot-gallery-videos.mjs`: 103 checks across phone and desktop. Sample videos are generated with ffmpeg (motion graphics, no people), one iPhone-style MOV with a real location tag. Checks: refusals (6:10 video, AVI), drafts, location removed in IndexedDB and in the download (ffprobe), same size, frames identical, filters, autoplay muted, loop, `M` key, keyboard + swipe nav, ZIP of video + photo, compare rules, Me preview, reload persistence, delete, no console errors, no horizontal overflow. Writes `screenshots/phone-gallery-videos.png`, `phone-gallery-video-player.png`, `phone-gallery-video-upload.png`, `desktop-gallery-videos.png`.
+
+**Known limits**
+- No trimming: a trim without re-encoding needs an MP4 remux (keyframe-accurate cuts, edit lists), which isn't robust enough in the browser. Users trim in their phone's Photos app first (the error messages say so).
+- Playback depends on the browser's codecs: HEVC/H.265 (iPhone "High Efficiency") plays in Safari but not in every Chrome / Firefox. Those files are kept and downloadable.
+- GPS telemetry tracks (GoPro / some Android) are detected but not removed.
+- Large videos fill browser storage fast; iOS Safari may evict site data after 7 days without a visit unless HYBRD is on the Home Screen. Uploads use the standard Supabase upload (not resumable TUS); a failed upload retries on the next sync.
+- Supabase upload of videos hasn't been run end to end against a hosted project yet (no keys in `config.js`).

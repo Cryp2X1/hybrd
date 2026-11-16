@@ -41,7 +41,7 @@ export default function Me() {
               <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Max heart rate" placeholder={`${hrMaxOf({ age: p.age })} bpm`} value={p.hrMax ?? ''} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); setProfile({ hrMax: Number.isFinite(v) && v > 0 ? Math.min(v, 240) : undefined }); }} /></div>
           </Card>
           <Card>
-            <RowLink to="/me/gallery" icon="image" title="Gallery" sub="Progress & training photos · private" />
+            <RowLink to="/me/gallery" icon="image" title="Gallery" sub="Progress photos & training videos · private" />
             <RowLink to="/social" icon="users" title="Friends & Stories" sub="Friends, posts, stories, invite link" />
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />

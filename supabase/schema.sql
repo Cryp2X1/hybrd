@@ -40,6 +40,20 @@ begin
   end loop;
 end $$;
 
+-- Gallery videos: read-only columns derived from the row JSON (the app only writes `data`), so they can never disagree
+-- with it and re-running this file is safe. media_type = 'photo' | 'video'; duration_s = video length in seconds;
+-- poster_path = storage path of the video's poster frame; local_only = the video file itself is kept on the device only
+-- (bigger than the per-file storage limit), only its poster + thumbnail are in the bucket.
+alter table public.gallery_items add column if not exists media_type text
+  generated always as (case when data->>'kind' = 'video' then 'video' else 'photo' end) stored;
+alter table public.gallery_items add column if not exists duration_s numeric
+  generated always as (case when jsonb_typeof(data->'duration') = 'number' then (data->>'duration')::numeric end) stored;
+alter table public.gallery_items add column if not exists poster_path text
+  generated always as (case when data->>'kind' = 'video' then data->'remote'->>'disp' end) stored;
+alter table public.gallery_items add column if not exists local_only boolean
+  generated always as (coalesce(data->>'localOnly' = 'true', false)) stored;
+create index if not exists gallery_items_user_type_idx on public.gallery_items (user_id, media_type);
+
 -- ---------- Row Level Security ----------
 alter table public.profiles   enable row level security;
 alter table public.workouts   enable row level security;
@@ -99,11 +113,15 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
 select tablename, rowsecurity from pg_tables where schemaname = 'public'
   and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs','wl_plans','coach_plans','fasting_logs','gallery_items');
 
--- ---------- Storage: private bucket for profile photos + gallery images ----------
--- Files live under a folder named after the user's id:  <auth.uid()>/avatar.webp,  <auth.uid()>/gallery/<photo id>/orig.jpg …
+-- ---------- Storage: private bucket for profile photos + gallery images and videos ----------
+-- Files live under a folder named after the user's id:  <auth.uid()>/avatar.webp,  <auth.uid()>/gallery/<item id>/orig.jpg …
+-- Videos: <auth.uid()>/gallery/<item id>/orig.mp4|mov|webm (original bytes) + disp.webp (poster) + thumb.webp.
 -- The bucket is PRIVATE (no public URLs); the app downloads files with the signed-in user's session.
+-- Size limit: 50 MB per file = the Supabase FREE plan's global maximum (a bucket can't go above the project limit).
+-- On Pro you can raise the global limit (Storage settings) and this number — then also raise CLOUD_FILE_CAP in
+-- src/lib/media.ts so bigger videos upload instead of staying on the device.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('user-media', 'user-media', false, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
+values ('user-media', 'user-media', false, 52428800, array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'])
 on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "user_media_select_own" on storage.objects;

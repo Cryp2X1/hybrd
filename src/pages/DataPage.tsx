@@ -30,7 +30,7 @@ export default function DataPage() {
         <h3 style={{ marginBottom: 8 }}>Export</h3>
         <p className="muted small">Download everything (profile and bio, workouts, GPS routes, food log, water, steps, weight, templates) as one JSON file — a backup you own.</p>
         <button className="btn y" onClick={exp}><Icon name="download" size={18} />Export JSON</button>
-        <p className="muted small" style={{ marginTop: 10 }}>Photos aren’t inside the JSON file (only their dates, tags and captions). To keep the images, use <Link className="link" to="/me/gallery">Gallery › Download all</Link>.</p>
+        <p className="muted small" style={{ marginTop: 10 }}>Photos and videos aren’t inside the JSON file (only their dates, tags and captions). To keep the files, use <Link className="link" to="/me/gallery">Gallery › Download all</Link>.</p>
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Import</h3>

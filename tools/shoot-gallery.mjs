@@ -147,13 +147,13 @@ async function run(kind, browser) {
 
   // ----- gallery: empty → bad files → upload many -----
   await page.click('[data-testid="open-gallery"]'); await sleep(900);
-  check(page.url().endsWith('/me/gallery') && /Your photo gallery/i.test(await text()), 'Gallery empty state');
+  check(page.url().endsWith('/me/gallery') && /Your photo & video gallery/i.test(await text()), 'Gallery empty state');
   const gin = await page.$('[data-testid="g-input"]');
   check(await gin.evaluate((i) => i.multiple && /image\/jpeg/.test(i.accept)), 'Gallery input: multiple, images only');
   await gin.uploadFile(SAMPLES + 'IMG_0420.heic', SAMPLES + 'notes.pdf');
   await waitFor(async () => /only photos can be added/i.test(await text()) && /HEIC/.test(await text()));
   const bt = await text();
-  check(/notes\.pdf: only photos can be added/.test(bt), 'PDF refused with a friendly message');
+  check(/notes\.pdf: only photos \(JPEG, PNG, WebP, HEIC\) and videos/.test(bt), 'PDF refused with a friendly message');
   check(/can’t open HEIC/.test(bt), 'Undecodable HEIC → friendly HEIC message');
   await clickText('Cancel', '.sheet button');
   const files = SPECS.filter((s) => s.kind !== 'avatar').map((s) => SAMPLES + s.f);
@@ -192,7 +192,7 @@ async function run(kind, browser) {
   check(g.filter((b) => b.k.endsWith(':disp')).every((b) => b.type === 'image/webp'), 'View copies are WebP');
   check(g.some((b) => b.k.endsWith(':orig') && b.type === 'image/png'), 'PNG original stays PNG');
   const u = await page.$eval('[data-testid="g-usage"]', (e) => e.textContent);
-  check(/8 photos · [\d.]+ (MB|KB)/.test(u), `Storage used shown (${u})`);
+  check(/8 photos · 0 videos · [\d.]+ (MB|KB)/.test(u), `Storage used shown (${u})`);
   check(/GPS location and other hidden metadata are removed/.test(gt) && /No sharing, no public feed/.test(gt), 'Privacy note shown');
 
   // ----- filter -----

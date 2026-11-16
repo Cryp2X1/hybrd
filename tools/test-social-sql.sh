@@ -16,3 +16,4 @@ echo "== schema.sql, run 1"; PGOPTIONS="-c client_min_messages=warning" "${PSQL[
 echo "== schema.sql, run 2 (idempotent)"; PGOPTIONS="-c client_min_messages=warning" "${PSQL[@]}" -o /dev/null -f supabase/schema.sql
 echo "== policies: $("${PSQL[@]}" -At -c "select count(*) from pg_policies where schemaname in ('public','storage')")"
 "${PSQL[@]}" -o /dev/null -f tools/sql/test-social.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== gallery videos"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-gallery-video.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

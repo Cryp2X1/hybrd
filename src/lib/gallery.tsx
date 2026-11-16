@@ -7,9 +7,11 @@ import { useStore, uid } from './store';
 import { useAuth } from './auth';
 import { getSupabase, MEDIA_BUCKET } from './supabase';
 import {
-  checkFile, readExif, fitPixels, fitWithin, pickDate, stripJpegMetadata, stripPngMetadata, extFor, makeZip, uniqueNames, downloadName,
-  ORIG_CAP, DISP_EDGE, THUMB_EDGE, AVATAR_PX, HEIC_ERROR, type GalleryItem, type GalleryTag, type BlobKind,
+  checkFile, readExif, fitPixels, fitWithin, pickDate, stripJpegMetadata, stripPngMetadata, extFor, uniqueNames, downloadName, localDay,
+  checkVideo, checkDuration, videoMime, cloudPlan, isBackedUp, zipPlan, zipLayout, crc32Update, fmtDuration, CLOUD_FILE_CAP,
+  ORIG_CAP, DISP_EDGE, THUMB_EDGE, AVATAR_PX, HEIC_ERROR, type GalleryItem, type GalleryTag, type BlobKind, type MediaKind,
 } from './media';
+import { sniffContainer, readTopHeader, parseMoov, stripLocationInBox, CLEAN_TOP, MAX_META_BOX, type MoovInfo, type VideoContainer } from './mp4';
 
 const media = createStore('hybrd-media', 'blobs');
 const bkey = (id: string, kind: BlobKind) => `g:${id}:${kind}`;
@@ -55,6 +57,7 @@ export async function clean(b: Blob): Promise<Blob> {
 export interface Prepared {
   key: string; name: string; orig: Blob; disp: Blob; thumb: Blob; w: number; h: number; mime: string;
   hadGps: boolean; hadExif: boolean; date: string; dateSource: GalleryItem['dateSource']; warn?: string; preview: string;
+  kind?: MediaKind; duration?: number; container?: VideoContainer; playable?: boolean; telemetry?: boolean; localOnly?: boolean;
 }
 /** Decode → re-encode at full resolution (≤ 16 MP, ≤ 10 MB) for download, 1600 px WebP for viewing, 480 px thumbnail. */
 export async function preparePhoto(file: File): Promise<Prepared> {
@@ -85,6 +88,106 @@ export async function preparePhoto(file: File): Promise<Prepared> {
     };
   } finally { d.close(); }
 }
+// ---------- videos ----------
+/** Remove location records from an MP4/MOV without touching the audio/video data: only the small metadata boxes (moov,
+ *  top-level udta / XMP uuid) are read into memory, cleaned in place (same length) and spliced back between untouched
+ *  slices of the original file. WebM has no standard location field. */
+export async function cleanVideo(file: Blob, container: VideoContainer): Promise<{ blob: Blob; found: string[]; telemetry: string[]; info: MoovInfo; checked: boolean }> {
+  const found: string[] = [], telemetry: string[] = []; let info: MoovInfo = {};
+  if (container === 'webm') return { blob: file, found, telemetry, info, checked: true };
+  const parts: BlobPart[] = []; let pos = 0, copied = 0, n = 0;
+  try {
+    while (pos + 8 <= file.size && n++ < 10_000) {
+      const head = new Uint8Array(await file.slice(pos, pos + 16).arrayBuffer());
+      const bx = readTopHeader(head, pos, file.size);
+      if (!bx) break;
+      if (CLEAN_TOP.has(bx.type) && bx.size <= MAX_META_BOX) {
+        const bytes = new Uint8Array(await file.slice(bx.start, bx.end).arrayBuffer());
+        if (bx.type === 'moov') info = parseMoov(bytes);
+        const r = stripLocationInBox(bytes);
+        telemetry.push(...r.telemetry);
+        if (r.found.length) { found.push(...r.found); parts.push(file.slice(copied, bx.start), bytes); copied = bx.end; }
+      }
+      pos = bx.end;
+    }
+  } catch { return { blob: file, found: [], telemetry, info, checked: false }; }
+  const checked = pos >= file.size;
+  if (!found.length) return { blob: file, found, telemetry, info, checked };
+  parts.push(file.slice(copied));
+  return { blob: new Blob(parts, { type: file.type }), found, telemetry, info, checked };
+}
+
+const once = (el: HTMLMediaElement, ev: string, ms: number) => new Promise<void>((res, rej) => {
+  const t = window.setTimeout(() => { cleanup(); rej(new Error('timeout')); }, ms);
+  const ok = () => { cleanup(); res(); }, bad = () => { cleanup(); rej(new Error('decode')); };
+  const cleanup = () => { window.clearTimeout(t); el.removeEventListener(ev, ok); el.removeEventListener('error', bad); };
+  el.addEventListener(ev, ok); el.addEventListener('error', bad);
+});
+/** Duration, display size and a poster frame via a hidden <video>. Throws if this browser can't decode the file. */
+export async function probeVideo(blob: Blob): Promise<{ duration?: number; w: number; h: number; frame: HTMLCanvasElement }> {
+  const v = document.createElement('video');
+  v.muted = true; v.playsInline = true; v.preload = 'auto';
+  const url = URL.createObjectURL(blob);
+  try {
+    v.src = url;
+    await once(v, 'loadedmetadata', 15000);
+    let d = v.duration;
+    if (!isFinite(d)) { // MediaRecorder WebM: duration is unknown until you seek past the end
+      v.currentTime = 1e7; await once(v, 'seeked', 8000).catch(() => {}); d = v.duration;
+    }
+    const at = isFinite(d) && d > 0 ? Math.min(1, d / 3) : 0;
+    v.currentTime = at;
+    await once(v, 'seeked', 10000).catch(() => {});
+    if (v.readyState < 2) await once(v, 'loadeddata', 8000);
+    const w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) throw new Error('no frame');
+    const dim = fitWithin(w, h, DISP_EDGE);
+    return { duration: isFinite(d) ? d : undefined, w, h, frame: draw(v, dim.w, dim.h, undefined, true) };
+  } finally { v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); }
+}
+/** Stand-in poster when the browser can't decode the video (e.g. HEVC outside Safari): dark card with a play mark. */
+function placeholderPoster(w: number, h: number, label: string): HTMLCanvasElement {
+  const d = fitWithin(w || 1280, h || 720, 960);
+  const c = document.createElement('canvas'); c.width = d.w; c.height = d.h;
+  const x = c.getContext('2d')!; const m = Math.min(d.w, d.h);
+  x.fillStyle = '#141414'; x.fillRect(0, 0, d.w, d.h);
+  x.fillStyle = '#ffe600'; x.beginPath(); x.moveTo(d.w / 2 - m * 0.09, d.h / 2 - m * 0.12); x.lineTo(d.w / 2 + m * 0.12, d.h / 2); x.lineTo(d.w / 2 - m * 0.09, d.h / 2 + m * 0.12); x.closePath(); x.fill();
+  x.fillStyle = '#9a9a9a'; x.font = `600 ${Math.round(m * 0.06)}px sans-serif`; x.textAlign = 'center'; x.fillText(label, d.w / 2, d.h / 2 + m * 0.26);
+  return c;
+}
+/** Keep the original video bytes (no re-encode), minus location tags; read duration / size; make poster + thumbnail. */
+export async function prepareVideo(file: File): Promise<Prepared> {
+  const chk = checkVideo(file);
+  if (!chk.ok) throw new Error(chk.error);
+  const container = sniffContainer(new Uint8Array(await file.slice(0, 64).arrayBuffer()));
+  if (!container) throw new Error(`${file.name} doesn’t look like a video file (MP4, MOV or WebM).`);
+  const mime = videoMime(file, container)!;
+  const cv = await cleanVideo(file, container);
+  const orig = cv.blob.type === mime ? cv.blob : new Blob([cv.blob], { type: mime });
+  let meta: Awaited<ReturnType<typeof probeVideo>> | undefined;
+  try { meta = await probeVideo(orig); } catch { /* browser can't decode this codec — keep the file, explain in the UI */ }
+  const duration = meta?.duration ?? cv.info.duration;
+  const dc = checkDuration(file.name, duration);
+  if (!dc.ok) throw new Error(dc.error);
+  const w = meta?.w || cv.info.w || 0, h = meta?.h || cv.info.h || 0;
+  const frame = meta?.frame || placeholderPoster(w, h, `${container.toUpperCase()} video${duration ? ` · ${fmtDuration(duration)}` : ''}`);
+  const disp = await toWebpOrJpeg(frame, 0.82);
+  const td = fitWithin(frame.width, frame.height, THUMB_EDGE);
+  const thumb = await toWebpOrJpeg(draw(frame, td.w, td.h), 0.78);
+  const pd = cv.info.created ? { date: localDay(cv.info.created), src: 'exif' as const } : pickDate(undefined, file.lastModified);
+  const localOnly = cloudPlan(orig.size) === 'local-only';
+  const warns = [chk.warn];
+  if (!meta) warns.push('This browser can’t play this video format (often iPhone HEVC outside Safari). It’s saved and can be downloaded at full quality.');
+  if (!cv.checked) warns.push('HYBRD couldn’t fully read this file’s metadata, so it may still contain location data.');
+  if (cv.telemetry.length) warns.push('This video has a GPS track (action-camera telemetry) that HYBRD can’t remove without re-encoding. Keep it private.');
+  return {
+    key: uid(), name: file.name.replace(/\.[^.]+$/, '').slice(0, 60), orig, disp, thumb, w, h, mime, kind: 'video', duration, container,
+    playable: !!meta, telemetry: cv.telemetry.length > 0 || undefined, localOnly,
+    hadGps: cv.found.length > 0, hadExif: cv.found.length > 0, date: pd.date, dateSource: pd.src, warn: warns.filter(Boolean).join(' ') || undefined,
+    preview: URL.createObjectURL(thumb),
+  };
+}
+
 /** Square crop → 512 px avatar. */
 export async function renderAvatar(src: CanvasImageSource, crop: { sx: number; sy: number; sw: number; sh: number }): Promise<Blob> {
   return clean(await toWebpOrJpeg(draw(src, AVATAR_PX, AVATAR_PX, crop, true), 0.86));
@@ -92,7 +195,8 @@ export async function renderAvatar(src: CanvasImageSource, crop: { sx: number; s
 
 // ---------- object-URL cache ----------
 const urlCache = new Map<string, string>();
-function dropUrls(id: string) { for (const k of ['orig', 'disp', 'thumb']) { const key = `${id}:${k}`; const u = urlCache.get(key); if (u) { URL.revokeObjectURL(u); urlCache.delete(key); } } }
+// revoke a little later: an open <video> may still be reading the URL while React swaps it out (avoids ERR_FILE_NOT_FOUND)
+function dropUrls(id: string) { for (const k of ['orig', 'disp', 'thumb']) { const key = `${id}:${k}`; const u = urlCache.get(key); if (u) { urlCache.delete(key); window.setTimeout(() => URL.revokeObjectURL(u), 3000); } } }
 
 export function saveBlob(blob: Blob, name: string) {
   const a = document.createElement('a');
@@ -113,7 +217,8 @@ interface MediaCtx {
   deletePhotos(ids: string[]): Promise<void>;
   getBlob(it: GalleryItem, kind: BlobKind): Promise<Blob | undefined>;
   getUrl(it: GalleryItem, kind: BlobKind): Promise<string | undefined>;
-  download(its: GalleryItem[]): Promise<void>;
+  /** One file → saved directly; several → one ZIP. Returns 'too-big' (nothing saved) when the originals exceed ZIP_MAX. */
+  download(its: GalleryItem[]): Promise<{ status: 'ok' | 'too-big' | 'missing'; saved: number; missing: number }>;
   uploading: number;
   synced: boolean;
   syncError: string;
@@ -200,6 +305,11 @@ export function MediaProvider({ children }: { children: ReactNode }) {
       const it: Omit<GalleryItem, 'updatedAt'> = {
         id, date: p.date, dateSource: p.dateSource, tag: p.tag, caption: p.caption?.trim() || undefined, w: p.w, h: p.h, mime: p.mime,
         bytes: { orig: p.orig.size, disp: p.disp.size, thumb: p.thumb.size }, name: p.name, createdAt: Date.now() + n, hadGps: p.hadGps || undefined,
+        ...(p.kind === 'video' ? {
+          kind: 'video' as const, duration: p.duration !== undefined ? Math.round(p.duration * 100) / 100 : undefined, container: p.container,
+          playable: p.playable === false ? false : undefined, telemetry: p.telemetry || undefined,
+          ...(p.localOnly ? { localOnly: true, cloudNote: 'too-big' as const } : {}),
+        } : {}),
       };
       upsert<GalleryItem>('gallery', it); n++;
       URL.revokeObjectURL(p.preview);
@@ -229,16 +339,29 @@ export function MediaProvider({ children }: { children: ReactNode }) {
     }
   }, [remove, signedIn, ns]);
 
-  const download = useCallback(async (its: GalleryItem[]) => {
-    if (!its.length) return;
-    if (its.length === 1) { const b = await getBlob(its[0], 'orig'); if (b) saveBlob(b, downloadName(its[0])); return; }
+  const download: MediaCtx['download'] = useCallback(async (its) => {
+    if (!its.length) return { status: 'ok', saved: 0, missing: 0 };
+    if (its.length === 1) { const b = await getBlob(its[0], 'orig'); if (!b) return { status: 'missing', saved: 0, missing: 1 }; saveBlob(b, downloadName(its[0])); return { status: 'ok', saved: 1, missing: 0 }; }
+    if (zipPlan(its).mode === 'individual') return { status: 'too-big', saved: 0, missing: 0 };
+    // ZIP assembled from Blob parts: each original is hashed in 8 MB slices, never copied into one big array
     const names = uniqueNames(its.map((i) => downloadName(i)));
-    const files: { name: string; data: Uint8Array; date: Date }[] = [];
+    const entries: { name: string; size: number; crc: number; date: Date }[] = [], blobs: Blob[] = [];
+    let missing = 0;
     for (let i = 0; i < its.length; i++) {
       const b = await getBlob(its[i], 'orig');
-      if (b) files.push({ name: names[i], data: new Uint8Array(await b.arrayBuffer()), date: new Date(its[i].date + 'T12:00:00') });
+      if (!b) { missing++; continue; }
+      let crc = 0;
+      for (let o = 0; o < b.size; o += 8 * 1024 * 1024) crc = crc32Update(crc, new Uint8Array(await b.slice(o, o + 8 * 1024 * 1024).arrayBuffer()));
+      entries.push({ name: names[i], size: b.size, crc, date: new Date(its[i].date + 'T12:00:00') }); blobs.push(b);
     }
-    saveBlob(new Blob([makeZip(files) as BlobPart], { type: 'application/zip' }), `hybrd-photos-${new Date().toISOString().slice(0, 10)}.zip`);
+    if (!entries.length) return { status: 'missing', saved: 0, missing };
+    const { headers, central } = zipLayout(entries);
+    const parts: BlobPart[] = [];
+    entries.forEach((_, i) => parts.push(headers[i] as BlobPart, blobs[i]));
+    parts.push(central as BlobPart);
+    const videos = its.some((i) => i.kind === 'video');
+    saveBlob(new Blob(parts, { type: 'application/zip' }), `hybrd-${videos ? 'gallery' : 'photos'}-${new Date().toISOString().slice(0, 10)}.zip`);
+    return { status: 'ok', saved: entries.length, missing };
   }, [getBlob]);
 
   // ----- background upload (Supabase mode) -----
@@ -250,26 +373,35 @@ export function MediaProvider({ children }: { children: ReactNode }) {
     try {
       const pend = (await get<string[]>(dkey(ns), media)) || [];
       if (pend.length) { const r = await sb.storage.from(MEDIA_BUCKET).remove(pend); if (!r.error) await set(dkey(ns), [], media); }
-      const todo = itemsRef.current.filter((i) => !i.remote?.orig);
+      const todo = itemsRef.current.filter((i) => !i.deleted && !isBackedUp(i));
       setUploading(todo.length);
       for (const it of todo) {
-        const remoteP: Partial<Record<BlobKind, string>> = {};
+        const remoteP: Partial<Record<BlobKind, string>> = { ...it.remote };
+        let localOnly = it.localOnly, cloudNote = it.cloudNote;
         for (const kind of ['thumb', 'disp', 'orig'] as BlobKind[]) {
+          if (remoteP[kind]) continue;
           const b = await get<Blob>(bkey(it.id, kind), media); if (!b) continue;
+          // big videos stay on this device (Supabase free plan: 50 MB per file); the poster + thumbnail still sync
+          if (kind === 'orig' && it.kind === 'video' && (localOnly || cloudPlan(b.size, CLOUD_FILE_CAP) === 'local-only')) { localOnly = true; cloudNote ||= 'too-big'; continue; }
           const path = `${user.id}/gallery/${it.id}/${kind}.${extFor(b.type)}`;
           const { error } = await sb.storage.from(MEDIA_BUCKET).upload(path, b, { upsert: true, contentType: b.type, cacheControl: '3600' });
-          if (error) throw error;
+          if (error) {
+            const e = error as { message?: string; statusCode?: string | number };
+            // bucket refused the video (size limit lowered, or schema.sql not re-run so video/* isn't allowed): keep it local, carry on
+            if (kind === 'orig' && it.kind === 'video' && (String(e.statusCode) === '413' || String(e.statusCode) === '415' || /size|exceed|mime|type|not allowed|payload/i.test(e.message || ''))) { localOnly = true; cloudNote = 'refused'; continue; }
+            throw error;
+          }
           remoteP[kind] = path;
         }
         const cur = itemsRef.current.find((x) => x.id === it.id);
-        if (cur && remoteP.orig) upsert<GalleryItem>('gallery', { ...cur, remote: remoteP });
+        if (cur && (remoteP.orig || (localOnly && remoteP.thumb))) upsert<GalleryItem>('gallery', { ...cur, remote: remoteP, ...(localOnly ? { localOnly: true, cloudNote } : {}) });
         setUploading((n) => Math.max(0, n - 1));
       }
       setSyncError('');
     } catch (e) { setSyncError((e as Error).message || String(e)); }
     finally { busy.current = false; setUploading(0); }
   }, [signedIn, user, ns, upsert]);
-  const pendingCount = items.filter((i) => !i.remote?.orig).length;
+  const pendingCount = items.filter((i) => !i.deleted && !isBackedUp(i)).length;
   useEffect(() => { if (ready && signedIn && pendingCount) { const t = window.setTimeout(sync, 1200); return () => window.clearTimeout(t); } }, [ready, signedIn, pendingCount, sync]);
   useEffect(() => { const on = () => sync(); window.addEventListener('online', on); return () => window.removeEventListener('online', on); }, [sync]);
 

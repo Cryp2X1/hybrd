@@ -7,7 +7,7 @@ import { useStore } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { useMedia, decodeImage, renderAvatar, useGalleryUrl } from '../lib/gallery';
-import { ACCEPT, checkFile, clampOffset, cropRect, initials, filterItems, fmtBytes, HEIC_ERROR, usage, type GalleryItem } from '../lib/media';
+import { ACCEPT, checkFile, clampOffset, cropRect, initials, filterItems, fmtBytes, HEIC_ERROR, usage, isVideo, type GalleryItem } from '../lib/media';
 
 export function Avatar({ size = 40, className = '', ring }: { size?: number; className?: string; ring?: boolean }) {
   const { avatarUrl } = useMedia();
@@ -120,7 +120,7 @@ export function ProfilePhotoCard() {
 
 function Thumb({ it }: { it: GalleryItem }) {
   const u = useGalleryUrl(it, 'thumb');
-  return <span className="gp-thumb">{u ? <img src={u} alt={it.caption || `${it.tag} photo`} /> : <Icon name="image" size={18} />}</span>;
+  return <span className={`gp-thumb ${isVideo(it) ? 'vid' : ''}`}>{u ? <img src={u} alt={it.caption || `${it.tag} ${isVideo(it) ? 'video' : 'photo'}`} /> : <Icon name={isVideo(it) ? 'video' : 'image'} size={18} />}</span>;
 }
 /** Me: latest photos + link to the gallery. */
 export function GalleryPreview() {
@@ -129,13 +129,13 @@ export function GalleryPreview() {
   const u = usage(items, avatarBytes);
   return (
     <Card className="gallery-preview">
-      <div className="card-head"><h3>Gallery</h3><Link to="/me/gallery" data-testid="open-gallery">{list.length ? 'Open' : 'Add photos'} →</Link></div>
+      <div className="card-head"><h3>Gallery</h3><Link to="/me/gallery" data-testid="open-gallery">{list.length ? 'Open' : 'Add photos & videos'} →</Link></div>
       {list.length ? (
         <Link to="/me/gallery" className="gp-grid">{list.slice(0, 4).map((it) => <Thumb key={it.id} it={it} />)}</Link>
       ) : (
-        <Link to="/me/gallery" className="gp-empty"><Icon name="image" size={26} /><span>Progress and training photos, private to you.</span></Link>
+        <Link to="/me/gallery" className="gp-empty"><Icon name="image" size={26} /><span>Progress photos and training videos, private to you.</span></Link>
       )}
-      <div className="muted small" style={{ marginTop: 10 }}>{u.photos} photo{u.photos === 1 ? '' : 's'} · {fmtBytes(u.bytes)} on this device</div>
+      <div className="muted small" style={{ marginTop: 10 }}>{u.photos} photo{u.photos === 1 ? '' : 's'}{u.videos ? ` · ${u.videos} video${u.videos === 1 ? '' : 's'}` : ''} · {fmtBytes(u.bytes)} on this device</div>
     </Card>
   );
 }
