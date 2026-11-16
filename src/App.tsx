@@ -24,6 +24,8 @@ const RecipeDetail = lazy(() => import('./pages/RecipeDetail'));
 const Calculator = lazy(() => import('./pages/Calculator'));
 const WeightLoss = lazy(() => import('./pages/WeightLoss'));
 const WeightLossSetup = lazy(() => import('./pages/WeightLossSetup'));
+const Fasting = lazy(() => import('./pages/Fasting'));
+const FastingSetup = lazy(() => import('./pages/FastingSetup'));
 const Progress = lazy(() => import('./pages/Progress'));
 const Burn = lazy(() => import('./pages/Burn'));
 const Me = lazy(() => import('./pages/Me'));
@@ -107,6 +109,8 @@ export function App() {
             <Route path="/fuel/calculator" element={<Calculator />} />
             <Route path="/fuel/weight-loss" element={<WeightLoss />} />
             <Route path="/fuel/weight-loss/setup" element={<WeightLossSetup />} />
+            <Route path="/fuel/fasting" element={<Fasting />} />
+            <Route path="/fuel/fasting/setup" element={<FastingSetup />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />

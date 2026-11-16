@@ -13,7 +13,11 @@ export type Feature =
   | 'coach.checkin' // weekly check-in + automatic adjustments
   | 'coach.nutrition' // calorie / macro / hydration targets
   | 'coach.mealplan' // 7-day meal plan + logging to Fuel
-  | 'coach.why'; // "Why this plan" explanations
+  | 'coach.why' // "Why this plan" explanations
+  | 'fasting.plan' // fasting screening + personalised protocol and eating window
+  | 'fasting.timer' // live fasting timer, stages, eating-window countdown
+  | 'fasting.history' // fasting log, streaks and weekly view
+  | 'fasting.research'; // protocol library, tips and research
 
 export interface FeatureInfo { free: boolean; label: string }
 export const FEATURES: Record<Feature, FeatureInfo> = {
@@ -24,6 +28,10 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'coach.nutrition': { free: true, label: 'Nutrition targets' },
   'coach.mealplan': { free: true, label: '7-day meal plan' },
   'coach.why': { free: true, label: 'Why this plan' },
+  'fasting.plan': { free: true, label: 'Personal fasting plan' },
+  'fasting.timer': { free: true, label: 'Fasting timer' },
+  'fasting.history': { free: true, label: 'Fasting history & streaks' },
+  'fasting.research': { free: true, label: 'Fasting protocols & research' },
 };
 
 export interface Entitlements { premium: boolean; source: 'none' | 'stripe' | 'revenuecat' | 'promo' }

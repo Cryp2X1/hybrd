@@ -7,6 +7,7 @@ import { useStore } from '../lib/store';
 import { addDays, dayTotals, prettyDay, todayKey } from '../lib/calc';
 import { fuelTargets } from '../lib/fuelTargets';
 import { WLCard } from '../components/WLCard';
+import { FastingCard } from '../components/FastingCard';
 import { dayBurn } from '../lib/burn';
 import { StepsCard } from '../components/StepsCard';
 import { Page, Segmented, Card, Banner, Pill, Disclaimer } from '../components/ui';
@@ -37,7 +38,7 @@ export default function Fuel() {
 
   return (
     <Page title="Fuel" kicker="Calories · Macros · Water · Recipes" wide actions={<Link className="btn sm y" to={`/fuel/add?date=${day}`}><Icon name="plus" size={18} />Food</Link>}>
-      <Segmented value={tab} onChange={(v) => (v === 'wl' ? nav('/fuel/weight-loss') : setSp({ tab: v }))} options={[{ v: 'today', label: 'Food log' }, { v: 'wl', label: 'Weight loss' }, { v: 'recipes', label: 'Meals & drinks' }, { v: 'guide', label: 'Guide' }, { v: 'sources', label: 'Sources' }]} />
+      <Segmented value={tab} onChange={(v) => (v === 'wl' ? nav('/fuel/weight-loss') : v === 'fast' ? nav('/fuel/fasting') : setSp({ tab: v }))} options={[{ v: 'today', label: 'Food log' }, { v: 'wl', label: 'Weight loss' }, { v: 'fast', label: 'Fasting' }, { v: 'recipes', label: 'Meals & drinks' }, { v: 'guide', label: 'Guide' }, { v: 'sources', label: 'Sources' }]} />
 
       {tab === 'today' && <CoachCard where="fuel" />}
       {tab === 'today' && <div className="desk-grid">
@@ -75,6 +76,7 @@ export default function Fuel() {
         </div>
         <div>
           <WLCard compact />
+          <FastingCard compact />
           <Card>
             <div className="card-head"><h3>Water</h3><span className="muted small">Target {(t.waterMl / 1000).toFixed(1)} L</span></div>
             <div className="row" style={{ marginBottom: 12 }}><div className="water-big">{(ml / 1000).toFixed(2)} L</div><span className="spacer" /><span className="mono muted">{Math.round((ml / t.waterMl) * 100)}%</span></div>

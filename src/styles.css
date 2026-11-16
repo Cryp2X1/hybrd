@@ -709,3 +709,48 @@ video.scan { width: 100%; border-radius: 14px; background: #000; }
 .coach-dec.info { color: var(--blue); border-color: rgba(96,165,250,.5); }
 .coach-dec.warn { color: #ffb86b; border-color: rgba(255,184,107,.5); }
 .coach-result { border-color: rgba(255,230,0,.5); }
+
+/* ---------------- Fasting (Fuel › Fasting) ---------------- */
+.fast-grid { display: grid; gap: 12px; }
+.fast-grid > * { min-width: 0; }
+@media (min-width: 960px) { .fast-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; gap: 16px; } }
+.fast-h { font-family: var(--head); font-weight: 400; font-size: 30px; line-height: 1.05; text-transform: uppercase; letter-spacing: .01em; margin: 4px 0 10px; }
+.fast-tag { font-family: var(--head); font-size: 46px; line-height: 1; color: var(--y); white-space: nowrap; }
+.fast-tag.sm { font-size: 26px; min-width: 76px; padding-top: 2px; }
+.fast-timer { border-color: rgba(255,230,0,.3); }
+.fast-ring { display: flex; justify-content: center; margin: 8px 0 6px; }
+.fast-ring .score-ring { max-width: 100%; }
+.fast-times, .fast-win { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.fast-times > div, .fast-win > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; border-radius: 14px; background: var(--card2); border: 1px solid var(--line2); }
+.fast-times b, .fast-win b { font-family: var(--mono); font-size: 18px; }
+.fast-win.sm b { font-size: 15px; }
+.fast-win.sm > div { padding: 8px; }
+.fast-now { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.fast-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.fast-stage { display: flex; flex-direction: column; gap: 2px; padding: 8px 6px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line2); color: var(--mut2); min-width: 0; }
+.fast-stage b { font-family: var(--mono); font-size: 11px; }
+.fast-stage span { font-size: 10.5px; line-height: 1.25; }
+.fast-stage.on { color: var(--fg); border-color: rgba(255,230,0,.35); }
+.fast-stage.now { background: rgba(255,230,0,.12); border-color: var(--y); }
+.fast-stage.now b { color: var(--y); }
+.fast-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.fast-bar { display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: var(--mono); }
+.fast-bar-t { position: relative; width: 100%; max-width: 34px; height: 92px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line2); overflow: hidden; display: flex; align-items: flex-end; }
+.fast-bar-t > div { width: 100%; background: #4a4a4a; border-radius: 8px 8px 0 0; }
+.fast-bar.met .fast-bar-t > div { background: var(--y); }
+.fast-bar-t > div.low { background: rgba(255,230,0,.35); }
+.fast-bar-t i { position: absolute; left: 0; right: 0; border-top: 1.5px dashed rgba(255,255,255,.55); }
+.fast-bar b { font-size: 11px; }
+.fast-bar span { font-size: 10px; color: var(--mut); text-transform: uppercase; }
+.fast-bar.today span { color: var(--y); }
+.fast-protos { display: grid; gap: 12px; }
+@media (min-width: 760px) { .fast-protos { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+@media (min-width: 1280px) { .fast-protos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.fast-proto.mine { border-color: var(--y); }
+.fast-proto .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.fast-kv { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.fast-kv span { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); padding-top: 2px; }
+.fast-kv p { margin: 0; font-size: 13px; line-height: 1.45; }
+.fast-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line2); color: var(--mut); }
+.fast-dot.met { background: var(--y); border-color: var(--y); color: #0a0a0a; }
+@media (max-width: 380px) { .fast-tag { font-size: 38px; } .fast-stage span { font-size: 9.5px; } }

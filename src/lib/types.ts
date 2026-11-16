@@ -32,6 +32,8 @@ export interface Profile {
   ftp?: number;
   /** Hides the first-run HYBRD Coach prompt on Home (the smaller entry card stays). */
   coachDismissed?: boolean;
+  /** Fuel › Fasting: screening answers, chosen protocol and eating window (synced with the profile). */
+  fasting?: import('./fasting').FastPlan;
   updatedAt?: number;
 }
 
@@ -122,6 +124,8 @@ export interface DataState {
   wlplans: import('./wl').WLPlan[];
   /** HYBRD Coach plans (rule-based training + nutrition plan). The newest non-deleted record is the active plan. */
   coachplans: import('./coach').CoachPlan[];
+  /** Fasting timer log (Fuel › Fasting): timed fasts and low-calorie days. Synced to `fasting_logs`. */
+  fasts: import('./fasting').FastLog[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans', 'fasts'];

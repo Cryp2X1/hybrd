@@ -5,6 +5,7 @@ import { addDays, dayKeyOf, dayTotals, activityLabel, fmtDist, fmtTime, hybridSc
 import { dayBurn } from '../lib/burn';
 import { BurnRingCard } from '../components/BurnRing';
 import { WLCard } from '../components/WLCard';
+import { FastingCard } from '../components/FastingCard';
 import { CoachCard } from '../components/CoachCard';
 import { activeCoachPlan } from '../lib/coach';
 import { fuelTargets } from '../lib/fuelTargets';
@@ -102,6 +103,8 @@ export default function Home() {
           </Card>
 
           <WLCard />
+
+          <FastingCard />
 
           <BurnRingCard />
 
