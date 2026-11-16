@@ -54,6 +54,10 @@ const P: Record<string, string> = {
   coach: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.2 7.8l-2.6 5.8-5.8 2.6 2.6-5.8z',
   edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   swap: 'M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7',
+  camera: 'M3 8a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 16l5-5 4 4 3-3 6 6M15.5 9.5a1.5 1.5 0 1 0 0-.01',
+  compare: 'M12 3v18M4 6h5v12H4zM15 6h5v12h-5z',
+  select: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 17l2 2 4-4',
 };
 export function Icon({ name, size = 22, stroke = 2, className, fill }: { name: string; size?: number; stroke?: number; className?: string; fill?: boolean }) {
   return (

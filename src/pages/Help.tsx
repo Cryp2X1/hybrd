@@ -95,6 +95,7 @@ export default function Help() {
       <Card>
         <h3 style={{ marginBottom: 8 }}>Privacy</h3>
         <p className="muted small" style={{ margin: 0 }}>No ads, no trackers. Without an account, your data never leaves this device. With an account, it’s stored in the app owner’s Supabase database and row-level security lets only you read it. Location is used only while you record. Map tiles come from OpenStreetMap; product lookups go to Open Food Facts. Imported watch files are parsed on your device. Strava data stays on this device only (up to 7 days) and is never added to your account sync or exports.</p>
+        <p className="muted small" style={{ margin: '8px 0 0' }}>Photos (profile picture and Gallery) are private to you — there’s no sharing or public feed. HYBRD re-saves every photo in your browser before storing it, which removes hidden metadata such as GPS location and camera details. With an account, photos go to a private storage bucket only your login can read.</p>
       </Card>
       <Disclaimer />
       <p className="muted small">Exercise carries risk. Check with a doctor before starting a new program if you have a medical condition, and stop if you feel pain, dizziness or chest discomfort.</p>

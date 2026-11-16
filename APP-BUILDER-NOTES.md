@@ -329,3 +329,37 @@ Email templates that change password or email must use a `redirectTo` that is on
 - Entitlements: `fasting.plan`, `fasting.timer`, `fasting.history`, `fasting.research` — all `free: true`.
 - Tests `tools/test-fasting.ts` (90 checks); screenshots `tools/shoot-fasting.mjs`. Routes `fuel/fasting(/setup)` added to `tools/postbuild.mjs`.
 - Known limits: no notifications when the goal is reached (would need Web Push, installed-PWA only on iOS); timer is timestamp-based so it survives closing the app; no Apple Health / glucose / ketone data; 12:12 and once-weekly 24 h have little direct trial evidence (labelled "Limited evidence").
+
+---
+
+## Profile photo & Gallery (Me) — built 16 Nov 2026
+
+**What it is:** a profile picture (shown in the Me header, mobile top bar, bottom-nav "Me" tab, desktop sidebar and the Home greeting; initials fallback) and a private photo Gallery at `/me/gallery` for progress / training photos. No sharing, no public feed. All features are `free: true` in `src/lib/entitlements.ts` (`profile.avatar`, `gallery.photos`, `gallery.download`, `gallery.compare`).
+
+**Files**
+- `src/lib/media.ts` — pure, unit-tested: `fitWithin` / `fitPixels` (≤ 16 MP so iOS canvas works), avatar `cropRect` / `clampOffset`, JPEG `readExif` (DateTimeOriginal, GPS present?), `stripJpegMetadata` / `stripPngMetadata`, `checkFile` (types + caps), `pickDate`, `filterItems` / `tagCounts`, `usage` / `fmtBytes`, `downloadName`, store-only `makeZip` + `crc32`, `initials`.
+- `src/lib/gallery.tsx` — `MediaProvider` (in `main.tsx`, inside `StoreProvider`): canvas re-encode (`preparePhoto`, `renderAvatar`), IndexedDB blob store `hybrd-media/blobs` (keys `g:<id>:orig|disp|thumb`, `avatar:<ns>`), object-URL cache, downloads, Supabase Storage sync.
+- `src/components/Avatar.tsx` — `Avatar`, `AvatarEditor` (drag, pinch, wheel, slider; circular mask; 512 px WebP/JPEG), `ProfilePhotoCard`, `GalleryPreview`.
+- `src/pages/Gallery.tsx` — grid by month + tag filter (`?tag=progress|training|other`), upload sheet (caption, tag, date, "tag all"), full-screen viewer (swipe, ← →, Esc, edit details), multi-select, download (single original or ZIP), delete with confirm, before/after compare (exactly 2 selected; days apart).
+
+**Processing rules**
+- Accepts JPEG, PNG, WebP, HEIC/HEIF. HEIC works where the browser decodes it (Safari; iOS file pickers usually hand over JPEG anyway); otherwise a friendly error with the iPhone "Most Compatible" tip. SVG / GIF / video / PDF refused.
+- Every image is decoded (EXIF orientation applied) and re-encoded via canvas, so **all metadata incl. GPS is dropped**; a byte-level strip runs on the output as belt-and-braces. Upload sheet tells the user when GPS was found ("location removed").
+- Three copies per photo: **original** (full resolution ≤ 16 MP, JPEG q 0.92 or PNG kept as PNG, ≤ 10 MB — larger ones are re-encoded down with a warning; > 40 MB refused), **display** 1600 px WebP q 0.82, **thumb** 480 px WebP. WebP falls back to JPEG where the browser can't encode it.
+- Date = EXIF DateTimeOriginal → file modified date (if not "just now") → today; editable.
+- Max 30 files per batch. `navigator.storage.persist()` is requested after the first save; Gallery shows "N photos · X MB" and the browser's free quota.
+
+**Data / sync**
+- Metadata is a normal store collection `gallery` (`GalleryItem`, synced to table `gallery_items` like every other collection). Blobs never go into the JSON store or export.
+- Signed in: background upload of thumb → disp → orig to the private bucket `user-media` at `<uid>/gallery/<id>/<kind>.<ext>`, then the row gets `remote` paths. Other devices fetch thumbnails lazily and the original only on download. Avatar → `<uid>/avatar.<ext>`, path saved in `profile.avatar.path` and `profiles.avatar_url` (a storage path, not a public URL). Deletes remove storage objects (queued in IDB if offline).
+- `supabase/schema.sql` (safe to re-run): `gallery_items` table + RLS, `profiles.avatar_url`, private bucket (10 MB, jpeg/png/webp only) and four `storage.objects` policies where `(storage.foldername(name))[1] = auth.uid()`. Documented in `SETUP.md` §2 and §10.
+- "Delete all data" (Me › Your data) also deletes photos and the avatar. JSON export notes that images are downloaded from the Gallery.
+
+**Tests / screenshots:** `tools/test-gallery.ts` (80 checks; uses `tools/exif-fixture.mjs` to build real EXIF+GPS JPEGs; ZIP verified with Python `zipfile`). `tools/shoot-gallery.mjs` draws abstract sample images (no real people), uploads them, and checks stored blobs + downloads have no Exif/GPS, ZIP validity, filters, viewer swipe/keys, compare, delete, persistence after reload, avatar in nav. Route `me/gallery` in `tools/postbuild.mjs`.
+
+**Known limits**
+- iPhone Safari (not installed to Home Screen) may clear site data after 7 days without a visit — UI tells users to add to Home Screen and download backups. Local-mode photos exist only on that device/browser.
+- Downloads on iPhone go to Files (not Photos); saving straight to Photos would need the share sheet, deliberately left out (no sharing).
+- ZIP is built in memory (store, no compression) — fine for dozens of photos, heavy for hundreds of originals on older phones.
+- Local → account import moves photo metadata; the image blobs are keyed by photo id so they stay usable and upload after sign-in; the local-mode avatar is per namespace, so it has to be re-picked after signing in. Orphaned storage objects are possible if a delete fails and the device never comes back online.
+- No server-side virus/image validation beyond the bucket's MIME/size limits; no face blurring; no cloud thumbnails (Supabase image transforms are a paid feature).

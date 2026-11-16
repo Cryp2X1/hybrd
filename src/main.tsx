@@ -12,6 +12,7 @@ import { App } from './App';
 import { AuthProvider } from './lib/auth';
 import { StoreProvider } from './lib/store';
 import { RecorderProvider } from './lib/recorder';
+import { MediaProvider } from './lib/gallery';
 import { ToastProvider } from './lib/toast';
 import { captureSpotifyCallback } from './lib/spotify';
 import { captureStravaCallback } from './lib/strava';
@@ -27,11 +28,13 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter basename={basename}>
       <AuthProvider>
         <StoreProvider>
-          <RecorderProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </RecorderProvider>
+          <MediaProvider>
+            <RecorderProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </RecorderProvider>
+          </MediaProvider>
         </StoreProvider>
       </AuthProvider>
     </BrowserRouter>

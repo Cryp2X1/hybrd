@@ -13,6 +13,7 @@ import { PillarBar, ScoreRing, MacroBar } from '../components/charts';
 import { StepsCard } from '../components/StepsCard';
 import { Card, RowLink, Banner } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { Avatar } from '../components/Avatar';
 import { useRecorder, elapsedMs } from '../lib/recorder';
 import { isIOS, isStandalone } from '../lib/cues';
 import { useToast } from '../lib/toast';
@@ -57,7 +58,7 @@ export default function Home() {
 
   return (
     <div className="page wide">
-      <header className="page-head"><div className="page-title"><div className="kicker">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div><h1>{hello}{profile.name ? `, ${profile.name.split(' ')[0]}` : ''}</h1></div></header>
+      <header className="page-head"><div className="page-title"><div className="kicker">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div><h1>{hello}{profile.name ? `, ${profile.name.split(' ')[0]}` : ''}</h1></div><Link to="/me" className="home-av" aria-label="Me — profile photo" data-testid="home-avatar"><Avatar size={52} ring /></Link></header>
 
       {rec.status !== 'idle' && <Banner tone="yellow"><b>{rec.status === 'recording' ? 'Recording' : 'Paused'} {activityLabel(rec)}</b> · {fmtTime(elapsedMs(rec) / 1000)} · {fmtDist(rec.distanceM, profile.units)} — <Link to="/record">open</Link></Banner>}
 

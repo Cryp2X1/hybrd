@@ -34,6 +34,8 @@ export interface Profile {
   coachDismissed?: boolean;
   /** Fuel › Fasting: screening answers, chosen protocol and eating window (synced with the profile). */
   fasting?: import('./fasting').FastPlan;
+  /** Profile photo: the 512 px image is in IndexedDB (`avatar:<ns>`); `v` changes on every new photo; `path` = private storage path when synced. */
+  avatar?: { v: number; bytes: number; path?: string };
   updatedAt?: number;
 }
 
@@ -126,6 +128,8 @@ export interface DataState {
   coachplans: import('./coach').CoachPlan[];
   /** Fasting timer log (Fuel › Fasting): timed fasts and low-calorie days. Synced to `fasting_logs`. */
   fasts: import('./fasting').FastLog[];
+  /** Me › Gallery photo metadata (the image blobs live in IndexedDB `hybrd-media`, and in the private `user-media` bucket when signed in). Synced to `gallery_items`. */
+  gallery: import('./media').GalleryItem[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans', 'fasts'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans', 'fasts', 'gallery'];

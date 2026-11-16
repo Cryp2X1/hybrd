@@ -9,6 +9,7 @@ import { HYROX_DIVISIONS } from '../data/programs';
 import { unlockAudio, cue } from '../lib/cues';
 import type { Profile } from '../lib/types';
 import { SpotifySettings, MusicPanel } from '../components/Music';
+import { ProfilePhotoCard, GalleryPreview } from '../components/Avatar';
 
 export default function Me() {
   const { profile: p, setProfile } = useStore();
@@ -21,9 +22,11 @@ export default function Me() {
     <button className="toggle" style={{ width: '100%', textAlign: 'left' }} onClick={() => { unlockAudio(); setProfile({ [k]: !(p[k] ?? k === 'sound') }); if (k === 'sound') setTimeout(() => cue('go'), 50); }}><span><b>{label}</b><div className="muted small">{sub}</div></span><span className={`switch ${(p[k] ?? k === 'sound') ? 'on' : ''}`} /></button>
   );
   return (
-    <Page title={p.name || 'Me'} kicker={user ? user.email || 'Signed in' : configured ? 'Not signed in' : 'Local mode'} wide>
+    <Page title="Me" kicker="Profile · photos · settings" wide>
       <div className="desk-grid">
         <div>
+          <ProfilePhotoCard />
+          <GalleryPreview />
           <Card className="units-card">
             <div className="card-head" id="goals"><h3 id="units">Units & goals</h3><span className="muted small">Applies everywhere, instantly</span></div>
             <div className="unit-row"><span><b>Distance</b><span className="muted small">{p.units === 'imperial' ? 'Miles · feet · mph · min/mi' : 'Kilometres · metres · km/h · min/km'}</span></span><DistToggle /></div>
@@ -36,6 +39,7 @@ export default function Me() {
               <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Max heart rate" placeholder={`${hrMaxOf({ age: p.age })} bpm`} value={p.hrMax ?? ''} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); setProfile({ hrMax: Number.isFinite(v) && v > 0 ? Math.min(v, 240) : undefined }); }} /></div>
           </Card>
           <Card>
+            <RowLink to="/me/gallery" icon="image" title="Gallery" sub="Progress & training photos · private" />
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
             <RowLink to="/coach" icon="coach" title="HYBRD Coach" sub="Your personal training & nutrition plan" />

@@ -10,12 +10,15 @@ create table if not exists public.profiles (
   updated_at  timestamptz not null default now()
 );
 
+-- Profile photo: storage path of the avatar in the private user-media bucket (e.g. <uid>/avatar.webp). Not a public URL.
+alter table public.profiles add column if not exists avatar_url text;
+
 -- ---------- shared shape for the log tables ----------
 -- id is generated on the device (UUID string) so offline records can sync later.
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'fasting_logs'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'fasting_logs', 'gallery_items'] loop
     execute format($f$
       create table if not exists public.%1$I (
         id          text not null,
@@ -44,6 +47,7 @@ alter table public.step_logs  enable row level security;
 alter table public.burn_logs  enable row level security; -- manual calories-burned entries (Burn tracker)
 alter table public.wl_plans   enable row level security; -- weight-loss programs: quiz answers, targets, 7-day meal plan, adjustments (weigh-ins live in body_logs)
 alter table public.coach_plans enable row level security; -- HYBRD Coach: intake answers, weekly schedule, check-ins, changelog, nutrition targets + meal plan
+alter table public.gallery_items enable row level security; -- Me › Gallery: photo metadata (date, tag, caption, size, storage paths in the private user-media bucket); day = photo date
 alter table public.fasting_logs enable row level security; -- Fasting timer: one row per fast (start, end, target hours, protocol) or low-calorie day; day = local start date
 
 -- profiles: you can only see / change your own row
@@ -60,7 +64,7 @@ create policy "profiles_delete_own" on public.profiles for delete to authenticat
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'fasting_logs'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'fasting_logs', 'gallery_items'] loop
     execute format('drop policy if exists "%1$s_select_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_insert_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_update_own" on public.%1$I', t);
@@ -73,8 +77,8 @@ begin
 end $$;
 
 -- Anonymous (signed-out) visitors get nothing: no policies exist for the anon role.
-revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.fasting_logs from anon;
-grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.fasting_logs to authenticated;
+revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.fasting_logs, public.gallery_items from anon;
+grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.fasting_logs, public.gallery_items to authenticated;
 
 -- Create an empty profile row automatically when someone signs up.
 create or replace function public.handle_new_user()
@@ -88,4 +92,28 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
 
 -- Check: every HYBRD table should show rowsecurity = true
 select tablename, rowsecurity from pg_tables where schemaname = 'public'
-  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs','wl_plans','coach_plans','fasting_logs');
+  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs','wl_plans','coach_plans','fasting_logs','gallery_items');
+
+-- ---------- Storage: private bucket for profile photos + gallery images ----------
+-- Files live under a folder named after the user's id:  <auth.uid()>/avatar.webp,  <auth.uid()>/gallery/<photo id>/orig.jpg …
+-- The bucket is PRIVATE (no public URLs); the app downloads files with the signed-in user's session.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('user-media', 'user-media', false, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "user_media_select_own" on storage.objects;
+drop policy if exists "user_media_insert_own" on storage.objects;
+drop policy if exists "user_media_update_own" on storage.objects;
+drop policy if exists "user_media_delete_own" on storage.objects;
+create policy "user_media_select_own" on storage.objects for select to authenticated
+  using (bucket_id = 'user-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "user_media_insert_own" on storage.objects for insert to authenticated
+  with check (bucket_id = 'user-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "user_media_update_own" on storage.objects for update to authenticated
+  using (bucket_id = 'user-media' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'user-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "user_media_delete_own" on storage.objects for delete to authenticated
+  using (bucket_id = 'user-media' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Check: the bucket must be private (public = false)
+select id, public, file_size_limit from storage.buckets where id = 'user-media';

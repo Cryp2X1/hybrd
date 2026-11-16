@@ -18,8 +18,8 @@ Assumed public URL: `https://cryp2x1.github.io/hybrd/`
 ## 2. Create the tables + Row Level Security
 1. Left sidebar → **SQL Editor** → **New query**.
 2. Open `supabase/schema.sql` from this folder, copy everything, paste it into the editor.
-3. Click **Run**. You should see "Success". The final result grid lists 8 tables, each with `rowsecurity = true`.
-   - Tables: `profiles`, `workouts`, `gps_routes`, `food_logs`, `water_logs`, `body_logs`, `templates`, `step_logs`, `burn_logs`, `wl_plans`, `coach_plans`, `fasting_logs`. (Already ran an older version? Just run the file again — it is safe to re-run and adds `step_logs`, `burn_logs` (manual calories-burned entries) and `wl_plans` (weight-loss programs: quiz answers, targets, the 7-day meal plan, grocery checks and your adjustments; one row per plan, RLS so only you can read it). Weigh-ins for the plan reuse `body_logs`. It also adds `coach_plans` (HYBRD Coach: your intake answers, the generated schedule, check-ins, changelog and meal plan; one row per plan, RLS so only you can read or change it). And it adds `fasting_logs` (Fuel › Fasting: one row per fast — start, end, target hours and protocol — or per low-calorie day; `day` = the local date the fast started; same RLS, so only you can read or change your rows). Your fasting plan itself (screening answers, chosen protocol, eating window) is saved on your `profiles` row.)
+3. Click **Run**. You should see "Success". The result grids list the 13 tables, each with `rowsecurity = true`.
+   - Tables: `profiles`, `workouts`, `gps_routes`, `food_logs`, `water_logs`, `body_logs`, `templates`, `step_logs`, `burn_logs`, `wl_plans`, `coach_plans`, `fasting_logs`. (Already ran an older version? Just run the file again — it is safe to re-run and adds `step_logs`, `burn_logs` (manual calories-burned entries) and `wl_plans` (weight-loss programs: quiz answers, targets, the 7-day meal plan, grocery checks and your adjustments; one row per plan, RLS so only you can read it). Weigh-ins for the plan reuse `body_logs`. It also adds `coach_plans` (HYBRD Coach: your intake answers, the generated schedule, check-ins, changelog and meal plan; one row per plan, RLS so only you can read or change it). And it adds `fasting_logs` (Fuel › Fasting: one row per fast — start, end, target hours and protocol — or per low-calorie day; `day` = the local date the fast started; same RLS, so only you can read or change your rows). Your fasting plan itself (screening answers, chosen protocol, eating window) is saved on your `profiles` row. And it adds `gallery_items` (Me › Gallery photo details — date, tag, caption, size and where the image file is stored; same RLS), an `avatar_url` column on `profiles`, and the private **`user-media`** Storage bucket for the images themselves — see §10.)
    - Every table has RLS on; each user can only read/write their own rows. The `anon` role has no table access.
 
 ## 3. Set the redirect URLs (needed for confirm / reset / change-email links)
@@ -214,6 +214,16 @@ Sources:
 - https://developers.strava.com/guidelines/
 - https://www.strava.com/legal/api
 - https://www.strava.com/legal/api_policy
+
+## 10. Profile photos & Gallery storage (created by `schema.sql`)
+Nothing extra to click: running `supabase/schema.sql` (§2) creates everything. What it sets up:
+- **Bucket `user-media`** — Storage → Buckets should show it with **Public: off**. Limit 10 MB per file; only JPEG, PNG and WebP are accepted (the app converts HEIC before upload).
+- **Folder per user** — files are saved as `<user id>/avatar.webp` and `<user id>/gallery/<photo id>/{thumb,disp,orig}.<ext>`. Four policies on `storage.objects` (`user_media_select_own / insert_own / update_own / delete_own`) only allow a signed-in user inside the folder named after their own `auth.uid()`. No one else — and no signed-out visitor — can list, read or change them.
+- **Table `gallery_items`** — one row per photo (date, tag, caption, size, storage paths), RLS like every other table. `profiles.avatar_url` holds the avatar's storage *path* (it is not a public link).
+- **How sync works** — photos are always saved on the device first (IndexedDB, works offline). When signed in, HYBRD uploads the thumbnail, the 1600 px view copy and the full-quality original in the background, then marks the row as uploaded. On another device the grid downloads thumbnails as you scroll and the original only when you download it. Deleting a photo removes its files from the bucket (retried later if you're offline).
+- **Privacy** — every image is re-encoded in the browser before it's stored or uploaded, so EXIF/GPS location and camera metadata never leave the phone.
+- **Check:** Storage → `user-media` → Policies should list the four policies above. Sign in, add a photo, then open Storage → `user-media`: you'll see one folder named after your user id.
+- **Free tier note:** Supabase's free plan includes 1 GB of file storage; a typical phone photo uses about 2–5 MB here (original + view copy + thumbnail).
 
 ## Local development
 ```bash

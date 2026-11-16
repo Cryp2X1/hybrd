@@ -6,6 +6,7 @@ import { useAuth } from './lib/auth';
 import { useRecorder } from './lib/recorder';
 import { setCuePrefs } from './lib/cues';
 import Home from './pages/Home';
+import { Avatar } from './components/Avatar';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Train = lazy(() => import('./pages/Train'));
@@ -36,6 +37,7 @@ const Help = lazy(() => import('./pages/Help'));
 const ScorePage = lazy(() => import('./pages/ScorePage'));
 const Coach = lazy(() => import('./pages/Coach'));
 const CoachSetup = lazy(() => import('./pages/CoachSetup'));
+const Gallery = lazy(() => import('./pages/Gallery'));
 
 const NAV = [
   { to: '/', icon: 'home', label: 'Home', end: true },
@@ -46,7 +48,6 @@ const NAV = [
   { to: '/fuel', icon: 'fuel', label: 'Fuel' },
   { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
-  { to: '/me', icon: 'me', label: 'Me' },
 ];
 
 export function ModeChip() {
@@ -84,11 +85,12 @@ export function App() {
       <nav className="side-nav" aria-label="Main">
         <div className="brand"><span className="brand-mark">H</span>HYBRD</div>
         {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}</NavLink>)}
+        <NavLink to="/me" className="side-me" data-testid="side-me"><Avatar size={26} /><span className="side-me-n">{profile.name ? profile.name.split(' ')[0] : 'Me'}</span></NavLink>
         <NavLink to="/train/log" className="side-cta">Log a workout</NavLink>
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} />Coach</NavLink><ModeChip /></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} />Coach</NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -114,6 +116,7 @@ export function App() {
             <Route path="/progress" element={<Progress />} />
             <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />
+            <Route path="/me/gallery" element={<Gallery />} />
             <Route path="/me/account" element={<Account />} />
             <Route path="/me/data" element={<DataPage />} />
             <Route path="/me/help" element={<Help />} />
@@ -132,7 +135,7 @@ export function App() {
         <NavLink to="/train"><Icon name="train" /><span>Train</span></NavLink>
         <NavLink to="/record" className={`rec ${live ? 'live' : ''}`}><span className="rec-btn"><Icon name="record" size={26} /></span><span>{live ? 'Live' : 'Record'}</span></NavLink>
         <NavLink to="/fuel"><Icon name="fuel" /><span>Fuel</span></NavLink>
-        <NavLink to="/me"><Icon name="me" /><span>Me</span></NavLink>
+        <NavLink to="/me" className="bn-me"><Avatar size={24} /><span>Me</span></NavLink>
       </nav>
     </div>
   );
