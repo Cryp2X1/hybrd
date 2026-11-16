@@ -42,6 +42,7 @@ export default function Me() {
           </Card>
           <Card>
             <RowLink to="/me/gallery" icon="image" title="Gallery" sub="Progress & training photos · private" />
+            <RowLink to="/social" icon="users" title="Friends & Stories" sub="Friends, posts, stories, invite link" />
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
             <RowLink to="/coach" icon="coach" title="HYBRD Coach" sub="Your personal training & nutrition plan" />

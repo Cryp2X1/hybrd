@@ -225,6 +225,66 @@ Nothing extra to click: running `supabase/schema.sql` (§2) creates everything. 
 - **Check:** Storage → `user-media` → Policies should list the four policies above. Sign in, add a photo, then open Storage → `user-media`: you'll see one folder named after your user id.
 - **Free tier note:** Supabase's free plan includes 1 GB of file storage; a typical phone photo uses about 2–5 MB here (original + view copy + thumbnail).
 
+## 11. Friends & Stories (social) — created by `schema.sql`
+Friends, posts, stories, likes, comments, saves, notifications and reports all live in Supabase. Until the keys in `public/config.js` are filled in, the Social tab shows **"Connect accounts to use Friends & Stories"** plus an optional demo with clearly labelled **sample people** (handles start with `sample.`; nothing leaves the device). Once accounts are on, the demo is replaced by the real thing.
+
+**11.1 Turn it on**
+1. Run the whole `supabase/schema.sql` again in SQL Editor → **Run**. It's safe to re-run: tables use `if not exists`, constraints and policies are dropped and recreated, and storage buckets use `on conflict`.
+2. Check **Table Editor** for these tables: `social_profiles`, `social_private`, `social_bans`, `friend_requests`, `friendships`, `blocks`, `posts`, `post_media`, `stories`, `likes`, `comments`, `saves`, `hidden_posts`, `reports` and `notifications`. Each should show **RLS enabled**.
+3. Check **Storage → Buckets** for `social-media` with **Public: off**, a limit of 8 MB, and JPEG/PNG/WebP only. It needs four policies (`social_media_select / insert_own / update_own / delete_own`). Uploads must go in your own `<uid>/…` folder. A file can only be read by someone who can see the post, story or profile it belongs to, and the app reads it through 1-hour signed links.
+4. Optional live alerts: in **Database → Publications → supabase_realtime**, `notifications` is added automatically if the publication exists. Without it, the app checks for new alerts every 60 s.
+5. Optional story cleanup: stories disappear from the app after 24 h, but their rows stay until cleanup runs. With **pg_cron** (Database → Extensions), run:
+   ```sql
+   select cron.schedule('hybrd-stories-cleanup', '15 * * * *', $$select public.social_cleanup_expired()$$);
+   ```
+   This deletes story rows more than a day past expiry. It does not remove their image files. For those, see "Clean up story images" below.
+
+**11.2 How it's protected (server-side)**
+- **Age 13+.** `social_create_profile` reads the private date of birth (`social_private.birth_date`, which only its owner can read) and refuses anyone under 13. Under-18 profiles are forced to **friends-only**, and so are their posts and stories. The app also keeps under-13 users out of Social entirely.
+- **Friend graph.** Friend requests, accepts, declines, cancels, unfriends, blocks and unblocks only happen through `security definer` RPCs, which check blocks, bans and duplicates. There are no direct inserts. Blocking removes the friendship and any pending requests, and hides both people from each other everywhere: search, profiles, feed, stories, comments and likes.
+- **Visibility.** `social_can_view_post` allows: the author; friends for friends-only posts; signed-in members for public posts on public profiles. Nobody can see across a block, and signed-out visitors see nothing. Comments, likes, media and saves inherit their post's visibility.
+- **Server-owned fields.** Triggers set the author, counts, timestamps and the story expiry (24 h). Column grants stop clients from changing counters, `status` or other protected fields.
+- **Rate limits** (enforced in triggers and RPCs): 20 friend requests/hour and 60/day; 30 posts/day; 30 stories/day; 60 comments/hour; 30 reports/day.
+- **Limits.** Handles are 3–20 characters (`a–z 0–9 . _`). `sample.*` and reserved names are blocked. Text caps: posts 2,000 characters, comments 500, story text 200, public bio 160. Up to 4 photos per post. Photos are re-encoded in the browser (≤ 1440 px), which strips EXIF and GPS.
+- **Profanity.** The client filter masks or blocks common slurs and profanity. It's a convenience, not moderation. Reports are the real safety net.
+- **Verified locally.** `bash tools/test-social-sql.sh` applies the schema twice to a real Postgres with a Supabase shim, then runs 83 RLS, trigger and RPC checks.
+
+**11.3 Moderation workflow (you, in the SQL Editor)**
+Reports land in `public.reports` with the reason, details and a **snapshot** of the reported text, so it survives if the poster deletes it. Users can't read reports, including their own.
+```sql
+-- 1. Queue: newest open reports, with who reported and who was reported
+select r.created_at, r.target_type, r.reason, r.details, r.snapshot, r.target_id,
+       rp.username as reporter, tp.username as reported_user, r.id
+from public.reports r
+left join public.social_profiles rp on rp.id = r.reporter_id
+left join public.social_profiles tp on tp.id = r.target_user_id
+where r.status = 'open' order by r.created_at desc;
+
+-- 2. Mark one as being reviewed
+update public.reports set status = 'reviewing' where id = '<report id>';
+
+-- 3a. Remove content (comments, likes, media rows and saves cascade with the post)
+delete from public.posts    where id = '<post id>';
+delete from public.comments where id = '<comment id>';
+delete from public.stories  where id = '<story id>';
+
+-- 3b. Ban an account from Social (it can't create a profile again)
+insert into public.social_bans (user_id, reason) values ('<user id>', 'harassment') on conflict do nothing;
+delete from public.social_profiles where id = '<user id>';   -- removes their posts, friends, comments …
+
+-- 4. Close the report
+update public.reports set status = 'actioned', reviewed_at = now(), moderator_note = 'removed post' where id = '<report id>';
+-- or: status = 'dismissed'
+```
+- **Image files.** Deleting a row doesn't delete its file. In Storage → `social-media` → the user's `<uid>` folder, delete `posts/<post id>/` or `stories/<story id>.*`. To remove a banned user's files, delete their whole folder.
+- **Clean up story images** (monthly is enough): in Storage, delete `<uid>/stories/` files older than 2 days, or use the Storage API from a scheduled Edge Function.
+- **Lift a ban:** `delete from public.social_bans where user_id = '<user id>';`
+- **Urgent reports** (self-harm, a minor at risk, threats): act on them first. Where the law requires it, report to the authorities or NCMEC. HYBRD has no automated detection.
+- **A user deleting their own social profile.** The app's Social › Profile › Edit › **Leave Friends & Stories → Delete public profile** removes their profile, posts, stories, comments, likes and friendships, and their files in `social-media`. Their private training data is not touched.
+
+**11.4 Test it**
+Create two accounts in two browsers (one private window). Set up a social profile in each with an adult date of birth. In browser A, open Friends › Find and search B's handle, then **Add friend**. Accept in B, where the Alerts badge appears. Post a photo in A as **Friends**, then like it and comment on it in B. Report the comment in A, and confirm it appears in `public.reports`. Finally, block B from A, and confirm the two can no longer find each other.
+
 ## Local development
 ```bash
 npm install

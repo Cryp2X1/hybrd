@@ -31,7 +31,7 @@ export async function decodeImage(file: Blob): Promise<Decoded> {
     return { src: img, w: img.naturalWidth, h: img.naturalHeight, close: () => URL.revokeObjectURL(url) };
   } catch (e) { URL.revokeObjectURL(url); throw e; }
 }
-function draw(src: CanvasImageSource, w: number, h: number, crop?: { sx: number; sy: number; sw: number; sh: number }, opaque = false) {
+export function draw(src: CanvasImageSource, w: number, h: number, crop?: { sx: number; sy: number; sw: number; sh: number }, opaque = false) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingQuality = 'high';
@@ -41,12 +41,12 @@ function draw(src: CanvasImageSource, w: number, h: number, crop?: { sx: number;
 }
 const toBlob = (c: HTMLCanvasElement, type: string, q?: number) => new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Could not encode the image'))), type, q));
 /** WebP where the browser can encode it (Chrome, Firefox, Safari 17+ on some paths), otherwise JPEG. */
-async function toWebpOrJpeg(c: HTMLCanvasElement, q: number) {
+export async function toWebpOrJpeg(c: HTMLCanvasElement, q: number) {
   const b = await toBlob(c, 'image/webp', q);
   return b.type === 'image/webp' ? b : toBlob(c, 'image/jpeg', q);
 }
 /** Re-encoded output never carries EXIF, but strip any metadata segment anyway (belt and braces). */
-async function clean(b: Blob): Promise<Blob> {
+export async function clean(b: Blob): Promise<Blob> {
   const u = new Uint8Array(await b.arrayBuffer());
   const s = b.type === 'image/jpeg' ? stripJpegMetadata(u) : b.type === 'image/png' ? stripPngMetadata(u) : u;
   return s === u ? b : new Blob([s as BlobPart], { type: b.type });

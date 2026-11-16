@@ -38,6 +38,8 @@ export interface Profile {
   avatar?: { v: number; bytes: number; path?: string };
   /** Me › Bio: free-form plain text (max 1,000 characters). Private — there is no public profile. */
   bio?: string;
+  /** Date of birth (YYYY-MM-DD), asked by Friends & Stories for the 13+ age gate. Private: never shown to anyone. */
+  dob?: string;
   /** Train › Ultra & Backyard: screening answers, target race and planner choices (the plan is rebuilt from these). */
   ultra?: import('./ultra').UltraSaved;
   /** Backyard distance display (mi / km / m / ft). Defaults from `units`; does not change the global mi/km setting. */

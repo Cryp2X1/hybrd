@@ -146,7 +146,7 @@ check('schema: gallery_items in both table loops', (schema.match(/'fasting_logs'
 check('schema: gallery_items RLS on + granted', /alter table public\.gallery_items enable row level security/.test(schema) && /public\.gallery_items to authenticated/.test(schema));
 check('schema: avatar_url added idempotently', /add column if not exists avatar_url/.test(schema));
 check('schema: user-media bucket is private + re-runnable', /values \('user-media', 'user-media', false/.test(schema) && /on conflict \(id\) do update set public = false/.test(schema));
-check('schema: 4 storage policies, folder = auth.uid()', ['select', 'insert', 'update', 'delete'].every((op) => schema.includes(`"user_media_${op}_own" on storage.objects for ${op}`)) && (schema.match(/storage\.foldername\(name\)\)\[1\] = \(select auth\.uid\(\)\)::text/g) || []).length === 5);
+check('schema: 4 storage policies, folder = auth.uid()', ['select', 'insert', 'update', 'delete'].every((op) => schema.includes(`"user_media_${op}_own" on storage.objects for ${op}`)) && (schema.slice(schema.indexOf('Storage: private bucket for profile photos'), schema.indexOf('Social: Friends & Stories')).match(/storage\.foldername\(name\)\)\[1\] = \(select auth\.uid\(\)\)::text/g) || []).length === 5); // user-media block only (social-media has its own policies)
 check('schema: every policy is dropped first (safe to re-run)', ['select', 'insert', 'update', 'delete'].every((op) => schema.includes(`drop policy if exists "user_media_${op}_own" on storage.objects`)));
 const types = readFileSync(new URL('../src/lib/supabase.ts', import.meta.url), 'utf8');
 check('gallery collection syncs to gallery_items', /gallery: 'gallery_items'/.test(types));

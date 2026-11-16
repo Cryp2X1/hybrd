@@ -7,6 +7,7 @@ import { useRecorder } from './lib/recorder';
 import { setCuePrefs } from './lib/cues';
 import Home from './pages/Home';
 import { Avatar } from './components/Avatar';
+import { useSocial } from './lib/socialStore';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Train = lazy(() => import('./pages/Train'));
@@ -40,6 +41,16 @@ const ScorePage = lazy(() => import('./pages/ScorePage'));
 const Coach = lazy(() => import('./pages/Coach'));
 const CoachSetup = lazy(() => import('./pages/CoachSetup'));
 const Gallery = lazy(() => import('./pages/Gallery'));
+const SocialFeed = lazy(() => import('./pages/Social'));
+const SocialCreate = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialCreate })));
+const SocialPostPage = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialPostPage })));
+const SocialFriends = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialFriends })));
+const SocialNotifications = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialNotifications })));
+const SocialSaved = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialSaved })));
+const SocialProfile = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialProfile })));
+const SocialSetup = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialSetup })));
+const SocialRules = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialRules })));
+const InvitePage = lazy(() => import('./pages/Social').then((m) => ({ default: m.InvitePage })));
 
 const NAV = [
   { to: '/', icon: 'home', label: 'Home', end: true },
@@ -50,6 +61,7 @@ const NAV = [
   { to: '/fuel', icon: 'fuel', label: 'Fuel' },
   { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
+  { to: '/social', icon: 'users', label: 'Social' },
 ];
 
 export function ModeChip() {
@@ -64,6 +76,7 @@ export function App() {
   const { ready, profile } = useStore();
   const { session } = useAuth();
   const { s: rec } = useRecorder();
+  const { badge } = useSocial();
   const loc = useLocation();
   const nav = useNavigate();
 
@@ -86,13 +99,13 @@ export function App() {
     <div className={`shell ${live && loc.pathname === '/record' ? 'focus' : ''}`}>
       <nav className="side-nav" aria-label="Main">
         <div className="brand"><span className="brand-mark">H</span>HYBRD</div>
-        {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}</NavLink>)}
+        {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}{n.to === '/social' && badge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-social-badge">{badge}</span>}</NavLink>)}
         <NavLink to="/me" className="side-me" data-testid="side-me"><Avatar size={26} /><span className="side-me-n">{profile.name ? profile.name.split(' ')[0] : 'Me'}</span></NavLink>
         <NavLink to="/train/log" className="side-cta">Log a workout</NavLink>
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} />Coach</NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -126,6 +139,16 @@ export function App() {
             <Route path="/me/help" element={<Help />} />
             <Route path="/me/devices" element={<Devices />} />
             <Route path="/me/import" element={<ImportPage />} />
+            <Route path="/social" element={<SocialFeed />} />
+            <Route path="/social/new" element={<SocialCreate />} />
+            <Route path="/social/post" element={<SocialPostPage />} />
+            <Route path="/social/friends" element={<SocialFriends />} />
+            <Route path="/social/notifications" element={<SocialNotifications />} />
+            <Route path="/social/saved" element={<SocialSaved />} />
+            <Route path="/social/profile" element={<SocialProfile />} />
+            <Route path="/social/setup" element={<SocialSetup />} />
+            <Route path="/social/rules" element={<SocialRules />} />
+            <Route path="/invite" element={<InvitePage />} />
             <Route path="/sign-in" element={<Auth mode="sign-in" />} />
             <Route path="/sign-up" element={<Auth mode="sign-up" />} />
             <Route path="/forgot" element={<Auth mode="forgot" />} />

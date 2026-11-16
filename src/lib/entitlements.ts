@@ -23,7 +23,8 @@ export type Feature =
   | 'gallery.download' // download originals / ZIP of selected or all
   | 'gallery.compare' // before / after side-by-side compare
   | 'profile.bio' // Me › Bio (free-form text)
-  | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research'; // Train › Ultra & Backyard
+  | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research' // Train › Ultra & Backyard
+  | 'social.profile' | 'social.friends' | 'social.invite' | 'social.posts' | 'social.stories' | 'social.reactions' | 'social.saved' | 'social.notifications' | 'social.safety'; // Social: Friends & Stories
 
 export interface FeatureInfo { free: boolean; label: string }
 export const FEATURES: Record<Feature, FeatureInfo> = {
@@ -48,6 +49,15 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'ultra.fueling': { free: true, label: 'Race fuelling & hydration planner' },
   'ultra.prep': { free: true, label: 'Race prep checklists & recovery' },
   'ultra.research': { free: true, label: 'Ultra research & sources' },
+  'social.profile': { free: true, label: 'Public profile & handle' },
+  'social.friends': { free: true, label: 'Friends: requests, unfriend, block' },
+  'social.invite': { free: true, label: 'Invite links' },
+  'social.posts': { free: true, label: 'Posts with photos & workout cards' },
+  'social.stories': { free: true, label: '24-hour stories' },
+  'social.reactions': { free: true, label: 'Likes, comments & shares' },
+  'social.saved': { free: true, label: 'Saved posts' },
+  'social.notifications': { free: true, label: 'Notifications' },
+  'social.safety': { free: true, label: 'Report, block & hide (always free)' },
 };
 
 export interface Entitlements { premium: boolean; source: 'none' | 'stripe' | 'revenuecat' | 'promo' }
