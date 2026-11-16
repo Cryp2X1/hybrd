@@ -7,7 +7,8 @@ import { EXERCISES, CATS, type ExCat } from '../data/exercises';
 import { useStore } from '../lib/store';
 import { Page, Segmented, Card, RowLink, Empty, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { activityLabel, fmtDist, fmtTime, isBikeType, isGpsType, typeLabel, WORKOUT_TYPES } from '../lib/calc';
+import { activityLabel, fmtDist, fmtTime, isBikeType, isGpsType, typeLabel, WORKOUT_TYPES, todayKey } from '../lib/calc';
+import { PHASE_LABEL, activeUltra, currentWeekIdx, daysBetween, planOf } from '../lib/ultra';
 import { SourceBadge } from '../components/Strava';
 
 type Tab = 'programs' | 'library' | 'templates' | 'history';
@@ -36,6 +37,7 @@ export default function Train() {
         {level === 'Expert' && <>
           <ExpertNote compact />
           <p className="muted small" style={{ marginTop: -4 }}>Advanced programs for athletes who already train consistently: calisthenics skills, Daniels-style running, power-based cycling, HYROX race sharpening and concurrent hybrid weeks. Each lists its prerequisites and sources.</p>
+          <UltraCard id="ultra-entry-expert" />
         </>}
         {level !== 'Expert' && <>
           <div className="tile-grid" data-testid="train-indoor-bikes" style={{ marginBottom: 14 }}>
@@ -55,6 +57,7 @@ export default function Train() {
           <Link to="/timers?t=hyrox" className="card hero click" style={{ display: 'block' }}>
             <div className="row"><div style={{ flex: 1 }}><div className="kicker">New · HYROX</div><h2>Race Simulator</h2><p className="muted small" style={{ margin: '6px 0 0' }}>8 × 1 km runs + 8 stations in the official order. Tap through splits, compare to your last sim.</p></div><Icon name="flag" size={36} className="y" /></div>
           </Link>
+          <UltraCard id="ultra-entry" />
         </>}
         <div className="tile-grid" data-testid="program-grid">{mainProgs.map((p) => <ProgramTile key={p.id} p={p} />)}</div>
         {expertProgs.length > 0 && <>
@@ -105,3 +108,20 @@ function ProgramTile({ p }: { p: Program }) {
     </Link>
   );
 }
+
+function UltraCard({ id }: { id: string }) {
+  const { profile } = useStore();
+  const u = activeUltra(profile.ultra);
+  const plan = u ? planOf(u) : null;
+  const today = todayKey();
+  const wk = plan ? Math.max(0, Math.min(plan.weeks.length - 1, currentWeekIdx(plan, today))) : 0;
+  return <Link to="/train/ultra" className="card hero click ultra-entry" style={{ display: 'block' }} data-testid={id}>
+    <div className="row"><div style={{ flex: 1 }}>
+      <div className="kicker">{plan ? `Your ultra plan · week ${wk + 1} of ${plan.weeks.length}` : 'New · Expert · Free'}</div>
+      <h2>{plan ? plan.spec.name : 'Ultra & Backyard'}</h2>
+      <p className="muted small" style={{ margin: '6px 0 0' }}>{plan ? `${u!.target === 'base' ? 'Bridge plan' : `${Math.max(0, daysBetween(today, plan.raceDate))} days to race day`} · ${PHASE_LABEL[plan.weeks[wk].phase]} · fuelling planner, backyard lap timer and prep checklists.` : 'Complete programs for backyard (last one standing), 50K, 50 mi, 100K and 100 mi races: a readiness check, periodized training, race fuelling, a backyard lap timer, crew and race-day prep. All cited.'}</p>
+      <div className="meta" style={{ marginTop: 8 }}><Pill tone="expert">Expert</Pill><Pill>4.167 mi / hour</Pill><Pill>50K → 100 mi</Pill></div>
+    </div><Icon name="flag" size={36} className="y" /></div>
+  </Link>;
+}
+

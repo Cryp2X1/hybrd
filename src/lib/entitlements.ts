@@ -22,7 +22,8 @@ export type Feature =
   | 'gallery.photos' // private photo gallery: upload, tags, captions, viewer
   | 'gallery.download' // download originals / ZIP of selected or all
   | 'gallery.compare' // before / after side-by-side compare
-  | 'profile.bio'; // Me › Bio (free-form text)
+  | 'profile.bio' // Me › Bio (free-form text)
+  | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research'; // Train › Ultra & Backyard
 
 export interface FeatureInfo { free: boolean; label: string }
 export const FEATURES: Record<Feature, FeatureInfo> = {
@@ -42,6 +43,11 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'gallery.download': { free: true, label: 'Download photos' },
   'gallery.compare': { free: true, label: 'Before / after compare' },
   'profile.bio': { free: true, label: 'Profile bio' },
+  'ultra.plan': { free: true, label: 'Ultra & backyard training plan' },
+  'ultra.backyardTimer': { free: true, label: 'Backyard lap timer' },
+  'ultra.fueling': { free: true, label: 'Race fuelling & hydration planner' },
+  'ultra.prep': { free: true, label: 'Race prep checklists & recovery' },
+  'ultra.research': { free: true, label: 'Ultra research & sources' },
 };
 
 export interface Entitlements { premium: boolean; source: 'none' | 'stripe' | 'revenuecat' | 'promo' }

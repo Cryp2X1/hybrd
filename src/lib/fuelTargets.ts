@@ -6,6 +6,7 @@ import type { DataState, Profile } from './types';
 import { computeTargets } from './calc';
 import { activePlan, planTargetsFor } from './wl';
 import { activeCoachPlan, coachTargetsFor } from './coach';
+import { activeUltra, ultraTargetsFor } from './ultra';
 
 export interface FuelTargets { kcal: number; protein: number; carbs: number; fat: number; waterMl: number; addBurn: boolean; plan: boolean; label: string }
 export function fuelTargets(profile: Profile, data: Pick<DataState, 'wlplans'> & Partial<Pick<DataState, 'coachplans'>>, day: string): FuelTargets {
@@ -20,6 +21,11 @@ export function fuelTargets(profile: Profile, data: Pick<DataState, 'wlplans'> &
   if (c && c.applyToFuel) {
     const t = coachTargetsFor(c, day);
     if (t) return { kcal: t.kcal, protein: t.protein, carbs: t.carbs, fat: t.fat, waterMl: t.waterMl || base.waterMl, addBurn: false, plan: true, label: `HYBRD Coach plan${c.nutrition?.targets?.periodized ? ` · ${t.kind === 'train' ? 'training' : 'rest'} day` : ''}` };
+  }
+  const u = activeUltra(profile.ultra);
+  if (u && u.applyToFuel) {
+    const t = ultraTargetsFor(u, profile.weightKg, day);
+    if (t) return { kcal: t.kcal, protein: t.protein, carbs: t.carbs, fat: t.fat, waterMl: base.waterMl, addBurn: false, plan: true, label: `Ultra plan · ${t.kind === 'train' ? `training day (${t.carbGkg} g/kg carbs)` : 'rest day'}` };
   }
   return { kcal: base.kcal, protein: base.protein, carbs: base.carbs, fat: base.fat, waterMl: base.waterMl, addBurn: true, plan: false, label: 'Daily target' };
 }

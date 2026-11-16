@@ -17,8 +17,10 @@ import { intensityText, stepSec } from '../lib/intensity';
 import { fmtDist, fmtShort } from '../lib/calc';
 import { ExpertNote } from '../components/Expert';
 import { Link } from 'react-router-dom';
+import { BackyardTimer } from '../components/BackyardTimer';
+import { activeUltra, planOf, sessionAt, unitText } from '../lib/ultra';
 
-type T = 'stopwatch' | 'countdown' | 'interval' | 'tabata' | 'emom' | 'amrap' | 'hyrox' | 'plan';
+type T = 'stopwatch' | 'countdown' | 'interval' | 'tabata' | 'emom' | 'amrap' | 'hyrox' | 'plan' | 'ultra' | 'backyard';
 
 function useSaveTimed() {
   const { upsert, profile } = useStore();
@@ -107,6 +109,10 @@ export default function Timers() {
     const est = st.distM && st.pace && !profile.runRef ? '≈ time' : '';
     return { label: st.label, sec: stepSec(st, profile), kind: st.kind, round: st.round, of: st.of, note: [dist, intensityText(st, profile), st.note, est].filter(Boolean).join(' · ') || undefined };
   }), [sess, profile]);
+  const uw = +(sp.get('w') || 0), ud = +(sp.get('d') || 0);
+  const ultraSaved = activeUltra(profile.ultra);
+  const ultraSess = useMemo(() => (t === 'ultra' && ultraSaved ? sessionAt(planOf(ultraSaved), uw, ud) : null), [t, ultraSaved, uw, ud]);
+  const ultraPhases = useMemo<Phase[]>(() => (ultraSess?.steps || []).map((x) => ({ label: unitText(x.label, profile.units === 'imperial'), sec: x.sec, kind: x.kind, round: x.round, of: x.of, note: x.note && unitText(x.note, profile.units === 'imperial') })), [ultraSess, profile.units]);
   const planType: WorkoutType = sess?.anyBike ? bikeAs.v : (sess?.type || 'cardio');
   const work = +(sp.get('work') || 0) || cfg.work;
   const rest = sp.has('rest') ? Math.max(0, +(sp.get('rest') || 0)) : cfg.rest;
@@ -138,7 +144,7 @@ export default function Timers() {
 
   return (
     <Page title="Timers" kicker="Chronometer · Intervals · HYROX" wide actions={<><HrButton /><MusicButton /></>}>
-      <Segmented value={t} onChange={(v) => setSp({ t: v })} options={[...(t === 'plan' && sess?.plan ? [{ v: 'plan' as T, label: 'Session' }] : []), { v: 'stopwatch', label: 'Stopwatch' }, { v: 'countdown', label: 'Countdown' }, { v: 'interval', label: 'Intervals' }, { v: 'tabata', label: 'Tabata' }, { v: 'emom', label: 'EMOM' }, { v: 'amrap', label: 'AMRAP' }, { v: 'hyrox', label: 'HYROX Sim' }]} />
+      <Segmented value={t} onChange={(v) => setSp({ t: v })} options={[...(t === 'plan' && sess?.plan ? [{ v: 'plan' as T, label: 'Session' }] : []), ...(t === 'ultra' && ultraSess ? [{ v: 'ultra' as T, label: 'Ultra session' }] : []), { v: 'stopwatch', label: 'Stopwatch' }, { v: 'countdown', label: 'Countdown' }, { v: 'interval', label: 'Intervals' }, { v: 'tabata', label: 'Tabata' }, { v: 'emom', label: 'EMOM' }, { v: 'amrap', label: 'AMRAP' }, { v: 'hyrox', label: 'HYROX Sim' }, { v: 'backyard', label: 'Backyard' }]} />
       {isIOS() && !isStandalone() && <Banner tone="warn">iPhone: sounds work after you tap Start; there’s no vibration on iOS. Add HYBRD to your Home Screen to keep the screen awake (iOS 18.4+).</Banner>}
       <HrLive />
       <div className="desk-grid">
@@ -151,10 +157,14 @@ export default function Timers() {
           {t === 'emom' && <SequenceView id="emom" phases={phases.emom} title={`EMOM ${Math.round((cfg.emomEvery * cfg.emomRounds) / 60)}`} type="cardio" />}
           {t === 'amrap' && <SequenceView id="amrap" phases={phases.amrap} title={`AMRAP ${cfg.amrapMin}`} type="cardio" countRounds />}
           {t === 'hyrox' && <HyroxSim />}
+          {t === 'backyard' && <BackyardTimer goal={+(sp.get('yards') || 0) || undefined} lap={+(sp.get('lap') || 0) || undefined} />}
+          {t === 'ultra' && (ultraSess && ultraPhases.length ? <SequenceView id={`ultra-${uw}-${ud}`} phases={ultraPhases} title={unitText(ultraSess.title, profile.units === 'imperial')} type={ultraSess.kind === 'strength' ? 'strength' : ultraSess.kind === 'hike' ? 'walk' : 'run'} source={`ultra:${uw}:${ud}`} /> : <Card><p className="muted" style={{ margin: 0 }}>This ultra session isn’t available. <Link className="link" to="/train/ultra">Back to your plan</Link></p></Card>)}
         </div>
         <div>
           {prog && sess && (t === 'plan' || (t === 'stopwatch' && sess.pieces)) && <SessionCard p={prog} s={sess} phases={t === 'plan' ? planPhases : undefined} bikeAs={sess.anyBike ? bikeAs.v : undefined} setBikeAs={(v) => setBikeAs({ v })} />}
-          {t !== 'hyrox' && t !== 'stopwatch' && t !== 'plan' && <Card>
+          {t === 'ultra' && ultraSess && <div data-testid="ultra-timer-card"><Card><div className="kicker">Ultra plan · week {uw + 1}</div><h3 style={{ margin: '4px 0 8px' }}>{unitText(ultraSess.title, profile.units === 'imperial')}</h3><ul className="cues tight small">{ultraSess.detail.map((x) => <li key={x}>{unitText(x, profile.units === 'imperial')}</li>)}</ul><Link className="link small" to="/train/ultra">Back to plan →</Link></Card></div>}
+          {t === 'backyard' && <Card><h3 style={{ marginBottom: 8 }}>How a backyard ultra works</h3><ul className="cues tight small"><li>Every hour on the hour, runners start a 4.167 mi (6.7056 km) loop. 24 yards = 100 miles.</li><li>Finish inside the hour, rest, and be back in the start corral for the next bell. Miss a bell or a lap and you’re out.</li><li>The winner is the last runner to finish a yard that no one else does. Everyone else is a DNF.</li><li>Most runners aim for 45–55 min laps on day one so they have 5–15 min for their routine.</li></ul><Link className="link small" to="/train/ultra">Ultra plan & fuelling →</Link></Card>}
+          {t !== 'hyrox' && t !== 'stopwatch' && t !== 'plan' && t !== 'ultra' && t !== 'backyard' && <Card>
             <h3 style={{ marginBottom: 12 }}>Set up</h3>
             {t === 'countdown' && <><div className="chips" style={{ marginBottom: 12 }}>{[1, 3, 5, 10, 20, 30].map((m) => <button key={m} className={`chip ${cfg.cdMin === m && !cfg.cdSec ? 'on' : ''}`} onClick={() => up({ cdMin: m, cdSec: 0 })}>{m} min</button>)}</div>
               <div className="row wrap"><NumberStepper label="Min" value={cfg.cdMin} onChange={(v) => up({ cdMin: v })} max={180} /><NumberStepper label="Sec" value={cfg.cdSec} onChange={(v) => up({ cdSec: v })} step={5} max={55} /></div></>}

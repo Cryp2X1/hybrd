@@ -373,3 +373,40 @@ Email templates that change password or email must use a `redirectTo` that is on
 - `supabase/schema.sql` (safe to re-run): `profiles.bio text` with a dropped-then-recreated `profiles_bio_len` check (`char_length(bio) <= 1000`). Documented in `SETUP.md` §2 and §10. Profile upsert writes the column; if an older database is missing it, the profile JSON still saves.
 - Entitlement `profile.bio` is `free: true`.
 - Tests: `tools/test-bio.ts` (length limit, trimming, plain-text escaping, safe / rejected links, collapse, persistence via normalize, export / delete helpers, schema + entitlements). Screenshots: `tools/shoot-bio.mjs` → `phone-me-bio.png`, `phone-me-bio-edit.png`, `phone-me-bio-empty.png`, `desktop-me-bio.png`.
+
+## Ultra & Backyard (Train) — built 16 Nov 2026
+
+- Routes: `/train/ultra` (tabs Plan · Weeks · Fuel · Prep · Research; landing when there's no plan), `/train/ultra/setup` (5-step quiz), and Timers modes `/timers?t=backyard[&yards=&lap=]` (backyard lap timer) and `/timers?t=ultra&w=&d=` (a plan session in the sequence timer, saved with `source = ultra:<week>:<weekday>` so the day shows as done). Entry cards: Train › Programs (`ultra-entry`) and the Expert level filter (`ultra-entry-expert`). Postbuild route copies were added for `train/ultra` and `train/ultra/setup`.
+- Code: `src/lib/ultra.ts` (pure: screening, readiness, plan builder, fuelling, backyard maths/status, `unitText` for imperial), `src/data/ultraContent.ts` (research cards, checklists, crew, acclimation, race week/day, recovery, warning signs, USDA real foods, `ULTRA_SOURCE_IDS`), `src/pages/Ultra.tsx`, `src/pages/UltraSetup.tsx`, `src/components/BackyardTimer.tsx`. Styles are under `/* Ultra & Backyard */` in `styles.css`.
+- Storage: `profile.ultra` (`UltraSaved`: quiz answers, createdAt, target, yards, level, applyToFuel, checks, fuel prefs). It syncs inside the profile JSON, so there's **no schema change**. The plan is rebuilt deterministically from the answers and createdAt (`planOf`). Backyard timer state is in localStorage `hybrd:t:byu` (timestamps, so it survives reloads and a locked screen).
+- Safety: **stop** if under 18, chest pain/fainting/palpitations, pregnancy or a current injury (shows the safety block, and pauses any saved plan). **Doctor gate** (needs "my doctor cleared me") for a heart condition, kidney disease, insulin/sulfonylureas, a past heat stroke/hyponatremia/rhabdo/AKI, or an eating-disorder history. With ED history, calorie/macro numbers are hidden and never pushed to Fuel.
+- Readiness: ready / stretch / bridge / too-soon, from prerequisite thresholds that are **HYBRD coaching guidelines** (labelled so in the UI). Bridge recommends a shorter race, fewer yards, or the 8–12-week Ultra Base Builder.
+- Plan safety rules (all tested in `tools/test-ultra.ts` over 216 profiles):
+  - weekly km ≤ 1.1× the last full week's *actual* km
+  - long run ≤ 1.1× the longest of the previous 4 weeks (or of the reported last-30-day longest run)
+  - cut-back every 3rd week (under 2 years of running or age 50+) or every 4th, at −30% of actual
+  - phases base → build → specific → taper
+  - taper of 2 weeks, or 3 for 100 mi and backyards of 20+ yards, averaging ~41–60% less (Bosquet 2007)
+  - time-on-feet caps on long runs
+  - easy days are consolidated so no easy run is under 5 km
+- Backyard: 6.7056 km / 4.167 mi every hour (24 yards = 100 mi). The plan includes on-the-hour simulations, yard-pace "gears", night yards and a between-yards routine. The timer shows:
+  - bell countdown, lap time, rest left, yards, distance, elapsed, average lap
+  - 3/2/1-minute and bell cues (sound/voice/vibration)
+  - a routine checklist, a missed-bell DNF state, and save-to-history (run, distance = yards × 6705.6 m, source `byu`)
+- Fuel: race planner for carbs, fluid, sodium, kcal, protein and caffeine per hour, by gut training, weather, sweat test and salty-sweater flag.
+  - Carbs: 30–50 g/h untrained, up to 60–90 g/h trained (never above 90). ISSN kcal is 150–300/h, or 200–400/h for long races.
+  - Fluid is 450–750 mL/h, or capped at the measured sweat rate (≤ 1000 mL/h hot, ≤ 800 otherwise).
+  - Sodium is 500–700 mg/L, at least 300–600 mg/h in the heat.
+  - Caffeine is 1–2 mg/kg per dose with a 6 mg/kg/24 h cap.
+  - Per-yard / per-aid schedule, 12 USDA real foods, sleep plan.
+- Daily training nutrition: carbs 4–10 g/kg by the day's session, protein 1.6–1.8 g/kg, fat ~1 g/kg. The **"Use in Fuel"** toggle feeds `fuelTargets` (precedence: weight-loss → Coach → Ultra → profile). REDs warning card.
+- Prep: gear lists filtered by race type, crew guide, heat/cold/altitude, your taper, race-week checklist (ticks saved to `profile.ultra.checks`), race-day plan, recovery and return to run (labelled as a HYBRD guideline), and warning signs with what to do (hyponatremia, heat illness, rhabdo/AKI, cardiac, hypothermia, altitude).
+- Research: 18 summary cards plus a list of all 52 cited sources (44 new `ultra-*` entries in `sources.ts`). Citations were checked against PubMed/DOIs and the original pages.
+- Entitlements `ultra.plan`, `ultra.backyardTimer`, `ultra.fueling`, `ultra.prep` and `ultra.research` are all `free: true`.
+- Tests: `tools/test-ultra.ts` (81 checks). Screenshots: `tools/shoot-ultra.mjs` → `screenshots/phone-ultra-*.png`, `desktop-ultra*.png`. It fails on any console error.
+- Known limits:
+  - No push notifications for bells (the web app can't wake a locked phone reliably; cues play while the screen is on, and the screen is kept awake while the timer runs).
+  - The backyard timer is a manual "Finished yard" tap (no GPS auto-lap).
+  - Finish times and calories are estimates.
+  - Plan text is written in metric and converted for imperial display by `unitText`.
+  - Apple Health can't be read from the web app.
