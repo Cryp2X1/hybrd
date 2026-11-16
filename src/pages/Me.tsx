@@ -10,6 +10,7 @@ import { unlockAudio, cue } from '../lib/cues';
 import type { Profile } from '../lib/types';
 import { SpotifySettings, MusicPanel } from '../components/Music';
 import { ProfilePhotoCard, GalleryPreview } from '../components/Avatar';
+import { BioCard } from '../components/BioCard';
 
 export default function Me() {
   const { profile: p, setProfile } = useStore();
@@ -22,10 +23,11 @@ export default function Me() {
     <button className="toggle" style={{ width: '100%', textAlign: 'left' }} onClick={() => { unlockAudio(); setProfile({ [k]: !(p[k] ?? k === 'sound') }); if (k === 'sound') setTimeout(() => cue('go'), 50); }}><span><b>{label}</b><div className="muted small">{sub}</div></span><span className={`switch ${(p[k] ?? k === 'sound') ? 'on' : ''}`} /></button>
   );
   return (
-    <Page title="Me" kicker="Profile · photos · settings" wide>
+    <Page title="Me" kicker="Profile · bio · photos · settings" wide>
       <div className="desk-grid">
         <div>
           <ProfilePhotoCard />
+          <BioCard />
           <GalleryPreview />
           <Card className="units-card">
             <div className="card-head" id="goals"><h3 id="units">Units & goals</h3><span className="muted small">Applies everywhere, instantly</span></div>

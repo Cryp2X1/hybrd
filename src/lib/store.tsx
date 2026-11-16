@@ -5,6 +5,7 @@ import { useAuth } from './auth';
 import { getSupabase, TABLES } from './supabase';
 import { localeUnits } from './calc';
 import { useStrava, stravaVisible, isStravaId, hideStravaActivity, autoSync } from './strava';
+import { normalizeBio, clearedBio } from './bio';
 
 export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [], coachplans: [], fasts: [], gallery: [] });
 export const defaultProfile = (): Profile => ({
@@ -114,8 +115,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
       if (items.some((i) => i.col === 'profile')) {
-        const { error } = await sb.from('profiles').upsert({ id: ns, data: profileRef.current, updated_at: new Date().toISOString() });
-        if (error) throw error;
+        const updated_at = new Date().toISOString();
+        const row = { id: ns, data: profileRef.current, bio: normalizeBio(profileRef.current.bio) || null, updated_at };
+        const { error } = await sb.from('profiles').upsert(row);
+        if (error) {
+          // Older schema without the bio column: still save the profile JSON.
+          const { error: e2 } = await sb.from('profiles').upsert({ id: ns, data: profileRef.current, updated_at });
+          if (e2) throw e2;
+        }
       }
       for (const it of items) delete pending.current[`${it.col}:${it.id}`];
       persist();
@@ -185,7 +192,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [queue, persist]);
 
   const setProfile = useCallback((p: Partial<Profile>) => {
-    setProfileState((cur) => { const n = { ...cur, ...p, updatedAt: Date.now() }; profileRef.current = n; return n; });
+    setProfileState((cur) => {
+      const n = { ...cur, ...p, updatedAt: Date.now() };
+      if ('bio' in p) n.bio = normalizeBio(p.bio);
+      profileRef.current = n; return n;
+    });
     queue('profile', 'me'); persist();
   }, [queue, persist]);
 
@@ -224,7 +235,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const wipe = useCallback(async () => {
     const all = dataRef.current;
     for (const col of COLLECTIONS) for (const r of all[col] as Rec[]) if (!r.deleted) remove(col, r.id);
-  }, [remove]);
+    if (profileRef.current.bio) setProfile(clearedBio());
+  }, [remove, setProfile]);
 
   const strava = useStrava();
   useEffect(() => { if (ready && profile.onboarded && strava.connected) autoSync(profile); }, [ready, strava.connected]); // eslint-disable-line react-hooks/exhaustive-deps

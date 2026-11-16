@@ -363,3 +363,13 @@ Email templates that change password or email must use a `redirectTo` that is on
 - ZIP is built in memory (store, no compression) — fine for dozens of photos, heavy for hundreds of originals on older phones.
 - Local → account import moves photo metadata; the image blobs are keyed by photo id so they stay usable and upload after sign-in; the local-mode avatar is per namespace, so it has to be re-picked after signing in. Orphaned storage objects are possible if a delete fails and the device never comes back online.
 - No server-side virus/image validation beyond the bucket's MIME/size limits; no face blurring; no cloud thumbnails (Supabase image transforms are a paid feature).
+
+## Bio (Me) — built 16 Nov 2026
+
+- Card on Me, directly under the profile header/avatar (`src/components/BioCard.tsx`, helpers in `src/lib/bio.ts`). Free-form text, 1,000 character cap.
+- View: line breaks preserved (`pre-wrap`), emoji ok, "Read more" after 280 characters or 5 lines. Edit: textarea, live counter, Save / Cancel. Empty prompt: "Tell your story: goals, sports, why you train...".
+- Rendered as React text (no `dangerouslySetInnerHTML`). `http://` / `https://` URLs are auto-linked (`rel="noopener noreferrer nofollow"`, `target="_blank"`). `javascript:` / `data:` and markup are not links; `<script>` and other HTML display as characters.
+- Stored on the profile (`profile.bio`), so it persists locally, syncs with the profile JSON, is included in the JSON export, and is cleared by "Delete all data" (`store.wipe` → `clearedBio()`). Private — there is no public profile; the card says "Only you can see this."
+- `supabase/schema.sql` (safe to re-run): `profiles.bio text` with a dropped-then-recreated `profiles_bio_len` check (`char_length(bio) <= 1000`). Documented in `SETUP.md` §2 and §10. Profile upsert writes the column; if an older database is missing it, the profile JSON still saves.
+- Entitlement `profile.bio` is `free: true`.
+- Tests: `tools/test-bio.ts` (length limit, trimming, plain-text escaping, safe / rejected links, collapse, persistence via normalize, export / delete helpers, schema + entitlements). Screenshots: `tools/shoot-bio.mjs` → `phone-me-bio.png`, `phone-me-bio-edit.png`, `phone-me-bio-empty.png`, `desktop-me-bio.png`.

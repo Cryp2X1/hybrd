@@ -36,6 +36,8 @@ export interface Profile {
   fasting?: import('./fasting').FastPlan;
   /** Profile photo: the 512 px image is in IndexedDB (`avatar:<ns>`); `v` changes on every new photo; `path` = private storage path when synced. */
   avatar?: { v: number; bytes: number; path?: string };
+  /** Me › Bio: free-form plain text (max 1,000 characters). Private — there is no public profile. */
+  bio?: string;
   updatedAt?: number;
 }
 

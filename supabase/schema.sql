@@ -13,6 +13,11 @@ create table if not exists public.profiles (
 -- Profile photo: storage path of the avatar in the private user-media bucket (e.g. <uid>/avatar.webp). Not a public URL.
 alter table public.profiles add column if not exists avatar_url text;
 
+-- Me › Bio: free-form text, private (RLS on this table). Length check matches the in-app 1,000 character cap.
+alter table public.profiles add column if not exists bio text;
+alter table public.profiles drop constraint if exists profiles_bio_len;
+alter table public.profiles add constraint profiles_bio_len check (bio is null or char_length(bio) <= 1000);
+
 -- ---------- shared shape for the log tables ----------
 -- id is generated on the device (UUID string) so offline records can sync later.
 do $$

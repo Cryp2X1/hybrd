@@ -28,7 +28,7 @@ export default function DataPage() {
     <Page title="Your data" kicker={counts} back="/me">
       <Card>
         <h3 style={{ marginBottom: 8 }}>Export</h3>
-        <p className="muted small">Download everything (profile, workouts, GPS routes, food log, water, steps, weight, templates) as one JSON file — a backup you own.</p>
+        <p className="muted small">Download everything (profile and bio, workouts, GPS routes, food log, water, steps, weight, templates) as one JSON file — a backup you own.</p>
         <button className="btn y" onClick={exp}><Icon name="download" size={18} />Export JSON</button>
         <p className="muted small" style={{ marginTop: 10 }}>Photos aren’t inside the JSON file (only their dates, tags and captions). To keep the images, use <Link className="link" to="/me/gallery">Gallery › Download all</Link>.</p>
       </Card>
@@ -45,7 +45,7 @@ export default function DataPage() {
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Delete everything</h3>
-        <p className="muted small">Removes all logs and photos from this device{st.ns !== 'local' ? ' and your account' : ''}. Export first if you want a copy.</p>
+        <p className="muted small">Removes all logs, photos and your bio from this device{st.ns !== 'local' ? ' and your account' : ''}. Export first if you want a copy.</p>
         <button className="btn danger" onClick={() => { if (confirm('Delete ALL your HYBRD data? This cannot be undone.')) { media.deletePhotos(media.items.map((i) => i.id)); media.removeAvatar(); st.wipe(); toast('All data deleted'); } }}>Delete all data</button>
       </Card>
       <Banner>On iPhone, Safari may clear a website’s storage if you don’t open it for 7 days. Adding HYBRD to the Home Screen avoids that — and an account (when enabled) keeps a copy in the cloud.</Banner>
