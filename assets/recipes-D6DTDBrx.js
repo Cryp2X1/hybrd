@@ -1,1 +1,0 @@
-import{t as e}from"./recipes-C_i9qWv3.js";import{t}from"./plan-foods-CnefPad9.js";var n=e,r=t.recipes,i=[...n,...r],a=e=>i.find(t=>t.id===e);export{n,a as r,i as t};
