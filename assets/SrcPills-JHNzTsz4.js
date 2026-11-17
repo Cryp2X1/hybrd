@@ -1,1 +1,0 @@
-import{n as e}from"./sources-CWi3PrPA.js";import{t}from"./jsx-runtime-NmdJFA-0.js";var n=t();function r({ids:t}){return(0,n.jsx)(`div`,{className:`tag-row`,style:{marginTop:10},children:t.map(t=>{let r=e(t);return r?(0,n.jsxs)(`a`,{className:`pill yellow`,href:r.url,target:`_blank`,rel:`noopener`,children:[r.cite.split(/[.,]/)[0],`…`]},t):null})})}export{r as t};
