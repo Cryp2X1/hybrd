@@ -8,6 +8,7 @@ import { addDays, dayTotals, prettyDay, todayKey } from '../lib/calc';
 import { fuelTargets } from '../lib/fuelTargets';
 import { WLCard } from '../components/WLCard';
 import { FastingCard } from '../components/FastingCard';
+import { SleepCard } from '../components/SleepCard';
 import { dayBurn } from '../lib/burn';
 import { StepsCard } from '../components/StepsCard';
 import { Page, Segmented, Card, Banner, Pill, Disclaimer } from '../components/ui';
@@ -16,7 +17,7 @@ import { Icon } from '../components/Icon';
 import { CoachCard } from '../components/CoachCard';
 import type { FoodEntry, WaterDay } from '../lib/types';
 
-const RCATS = [{ v: 'all', label: 'All' }, { v: 'pre', label: 'Pre-workout' }, { v: 'post', label: 'Recovery' }, { v: 'protein', label: 'High protein' }, { v: 'drink', label: 'Drinks & hydration' }, { v: 'fuel', label: 'Endurance fuel' }, { v: 'budget', label: 'Budget' }, { v: 'plan', label: 'Weight-loss meals' }];
+const RCATS = [{ v: 'all', label: 'All' }, { v: 'pre', label: 'Pre-workout' }, { v: 'post', label: 'Recovery' }, { v: 'protein', label: 'High protein' }, { v: 'drink', label: 'Drinks & hydration' }, { v: 'fuel', label: 'Endurance fuel' }, { v: 'budget', label: 'Budget' }, { v: 'plan', label: 'Weight-loss meals' }, { v: 'sleep', label: 'Sleep & evening' }];
 const MEALS: FoodEntry['meal'][] = ['breakfast', 'lunch', 'dinner', 'snacks'];
 
 export default function Fuel() {
@@ -38,7 +39,7 @@ export default function Fuel() {
 
   return (
     <Page title="Fuel" kicker="Calories · Macros · Water · Recipes" wide actions={<Link className="btn sm y" to={`/fuel/add?date=${day}`}><Icon name="plus" size={18} />Food</Link>}>
-      <Segmented value={tab} onChange={(v) => (v === 'wl' ? nav('/fuel/weight-loss') : v === 'fast' ? nav('/fuel/fasting') : setSp({ tab: v }))} options={[{ v: 'today', label: 'Food log' }, { v: 'wl', label: 'Weight loss' }, { v: 'fast', label: 'Fasting' }, { v: 'recipes', label: 'Meals & drinks' }, { v: 'guide', label: 'Guide' }, { v: 'sources', label: 'Sources' }]} />
+      <Segmented value={tab} onChange={(v) => (v === 'wl' ? nav('/fuel/weight-loss') : v === 'fast' ? nav('/fuel/fasting') : v === 'sleep' ? nav('/fuel/sleep') : setSp({ tab: v }))} options={[{ v: 'today', label: 'Food log' }, { v: 'wl', label: 'Weight loss' }, { v: 'fast', label: 'Fasting' }, { v: 'sleep', label: 'Sleep' }, { v: 'recipes', label: 'Meals & drinks' }, { v: 'guide', label: 'Guide' }, { v: 'sources', label: 'Sources' }]} />
 
       {tab === 'today' && <CoachCard where="fuel" />}
       {tab === 'today' && <div className="desk-grid">
@@ -77,6 +78,7 @@ export default function Fuel() {
         <div>
           <WLCard compact />
           <FastingCard compact />
+          <SleepCard compact />
           <Card>
             <div className="card-head"><h3>Water</h3><span className="muted small">Target {(t.waterMl / 1000).toFixed(1)} L</span></div>
             <div className="row" style={{ marginBottom: 12 }}><div className="water-big">{(ml / 1000).toFixed(2)} L</div><span className="spacer" /><span className="mono muted">{Math.round((ml / t.waterMl) * 100)}%</span></div>

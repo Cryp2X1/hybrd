@@ -7,7 +7,7 @@ import { localeUnits } from './calc';
 import { useStrava, stravaVisible, isStravaId, hideStravaActivity, autoSync } from './strava';
 import { normalizeBio, clearedBio } from './bio';
 
-export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [], coachplans: [], fasts: [], gallery: [] });
+export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [], coachplans: [], fasts: [], sleeps: [], caffeine: [], gallery: [] });
 export const defaultProfile = (): Profile => ({
   name: '', sex: 'male', age: 30, heightCm: 175, weightKg: 75, activity: 1.55, goal: 'maintain', units: localeUnits(),
   disciplines: ['hybrid'], weeklySessions: 4, onboarded: false, sound: true, voice: false, hyroxDivision: 'men-open',

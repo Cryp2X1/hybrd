@@ -28,6 +28,8 @@ const WeightLoss = lazy(() => import('./pages/WeightLoss'));
 const WeightLossSetup = lazy(() => import('./pages/WeightLossSetup'));
 const Fasting = lazy(() => import('./pages/Fasting'));
 const FastingSetup = lazy(() => import('./pages/FastingSetup'));
+const Sleep = lazy(() => import('./pages/Sleep'));
+const SleepSetup = lazy(() => import('./pages/SleepSetup'));
 const Ultra = lazy(() => import('./pages/Ultra'));
 const UltraSetup = lazy(() => import('./pages/UltraSetup'));
 const Progress = lazy(() => import('./pages/Progress'));
@@ -130,6 +132,8 @@ export function App() {
             <Route path="/train/ultra/setup" element={<UltraSetup />} />
             <Route path="/fuel/fasting" element={<Fasting />} />
             <Route path="/fuel/fasting/setup" element={<FastingSetup />} />
+            <Route path="/fuel/sleep" element={<Sleep />} />
+            <Route path="/fuel/sleep/setup" element={<SleepSetup />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />

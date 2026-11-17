@@ -21,6 +21,6 @@ export function getSupabase(): Promise<SupabaseClient | null> {
 }
 
 export const TABLES: Record<string, string> = {
-  workouts: 'workouts', routes: 'gps_routes', foods: 'food_logs', water: 'water_logs', body: 'body_logs', templates: 'templates', steps: 'step_logs', burns: 'burn_logs', wlplans: 'wl_plans', coachplans: 'coach_plans', fasts: 'fasting_logs', gallery: 'gallery_items',
+  workouts: 'workouts', routes: 'gps_routes', foods: 'food_logs', water: 'water_logs', body: 'body_logs', templates: 'templates', steps: 'step_logs', burns: 'burn_logs', wlplans: 'wl_plans', coachplans: 'coach_plans', fasts: 'fasting_logs', sleeps: 'sleep_logs', caffeine: 'caffeine_logs', gallery: 'gallery_items',
 };
 export const MEDIA_BUCKET = 'user-media';

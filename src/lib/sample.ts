@@ -1,3 +1,4 @@
+import type { SleepLog } from './sleep';
 import type { BodyLog, BurnEntry, DataState, FoodEntry, GpsRoute, RoutePoint, StepDay, WaterDay, Workout } from './types';
 import { addDays, dayKeyOf, estKcal, haversine, splitsFromTrack, todayKey } from './calc';
 import recipes from '../data/recipes.json';
@@ -124,5 +125,15 @@ export function buildSample(weightKg: number, center: [number, number]): Partial
     { id: `${SAMPLE_TAG}-burn-yoga`, updatedAt: Date.now(), sample: true, date: addDays(today, -2), activity: 'yoga', label: 'Yoga', minutes: 45, met: 2.5, kcal: Math.round(2.5 * weightKg * 0.75), method: 'met' },
     { id: `${SAMPLE_TAG}-burn-swim`, updatedAt: Date.now(), sample: true, date: addDays(today, -5), activity: 'swim', label: 'Swimming', minutes: 30, met: 5.8, kcal: Math.round(5.8 * weightKg * 0.5), method: 'met' },
   ];
-  return { workouts, routes, foods, water, body, steps, burns };
+  // Two weeks of Fuel › Sleep log nights (morning-dated), a few with late caffeine / alcohol / a late meal
+  const sleeps: SleepLog[] = [];
+  for (let off = -13; off <= 0; off++) {
+    if (off === -9) continue; // one night not logged
+    const k = Math.abs(off * 7);
+    const caffeineLate = off === -11 || off === -6 || off === -2, alcohol = off === -8 || off === -1, lateMeal = off === -6 || off === -4;
+    const hours = +(7.6 - (caffeineLate ? 0.9 : 0) - (alcohol ? 0.6 : 0) - (lateMeal ? 0.3 : 0) + ((k % 5) - 2) * 0.15).toFixed(1);
+    const quality = Math.max(1, Math.min(5, 4 - (caffeineLate ? 1 : 0) - (alcohol ? 1 : 0) + (k % 3 === 0 ? 1 : 0))) as SleepLog['quality'];
+    sleeps.push({ id: `${SAMPLE_TAG}-sleep-${off}`, updatedAt: Date.now(), date: addDays(today, off), bed: '22:45', wake: '06:30', hours, quality, caffeineLate, alcohol, lateMeal, snack: off % 2 ? 'Kiwi & Greek yogurt' : undefined });
+  }
+  return { workouts, routes, foods, water, body, steps, burns, sleeps };
 }

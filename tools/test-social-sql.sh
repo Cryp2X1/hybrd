@@ -17,3 +17,4 @@ echo "== schema.sql, run 2 (idempotent)"; PGOPTIONS="-c client_min_messages=warn
 echo "== policies: $("${PSQL[@]}" -At -c "select count(*) from pg_policies where schemaname in ('public','storage')")"
 "${PSQL[@]}" -o /dev/null -f tools/sql/test-social.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== gallery videos"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-gallery-video.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== sleep logs"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-sleep.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

@@ -1,0 +1,122 @@
+# Builds src/data/sleep-recipes.json for Fuel › Sleep: evening meals, bedtime snacks and drinks.
+# Every macro is computed from USDA FoodData Central SR Legacy values (per 100 g) in public/data/foods-usda.json —
+# the same method as tools/build_recipes.py. Run: python3 tools/build_sleep_recipes.py
+import json
+D = {r[11]: r for r in json.load(open('public/data/foods-usda.json'))['foods']}
+I = dict(kiwi=168153, greek=170894, cottage=172182, milk1=170872, milk2=171267, sourcherry=171718, tartjuice=167807, walnuts=170187,
+  almonds=170567, banana=173944, pb=172470, wwbread=172688, oats=173904, honey=169640, cinnamon=171320, chamomile=174156, herbtea=173232,
+  soy=175215, edamame=168411, ricecake=170250, salmon=175168, rice=168878, spinach=168462, oliveoil=171413, lemon=167748, chickpeas=173801,
+  cucumber=168409, tomato=170457, feta=173420, wwpita=174916, chicken=171534, potato=170093, broccoli=169967, lentils=172421, soda=174842,
+  decaf=171889, tofu=172475)
+for k, v in I.items(): assert v in D, (k, v)
+
+# id, name, kind (dinner|snack|drink), timing, tags, evidence grade, minutes, ingredients[(key, grams, label)], steps, why, sources
+R = [
+ ('sleep-salmon-rice', 'Salmon, Jasmine Rice & Greens', 'dinner', '3–4 h before bed', ['high-protein', 'dairy-free', 'gluten-free', 'omega-3', 'fall-asleep'], 'limited', 25,
+  [('salmon', 140, '140 g salmon fillet'), ('rice', 250, '1½ cups cooked white rice (jasmine if you have it)'), ('spinach', 60, '2 cups spinach'), ('oliveoil', 5, '1 tsp olive oil'), ('lemon', 15, '1 tbsp lemon juice')],
+  ['Bake the salmon 12–15 min at 200 °C / 400 °F.', 'Cook the rice; wilt the spinach in the oil and finish with lemon.'],
+  'In a small trial, a high-GI rice dinner eaten 4 h before bed helped people fall asleep faster than a low-GI one (and worked better at 4 h than at 1 h). Fatty fish 3×/week was linked to better daily functioning in a winter trial. Small studies — a good dinner either way.',
+  ['sleep-afaghi', 'sleep-vlahoyiannis', 'sleep-hansen-fish']),
+ ('sleep-med-bowl', 'Mediterranean Chickpea Bowl', 'dinner', '3–4 h before bed', ['vegetarian', 'high-fibre'], 'limited', 15,
+  [('chickpeas', 160, '1 cup chickpeas (rinsed)'), ('wwpita', 64, '1 whole-wheat pita'), ('cucumber', 100, '1 cup cucumber'), ('tomato', 120, '1 cup cherry tomatoes'), ('feta', 40, '¼ cup feta'), ('oliveoil', 10, '2 tsp olive oil'), ('lemon', 15, '1 tbsp lemon juice'), ('spinach', 30, '1 cup spinach')],
+  ['Toss everything except the pita with oil and lemon.', 'Warm the pita and serve alongside.'],
+  'Built on the Mediterranean pattern — legumes, vegetables, olive oil. Observational studies link closer adherence to better sleep quality and duration (association, not proof of cause).',
+  ['sleep-godos-med', 'sleep-scoditti-med']),
+ ('sleep-chicken-potato', 'Chicken, Potato & Broccoli Plate', 'dinner', 'After evening training · 2–3 h before bed', ['high-protein', 'dairy-free', 'gluten-free', 'recovery'], 'moderate', 30,
+  [('chicken', 150, '150 g grilled chicken breast'), ('potato', 250, '1 large baked potato'), ('broccoli', 150, '1½ cups broccoli'), ('oliveoil', 7, '1½ tsp olive oil')],
+  ['Bake the potato (or microwave 8–10 min).', 'Grill the chicken; steam the broccoli and dress with the oil.'],
+  'A recovery dinner for late sessions: ~55 g protein and starchy carbohydrate to start refuelling, without the heavy fat or spice that can sit badly close to bed.',
+  ['issn-protein', 'issn-timing', 'sleep-acg-gerd']),
+ ('sleep-lentil-rice', 'Lentil & Tomato Rice Pilaf', 'dinner', '3–4 h before bed', ['vegan', 'dairy-free', 'gluten-free', 'high-fibre', 'budget'], 'limited', 25,
+  [('lentils', 200, '1 cup cooked lentils'), ('rice', 200, '1¼ cups cooked white rice'), ('tomato', 120, '1 cup chopped tomatoes'), ('spinach', 60, '2 cups spinach'), ('oliveoil', 10, '2 tsp olive oil')],
+  ['Warm the oil, add tomatoes and simmer 5 min.', 'Stir in lentils, rice and spinach until hot.'],
+  'Plant protein and carbohydrate in a Mediterranean-style plate; carbohydrate-based dinners a few hours before bed have been studied for falling asleep (small trials).',
+  ['sleep-vlahoyiannis', 'sleep-godos-med']),
+ ('sleep-kiwi-yogurt', 'Two Kiwis + Greek Yogurt', 'snack', '~1 h before bed', ['vegetarian', 'gluten-free', 'high-protein', 'fall-asleep', 'light'], 'limited', 3,
+  [('kiwi', 138, '2 green kiwifruit'), ('greek', 170, '1 small tub (170 g) plain Greek yogurt, nonfat')],
+  ['Halve the kiwis and scoop, or slice over the yogurt.'],
+  'Two kiwifruit 1 h before bed for 4 weeks went with faster sleep onset and longer sleep in adults with sleep problems (small, uncontrolled study); a later crossover trial saw better next-morning ratings. The yogurt adds ~17 g mostly-casein protein.',
+  ['sleep-lin-kiwi', 'sleep-kanon-kiwi', 'sleep-trommelen']),
+ ('sleep-cottage-cherry', 'Cottage Cheese & Tart Cherries', 'snack', '30–60 min before bed', ['vegetarian', 'gluten-free', 'high-protein', 'recovery'], 'moderate', 3,
+  [('cottage', 226, '1 cup 2% cottage cheese'), ('sourcherry', 78, '½ cup frozen tart cherries, thawed'), ('walnuts', 7, '1 tbsp chopped walnuts')],
+  ['Top the cottage cheese with cherries and walnuts.'],
+  '~25 g casein-rich protein, near the 30–40 g pre-sleep dose the ISSN describes for overnight muscle protein synthesis after training, plus tart cherries (studied as juice for sleep).',
+  ['issn-protein', 'sleep-res', 'sleep-snijders', 'sleep-howatson']),
+ ('sleep-casein-shake', 'Recovery Milk & Yogurt Shake (≈30 g protein)', 'snack', '30–60 min before bed', ['vegetarian', 'gluten-free', 'high-protein', 'recovery'], 'moderate', 3,
+  [('milk2', 300, '1¼ cups 2% milk'), ('greek', 200, '¾ cup plain Greek yogurt, nonfat'), ('banana', 60, '½ banana'), ('cinnamon', 1, 'pinch cinnamon')],
+  ['Blend until smooth. Or stir yogurt into cold milk if you don’t have a blender.'],
+  'Dairy protein is mostly casein. ~31 g here — the ISSN notes 30–40 g casein before sleep can raise overnight muscle protein synthesis; in a 12-week trial pre-sleep protein added to strength and muscle gains.',
+  ['issn-protein', 'sleep-res', 'sleep-snijders', 'sleep-trommelen']),
+ ('sleep-soy-shake', 'Soy & Tofu Recovery Smoothie (vegan)', 'snack', '30–60 min before bed', ['vegan', 'dairy-free', 'gluten-free', 'high-protein', 'recovery'], 'limited', 4,
+  [('soy', 300, '1¼ cups unsweetened soy milk'), ('tofu', 100, '100 g firm tofu'), ('banana', 60, '½ banana'), ('cinnamon', 1, 'pinch cinnamon')],
+  ['Blend until smooth.'],
+  'A dairy-free way to get ~27 g protein before bed. Pre-sleep protein research mostly used casein; plant protein before sleep has been studied much less.',
+  ['issn-protein', 'sleep-trommelen']),
+ ('sleep-pb-toast', 'Peanut Butter Toast + Warm Milk', 'snack', '~1 h before bed', ['vegetarian', 'budget'], 'limited', 5,
+  [('wwbread', 32, '1 slice whole-wheat toast'), ('pb', 16, '1 tbsp peanut butter'), ('milk1', 240, '1 cup 1% milk, warmed')],
+  ['Toast, spread, and sip the milk warm.'],
+  'A small, nutrient-dense snack — reviews find small bedtime snacks don’t carry the downsides of large late meals. Milk’s effect on sleep is mixed but modestly positive in trials.',
+  ['sleep-kinsey', 'sleep-komada-milk', 'sleep-yu-milk']),
+ ('sleep-oats-cherry', 'Small Cherry Oat Bowl', 'snack', '~1 h before bed', ['vegetarian', 'light'], 'limited', 5,
+  [('oats', 40, '½ cup rolled oats'), ('milk1', 200, '¾ cup 1% milk'), ('sourcherry', 78, '½ cup tart cherries'), ('honey', 7, '1 tsp honey')],
+  ['Microwave oats and milk 90 s, top with cherries and honey.'],
+  'Warm, carbohydrate-based and small. Tart cherry has small trials for sleep; carbohydrate amount and glycemic load shift sleep stages and sleep onset in meta-analysis.',
+  ['sleep-howatson', 'sleep-vlahoyiannis', 'sleep-komada-milk']),
+ ('sleep-banana-almond', 'Banana & a Handful of Almonds', 'snack', '~1 h before bed', ['vegan', 'dairy-free', 'gluten-free', 'quick', 'light'], 'weak', 1,
+  [('banana', 118, '1 medium banana'), ('almonds', 14, '12 almonds')],
+  ['That’s it.'],
+  'A light, portable snack with magnesium-containing almonds (NIH lists almonds among good food sources). No trial has tested this snack for sleep — choose it because it’s easy and light.',
+  ['sleep-ods-mg', 'sleep-kinsey']),
+ ('sleep-edamame', 'Edamame & Rice Cakes', 'snack', '~1 h before bed', ['vegan', 'dairy-free', 'gluten-free', 'high-protein'], 'weak', 5,
+  [('edamame', 155, '1 cup shelled edamame (cooked)'), ('ricecake', 18, '2 plain rice cakes')],
+  ['Microwave frozen edamame 2–3 min; salt lightly.'],
+  '~20 g plant protein in a light snack. Plant-protein-before-sleep studies are scarce, so this is a practical option rather than a tested one.',
+  ['sleep-trommelen', 'sleep-kinsey']),
+ ('sleep-tart-cherry', 'Tart Cherry Juice (studied serving)', 'drink', 'Morning + 1–2 h before bed', ['vegan', 'dairy-free', 'gluten-free'], 'limited', 1,
+  [('tartjuice', 240, '1 cup (240 mL) unsweetened tart cherry juice')],
+  ['Pour and drink. In the insomnia pilot it was taken twice a day (morning and evening) for 2 weeks.'],
+  'Small trials: tart cherry concentrate raised melatonin and sleep time in healthy adults; 240 mL twice daily added sleep time in 8 older adults with insomnia. A 2025 review calls the evidence limited and mixed. ~140 kcal and ~29 g natural sugar per cup (USDA).',
+  ['sleep-howatson', 'sleep-losso', 'sleep-barforoush']),
+ ('sleep-cherry-spritz', 'Tart Cherry Spritz (half the sugar)', 'drink', '1–2 h before bed', ['vegan', 'dairy-free', 'gluten-free', 'light'], 'limited', 1,
+  [('tartjuice', 120, '½ cup tart cherry juice'), ('soda', 120, '½ cup sparkling water')],
+  ['Mix over ice, or warm the juice and top with hot water.'],
+  'Half the studied amount — a lighter option if you’re watching sugar. Benefits seen in studies used larger, twice-daily doses.',
+  ['sleep-howatson', 'sleep-barforoush']),
+ ('sleep-warm-milk', 'Warm Honey-Cinnamon Milk', 'drink', '30–60 min before bed', ['vegetarian', 'gluten-free'], 'limited', 3,
+  [('milk1', 240, '1 cup 1% milk'), ('honey', 7, '1 tsp honey'), ('cinnamon', 1, 'pinch cinnamon')],
+  ['Warm the milk (don’t boil), stir in honey and cinnamon.'],
+  'Milk and milk-protein products modestly improved sleep efficiency in a 2026 meta-analysis, mostly in people with poor sleep; results for plain milk are mixed. A warm, caffeine-free routine drink.',
+  ['sleep-yu-milk', 'sleep-komada-milk']),
+ ('sleep-chamomile', 'Chamomile Tea', 'drink', '30–60 min before bed', ['vegan', 'dairy-free', 'gluten-free', 'caffeine-free'], 'limited', 5,
+  [('chamomile', 240, '1 cup brewed chamomile tea')],
+  ['Steep 1 bag or 1–2 tsp dried flowers in hot water 5–10 min.'],
+  'A 2024 meta-analysis found better sleep-quality scores (high heterogeneity), but the one insomnia trial found no benefit. Skip it if you’re allergic to ragweed, daisies or marigolds; check with your doctor if you take warfarin or sedatives.',
+  ['sleep-kazemi-chamomile', 'sleep-hieu-chamomile', 'sleep-nccih-chamomile']),
+ ('sleep-soy-warm', 'Warm Cinnamon Soy Milk (dairy-free)', 'drink', '30–60 min before bed', ['vegan', 'dairy-free', 'gluten-free'], 'weak', 3,
+  [('soy', 240, '1 cup unsweetened soy milk'), ('cinnamon', 1, 'pinch cinnamon')],
+  ['Warm gently and whisk in the cinnamon.'],
+  'A dairy-free swap for warm milk with ~7 g protein. No sleep trial has tested it — it’s here as a caffeine-free wind-down drink.',
+  ['sleep-usda-fdc']),
+ ('sleep-decaf', 'Decaf Coffee or Tea', 'drink', 'Any time in the evening', ['vegan', 'dairy-free', 'gluten-free'], 'moderate', 3,
+  [('decaf', 240, '1 cup decaf coffee (black)')],
+  ['Brew as usual with decaf beans or bags.'],
+  'Keeps the ritual without most of the caffeine — but decaf isn’t caffeine-free: the FDA says about 2–15 mg per 8 fl oz cup.',
+  ['sleep-fda-caffeine', 'sleep-usda-fdc']),
+ ('sleep-herbal', 'Caffeine-free Herbal Tea', 'drink', 'Any time in the evening', ['vegan', 'dairy-free', 'gluten-free', 'caffeine-free'], 'weak', 5,
+  [('herbtea', 240, '1 cup herbal tea (e.g. rooibos)')],
+  ['Steep as the pack says.'],
+  'Caffeine-free, so it won’t add to your bedtime caffeine. Most herbal teas have no sleep trials; keep evening volume small if you wake to pee.',
+  ['sleep-usda-fdc', 'sleep-medline-nocturia']),
+]
+out = []
+for (rid, name, kind, timing, tags, grade, mins, ings, steps, why, src) in R:
+    tot = dict(kcal=0, protein=0, carbs=0, fat=0, fiber=0, sodium=0, sugar=0)
+    rows = []
+    for key, g, label in ings:
+        f = D[I[key]]; m = g / 100
+        tot['kcal'] += f[2]*m; tot['protein'] += f[3]*m; tot['carbs'] += f[4]*m; tot['fat'] += f[5]*m; tot['fiber'] += f[6]*m; tot['sugar'] += (f[7] or 0)*m; tot['sodium'] += f[8]*m
+        rows.append({'label': label, 'grams': g, 'fdcId': I[key], 'usda': f[0]})
+    per = {k: round(v, 1) if k not in ('kcal', 'sodium') else round(v) for k, v in tot.items()}
+    out.append(dict(id=rid, name=name, cat='sleep', kind=kind, timing=timing, grade=grade, tags=tags, serves=1, minutes=mins, ingredients=rows, steps=steps, why=why, sources=src, perServing=per))
+json.dump(out, open('src/data/sleep-recipes.json', 'w'), indent=1, ensure_ascii=False)
+for r in out: print(r['id'], r['perServing'])

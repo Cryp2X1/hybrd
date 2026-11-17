@@ -11,22 +11,23 @@ import { useToast } from '../lib/toast';
 export default function RecipeDetail() {
   const { id = '' } = useParams();
   const r = recipeById(id);
+  const sleepR = r?.cat === 'sleep';
   const { upsert } = useStore();
   const toast = useToast();
-  const [meal, setMeal] = useState<FoodEntry['meal']>('lunch');
+  const [meal, setMeal] = useState<FoodEntry['meal']>(() => (r?.kind === 'dinner' ? 'dinner' : r?.kind ? 'snacks' : 'lunch'));
   const [serv, setServ] = useState(1);
   if (!r) return <Page title="Not found" back="/fuel?tab=recipes"><Empty title="Recipe not found" /></Page>;
   const p = r.perServing;
   const log = () => { upsert<FoodEntry>('foods', { id: uid(), date: todayKey(), meal, name: r.name, servings: serv, kcal: Math.round(p.kcal * serv), protein: +(p.protein * serv).toFixed(1), carbs: +(p.carbs * serv).toFixed(1), fat: +(p.fat * serv).toFixed(1), source: 'recipe', ref: r.id }); toast(`Logged ${Math.round(p.kcal * serv)} kcal`); };
   return (
-    <Page title={r.name} kicker={`${r.serves > 1 ? `Serves ${r.serves} · ` : ''}${r.minutes ? `${r.minutes} min` : 'No cooking'}`} back="/fuel?tab=recipes">
+    <Page title={r.name} kicker={`${r.serves > 1 ? `Serves ${r.serves} · ` : ''}${r.minutes ? `${r.minutes} min` : 'No cooking'}`} back={sleepR ? '/fuel/sleep?tab=foods' : '/fuel?tab=recipes'}>
       <div className="grid4" style={{ marginBottom: 14 }}>
         <div className="stat accent"><div className="stat-v">{p.kcal}</div><div className="stat-l">kcal / serving</div></div>
         <div className="stat"><div className="stat-v">{p.protein}<small>g</small></div><div className="stat-l">protein</div></div>
         <div className="stat"><div className="stat-v">{p.carbs}<small>g</small></div><div className="stat-l">carbs</div></div>
         <div className="stat"><div className="stat-v">{p.fat}<small>g</small></div><div className="stat-l">fat</div></div>
       </div>
-      <div className="row wrap" style={{ marginBottom: 14 }}>{r.tags.map((t) => <Pill key={t}>{t}</Pill>)}<Pill>fibre {p.fiber} g</Pill><Pill>sodium {p.sodium} mg</Pill></div>
+      <div className="row wrap" style={{ marginBottom: 14 }}>{r.tags.map((t) => <Pill key={t}>{t}</Pill>)}<Pill>fibre {p.fiber} g</Pill><Pill>sodium {p.sodium} mg</Pill>{p.sugar !== undefined && <Pill>sugars {p.sugar} g</Pill>}{r.timing && <Pill tone="yellow">{r.timing}</Pill>}{r.grade && <Pill tone="dim">Sleep evidence: {r.grade}</Pill>}</div>
       <Card className="hero"><div className="kicker">Why it works</div><p style={{ margin: 0 }}>{r.why}</p>
         <div className="tag-row" style={{ marginTop: 10 }}>{r.sources.map((s) => <a key={s} className="pill yellow" href={sourceById(s)?.url} target="_blank" rel="noopener">{sourceById(s)?.cite.split('.')[0]}…</a>)}</div></Card>
       <div className="desk-grid">
