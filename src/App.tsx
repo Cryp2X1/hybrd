@@ -30,6 +30,11 @@ const Fasting = lazy(() => import('./pages/Fasting'));
 const FastingSetup = lazy(() => import('./pages/FastingSetup'));
 const Sleep = lazy(() => import('./pages/Sleep'));
 const SleepSetup = lazy(() => import('./pages/SleepSetup'));
+const Mind = lazy(() => import('./pages/Mind'));
+const MindSetup = lazy(() => import('./pages/MindSetup'));
+const MindHelp = lazy(() => import('./pages/MindHelp'));
+const MindPlayer = lazy(() => import('./pages/MindPlayer'));
+const MindProgram = lazy(() => import('./pages/MindProgram'));
 const Ultra = lazy(() => import('./pages/Ultra'));
 const UltraSetup = lazy(() => import('./pages/UltraSetup'));
 const Progress = lazy(() => import('./pages/Progress'));
@@ -61,6 +66,7 @@ const NAV = [
   { to: '/record', icon: 'record', label: 'Record' },
   { to: '/timers', icon: 'timer', label: 'Timers' },
   { to: '/fuel', icon: 'fuel', label: 'Fuel' },
+  { to: '/mind', icon: 'mind', label: 'Mind' },
   { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
   { to: '/social', icon: 'users', label: 'Social' },
@@ -134,6 +140,12 @@ export function App() {
             <Route path="/fuel/fasting/setup" element={<FastingSetup />} />
             <Route path="/fuel/sleep" element={<Sleep />} />
             <Route path="/fuel/sleep/setup" element={<SleepSetup />} />
+            <Route path="/mind" element={<Mind />} />
+            <Route path="/mind/setup" element={<MindSetup />} />
+            <Route path="/mind/help" element={<MindHelp />} />
+            <Route path="/mind/breathe/:id" element={<MindPlayer kind="breathe" />} />
+            <Route path="/mind/routine/:id" element={<MindPlayer kind="routine" />} />
+            <Route path="/mind/program/:id" element={<MindProgram />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />

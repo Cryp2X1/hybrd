@@ -1,4 +1,5 @@
 import type { SleepLog } from './sleep';
+import { baselines, hardYesterday, readiness, type CheckIn, type JournalEntry, type MindSession, type ScreenResult, type Scale5 } from './mind';
 import type { BodyLog, BurnEntry, DataState, FoodEntry, GpsRoute, RoutePoint, StepDay, WaterDay, Workout } from './types';
 import { addDays, dayKeyOf, estKcal, haversine, splitsFromTrack, todayKey } from './calc';
 import recipes from '../data/recipes.json';
@@ -135,5 +136,34 @@ export function buildSample(weightKg: number, center: [number, number]): Partial
     const quality = Math.max(1, Math.min(5, 4 - (caffeineLate ? 1 : 0) - (alcohol ? 1 : 0) + (k % 3 === 0 ? 1 : 0))) as SleepLog['quality'];
     sleeps.push({ id: `${SAMPLE_TAG}-sleep-${off}`, updatedAt: Date.now(), date: addDays(today, off), bed: '22:45', wake: '06:30', hours, quality, caffeineLate, alcohol, lateMeal, snack: off % 2 ? 'Kiwi & Greek yogurt' : undefined });
   }
-  return { workouts, routes, foods, water, body, steps, burns, sleeps };
+  // Mind & Recovery: ~3 weeks of daily check-ins (today left open so the 20-second check-in is the first thing to try),
+  // a few journal entries, breathing / routine sessions, 3 days of the Discipline program and one well-being check-up.
+  const checkins: CheckIn[] = [];
+  const cl = (x: number) => Math.max(1, Math.min(5, Math.round(x))) as Scale5;
+  for (let off = -20; off <= -1; off++) {
+    if (off === -16 || off === -9) continue;
+    const date = addDays(today, off), k = Math.abs(off * 13);
+    const sl = sleeps.find((x) => x.date === date);
+    const hard = hardYesterday(workouts, date);
+    const stressy = off === -12 || off === -11 || off === -4;
+    const base = { mood: cl(4 - (stressy ? 1 : 0) + ((k % 4) === 0 ? -1 : 0)), stress: cl(2 + (stressy ? 2 : 0) + (k % 3 === 0 ? 1 : 0)), energy: cl(4 - (hard ? 1 : 0) - (sl && sl.hours < 7 ? 1 : 0) + (k % 5 === 0 ? 1 : 0)),
+      motivation: cl(4 - (stressy ? 1 : 0) + (k % 7 === 0 ? 1 : 0)), soreness: cl(2 + (hard ? 2 : 0) - (k % 4 === 1 ? 1 : 0)), sleepQ: cl(sl ? sl.quality : 3) };
+    const hrv = off >= -14 ? Math.round(64 - (hard ? 7 : 0) - (stressy ? 5 : 0) + ((k % 5) - 2) * 2) : undefined;
+    const rhr = off >= -14 ? Math.round(51 + (hard ? 2 : 0) + (stressy ? 2 : 0) + ((k % 3) - 1)) : undefined;
+    const r = readiness({ ...base, sleepH: sl?.hours, hrv, rhr }, baselines(checkins, date), { hardYesterday: hard });
+    checkins.push({ id: `${SAMPLE_TAG}-ci-${date}`, updatedAt: Date.now(), sample: true, date, ...base, ...(sl ? { sleepH: sl.hours, sleepFrom: 'log' as const } : {}), ...(hrv ? { hrv, rhr } : {}), pain: off === -7 ? 'niggle' : 'none', ill: false, flags: [], score: r.score, rec: r.rec, v: 1 });
+  }
+  const journal: JournalEntry[] = [
+    { id: `${SAMPLE_TAG}-j1`, updatedAt: Date.now(), sample: true, date: addDays(today, -1), kind: 'win', prompt: 'What went well in training today?', text: 'Held the push-up sets unbroken for the first time. Slow and controlled on every rep.' },
+    { id: `${SAMPLE_TAG}-j2`, updatedAt: Date.now(), sample: true, date: addDays(today, -3), kind: 'gratitude', prompt: 'Three good things that happened today, and why they happened.', text: '1. Intervals felt smooth — slept well. 2. Coffee with my sister. 3. Got outside at lunch.' },
+    { id: `${SAMPLE_TAG}-j3`, updatedAt: Date.now(), sample: true, date: addDays(today, -6), kind: 'reflect', prompt: 'What was hard today, and how did you respond?', text: 'Stations felt heavy after a long work week. Used “strong and steady” on the wall balls and kept sets of 10.', program: 'discipline:3' },
+    { id: `${SAMPLE_TAG}-j4`, updatedAt: Date.now(), sample: true, date: addDays(today, -11), kind: 'reflect', prompt: 'What’s on my mind right now?', text: 'Busy deadline week. Kept training short and easy, did the breathing at night.' },
+  ];
+  const ms = (off: number, kind: MindSession['kind'], ref: string, minutes: number, i: number): MindSession => ({ id: `${SAMPLE_TAG}-ms-${i}`, updatedAt: Date.now(), sample: true, date: addDays(today, off), kind, ref, minutes });
+  const mindsessions: MindSession[] = [
+    ms(-12, 'breathe', 'sigh', 5, 1), ms(-11, 'breathe', 'resonance', 10, 2), ms(-10, 'program', 'discipline:1', 6, 3), ms(-8, 'program', 'discipline:2', 6, 4), ms(-6, 'program', 'discipline:3', 5, 5),
+    ms(-6, 'routine', 'post-run', 9, 6), ms(-4, 'breathe', 'sigh', 5, 7), ms(-2, 'routine', 'post-run', 9, 8), ms(-2, 'breathe', 'resonance', 10, 9), ms(-1, 'routine', 'upper', 8, 10),
+  ];
+  const screens: ScreenResult[] = [{ id: `${SAMPLE_TAG}-scr-1`, updatedAt: Date.now(), sample: true, date: addDays(today, -10), who5: [3, 3, 4, 3, 4], phq4: [0, 1, 1, 1], safety: 'no' }];
+  return { workouts, routes, foods, water, body, steps, burns, sleeps, checkins, journal, mindsessions, screens };
 }

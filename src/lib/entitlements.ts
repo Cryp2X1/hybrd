@@ -23,6 +23,7 @@ export type Feature =
   | 'sleep.log' // sleep & fuel log, trends and streaks
   | 'sleep.recipes' // sleep snacks & drinks
   | 'sleep.research' // graded evidence library + sources
+  | 'mind.checkin' | 'mind.breathe' | 'mind.programs' | 'mind.recovery' | 'mind.journal' | 'mind.trends' | 'mind.screening' | 'mind.research' // Mind & Recovery
   | 'profile.avatar' // profile photo (upload / camera, crop, remove)
   | 'gallery.photos' // private photo gallery: upload, tags, captions, viewer
   | 'gallery.download' // download originals / ZIP of selected or all
@@ -50,6 +51,14 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'sleep.log': { free: true, label: 'Sleep & fuel log, trends and streaks' },
   'sleep.recipes': { free: true, label: 'Sleep snacks & drinks' },
   'sleep.research': { free: true, label: 'Sleep nutrition evidence & sources' },
+  'mind.checkin': { free: true, label: 'Daily check-in & readiness' },
+  'mind.breathe': { free: true, label: 'Guided breathing' },
+  'mind.programs': { free: true, label: 'Mental-skills programs' },
+  'mind.recovery': { free: true, label: 'Recovery toolkit & planner' },
+  'mind.journal': { free: true, label: 'Private journal' },
+  'mind.trends': { free: true, label: 'Mind trends, streaks & patterns' },
+  'mind.screening': { free: true, label: 'Well-being check-ups (WHO-5, PHQ-4)' },
+  'mind.research': { free: true, label: 'Mind & recovery evidence & sources' },
   'profile.avatar': { free: true, label: 'Profile photo' },
   'gallery.photos': { free: true, label: 'Photo gallery' },
   'gallery.download': { free: true, label: 'Download photos' },

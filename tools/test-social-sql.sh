@@ -18,3 +18,4 @@ echo "== policies: $("${PSQL[@]}" -At -c "select count(*) from pg_policies where
 "${PSQL[@]}" -o /dev/null -f tools/sql/test-social.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== gallery videos"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-gallery-video.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== sleep logs"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-sleep.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== mind & recovery"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-mind.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

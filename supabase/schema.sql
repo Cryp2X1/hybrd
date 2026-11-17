@@ -23,7 +23,7 @@ alter table public.profiles add constraint profiles_bio_len check (bio is null o
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'sleep_logs', 'caffeine_logs', 'fasting_logs', 'gallery_items'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'mind_checkins', 'journal_entries', 'mind_sessions', 'mind_screens', 'sleep_logs', 'caffeine_logs', 'fasting_logs', 'gallery_items'] loop
     execute format($f$
       create table if not exists public.%1$I (
         id          text not null,
@@ -70,6 +70,16 @@ alter table public.gallery_items enable row level security; -- Me › Gallery: p
 alter table public.sleep_logs enable row level security; -- Fuel › Sleep log: one row per night (hours, quality 1–5, late caffeine / alcohol / late meal flags, snack); day = morning woke
 alter table public.caffeine_logs enable row level security; -- Fuel › Sleep caffeine tracker: one row per drink (time, mg, drink); day = local date
 alter table public.fasting_logs enable row level security; -- Fasting timer: one row per fast (start, end, target hours, protocol) or low-calorie day; day = local start date
+alter table public.mind_checkins enable row level security; -- Mind & Recovery daily check-in: mood/stress/energy/motivation/soreness/sleep 1–5, optional HRV + resting HR, readiness score; day = local date
+alter table public.journal_entries enable row level security; -- Mind & Recovery journal (gratitude / wins / reflection). Private: owner-only, never shared
+alter table public.mind_sessions enable row level security; -- Mind & Recovery: completed breathing sessions, program days and recovery routines; day = local date
+alter table public.mind_screens enable row level security; -- Mind & Recovery optional WHO-5 / PHQ-4 check-ups (screening answers only, no diagnosis); day = local date
+
+-- Defence in depth: entries the user marked "keep on this device" must never be stored server-side (the app never sends them).
+alter table public.journal_entries drop constraint if exists journal_entries_not_local_only;
+alter table public.journal_entries add constraint journal_entries_not_local_only check (coalesce(data->>'localOnly', 'false') <> 'true');
+alter table public.mind_screens drop constraint if exists mind_screens_not_local_only;
+alter table public.mind_screens add constraint mind_screens_not_local_only check (coalesce(data->>'localOnly', 'false') <> 'true');
 
 -- profiles: you can only see / change your own row
 drop policy if exists "profiles_select_own" on public.profiles;
@@ -85,7 +95,7 @@ create policy "profiles_delete_own" on public.profiles for delete to authenticat
 do $$
 declare t text;
 begin
-  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'sleep_logs', 'caffeine_logs', 'fasting_logs', 'gallery_items'] loop
+  foreach t in array array['workouts', 'gps_routes', 'food_logs', 'water_logs', 'body_logs', 'templates', 'step_logs', 'burn_logs', 'wl_plans', 'coach_plans', 'mind_checkins', 'journal_entries', 'mind_sessions', 'mind_screens', 'sleep_logs', 'caffeine_logs', 'fasting_logs', 'gallery_items'] loop
     execute format('drop policy if exists "%1$s_select_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_insert_own" on public.%1$I', t);
     execute format('drop policy if exists "%1$s_update_own" on public.%1$I', t);
@@ -98,8 +108,8 @@ begin
 end $$;
 
 -- Anonymous (signed-out) visitors get nothing: no policies exist for the anon role.
-revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.sleep_logs, public.caffeine_logs, public.fasting_logs, public.gallery_items from anon;
-grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.sleep_logs, public.caffeine_logs, public.fasting_logs, public.gallery_items to authenticated;
+revoke all on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.mind_checkins, public.journal_entries, public.mind_sessions, public.mind_screens, public.sleep_logs, public.caffeine_logs, public.fasting_logs, public.gallery_items from anon;
+grant select, insert, update, delete on public.profiles, public.workouts, public.gps_routes, public.food_logs, public.water_logs, public.body_logs, public.templates, public.step_logs, public.burn_logs, public.wl_plans, public.coach_plans, public.mind_checkins, public.journal_entries, public.mind_sessions, public.mind_screens, public.sleep_logs, public.caffeine_logs, public.fasting_logs, public.gallery_items to authenticated;
 
 -- Create an empty profile row automatically when someone signs up.
 create or replace function public.handle_new_user()
@@ -113,7 +123,7 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
 
 -- Check: every HYBRD table should show rowsecurity = true
 select tablename, rowsecurity from pg_tables where schemaname = 'public'
-  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs','wl_plans','coach_plans','sleep_logs','caffeine_logs','fasting_logs','gallery_items');
+  and tablename in ('profiles','workouts','gps_routes','food_logs','water_logs','body_logs','templates','step_logs','burn_logs','wl_plans','coach_plans','mind_checkins','journal_entries','mind_sessions','mind_screens','sleep_logs','caffeine_logs','fasting_logs','gallery_items');
 
 -- ---------- Storage: private bucket for profile photos + gallery images and videos ----------
 -- Files live under a folder named after the user's id:  <auth.uid()>/avatar.webp,  <auth.uid()>/gallery/<item id>/orig.jpg …

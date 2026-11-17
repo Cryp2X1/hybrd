@@ -7,6 +7,7 @@ import { dayBurn } from '../lib/burn';
 import { BurnRingCard } from '../components/BurnRing';
 import { WLCard } from '../components/WLCard';
 import { FastingCard } from '../components/FastingCard';
+import { MindCard } from '../components/MindCard';
 import { CoachCard } from '../components/CoachCard';
 import { activeCoachPlan } from '../lib/coach';
 import { fuelTargets } from '../lib/fuelTargets';
@@ -88,6 +89,7 @@ export default function Home() {
             {!st.doneToday && <div className="row" style={{ marginTop: 12 }}><button className="btn sm y" onClick={() => nav('/train/log')}>Train today</button><button className="btn sm" onClick={logRest}>Log a rest day</button><span className="muted small">Rest days keep the streak.</span></div>}
             {st.doneToday && <p className="muted small" style={{ marginTop: 10, marginBottom: 0 }}>Today’s done. Missed days don’t erase the work — just start again tomorrow.</p>}
           </Card>
+          <MindCard />
           {!activeCoachPlan(data.coachplans) && profile.coachDismissed && <CoachCard where="home" />}
         </div>
 

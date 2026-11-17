@@ -18,6 +18,7 @@ import { useEnergyInput } from './WeightLossSetup';
 import { Macros, MealRow, SrcPills } from './WeightLoss';
 import { Page, Card, Banner, Disclaimer, Sheet, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { ReadinessChip } from '../components/MindCard';
 import { useToast } from '../lib/toast';
 
 type Tab = 'plan' | 'week' | 'food' | 'why' | 'checkin';
@@ -174,6 +175,7 @@ export default function Coach() {
       {prevNeedsCi && !ended && <button className="coach-ci-prompt" onClick={() => setTab('checkin')}><Icon name="check" /><span><b>Week {cw} check-in</b><span className="muted small">30 seconds — it sets next week’s plan</span></span><Icon name="chevron" size={18} /></button>}
       {!ended && <Card>
         <div className="card-head"><h3>Today</h3><span className="muted small">{fmtDay(today)}</span></div>
+        <ReadinessChip />
         <SessionCard plan={plan} w={cw} wd={todayWd} date={today} s={todayS?.s || null} done={todayS?.s ? isDone(plan, cw, todayWd, today, todayS.s, data.workouts) : false} today={today} open={open === `t`} onToggle={() => setOpen(open === 't' ? null : 't')} />
       </Card>}
       {!ended && <Card>

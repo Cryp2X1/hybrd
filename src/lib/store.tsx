@@ -7,7 +7,9 @@ import { localeUnits } from './calc';
 import { useStrava, stravaVisible, isStravaId, hideStravaActivity, autoSync } from './strava';
 import { normalizeBio, clearedBio } from './bio';
 
-export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [], coachplans: [], fasts: [], sleeps: [], caffeine: [], gallery: [] });
+/** Records flagged `localOnly` (Mind › private journal/check-ups) are never uploaded. */
+export const isLocalOnlyRec = (r: unknown) => !!(r && typeof r === 'object' && (r as { localOnly?: boolean }).localOnly);
+export const emptyData = (): DataState => ({ workouts: [], routes: [], foods: [], water: [], body: [], templates: [], steps: [], burns: [], wlplans: [], coachplans: [], fasts: [], sleeps: [], caffeine: [], gallery: [], checkins: [], journal: [], mindsessions: [], screens: [] });
 export const defaultProfile = (): Profile => ({
   name: '', sex: 'male', age: 30, heightCm: 175, weightKg: 75, activity: 1.55, goal: 'maintain', units: localeUnits(),
   disciplines: ['hybrid'], weeklySessions: 4, onboarded: false, sound: true, voice: false, hyroxDivision: 'men-open',
@@ -102,7 +104,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       for (const it of items) {
         if (it.col === 'profile') continue;
         const r = (dataRef.current[it.col] as Rec[]).find((x) => x.id === it.id);
-        if (r) (byCol[it.col] ||= []).push(r);
+        if (r && !isLocalOnlyRec(r)) (byCol[it.col] ||= []).push(r); // Mind journal / check-ups marked private stay on this device
       }
       for (const [col, recs] of Object.entries(byCol)) {
         const rows = recs.map((r) => ({
@@ -144,7 +146,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const remote = (rows || []).map((r: { data: Rec }) => r.data);
         // records that are only local need pushing
         const remoteIds = new Map(remote.map((r) => [r.id, r.updatedAt]));
-        for (const r of next[col] as Rec[]) if (!remoteIds.has(r.id) || (remoteIds.get(r.id) || 0) < r.updatedAt) pending.current[`${col}:${r.id}`] = { col, id: r.id };
+        for (const r of next[col] as Rec[]) if (!isLocalOnlyRec(r) && (!remoteIds.has(r.id) || (remoteIds.get(r.id) || 0) < r.updatedAt)) pending.current[`${col}:${r.id}`] = { col, id: r.id };
         (next as unknown as Record<string, Rec[]>)[col] = mergeArr(next[col] as Rec[], remote);
       }
       const { data: prow } = await sb.from('profiles').select('data,updated_at').eq('id', ns).maybeSingle();

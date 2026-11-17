@@ -36,6 +36,8 @@ export interface Profile {
   fasting?: import('./fasting').FastPlan;
   /** Fuel › Sleep: safety screen answers, evening-plan inputs and goal (synced with the profile). */
   sleep?: import('./sleep').SleepPlan;
+  /** Mind & Recovery: safety screen, goal, focus and the journal privacy choice (synced with the profile). */
+  mind?: import('./mind').MindPlan;
   /** Profile photo: the 512 px image is in IndexedDB (`avatar:<ns>`); `v` changes on every new photo; `path` = private storage path when synced. */
   avatar?: { v: number; bytes: number; path?: string };
   /** Me › Bio: free-form plain text (max 1,000 characters). Private — there is no public profile. */
@@ -144,6 +146,14 @@ export interface DataState {
   caffeine: import('./sleep').CaffeineLog[];
   /** Me › Gallery photo metadata (the image blobs live in IndexedDB `hybrd-media`, and in the private `user-media` bucket when signed in). Synced to `gallery_items`. */
   gallery: import('./media').GalleryItem[];
+  /** Mind & Recovery daily check-ins (mood, stress, energy, soreness, sleep → readiness). Synced to `mind_checkins`. */
+  checkins: import('./mind').CheckIn[];
+  /** Mind & Recovery private journal. Entries with localOnly never leave the device. Synced to `journal_entries`. */
+  journal: import('./mind').JournalEntry[];
+  /** Completed breathing sessions, program days and recovery routines. Synced to `mind_sessions`. */
+  mindsessions: import('./mind').MindSession[];
+  /** Optional WHO-5 / PHQ-4 check-ups (screening only). localOnly entries never sync. Synced to `mind_screens`. */
+  screens: import('./mind').ScreenResult[];
 }
 export type Collection = keyof DataState;
-export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans', 'fasts', 'sleeps', 'caffeine', 'gallery'];
+export const COLLECTIONS: Collection[] = ['workouts', 'routes', 'foods', 'water', 'body', 'templates', 'steps', 'burns', 'wlplans', 'coachplans', 'fasts', 'sleeps', 'caffeine', 'gallery', 'checkins', 'journal', 'mindsessions', 'screens'];

@@ -45,6 +45,8 @@ export default function Me() {
             <RowLink to="/social" icon="users" title="Friends & Stories" sub="Friends, posts, stories, invite link" />
             <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
+            <RowLink to="/mind" icon="mind" title="Mind & Recovery" sub="Readiness, breathing, recovery, private journal" />
+            <RowLink to="/mind/help" icon="phone" title="Get help now" sub="988 call or text · 911 · helplines worldwide" />
             <RowLink to="/coach" icon="coach" title="HYBRD Coach" sub="Your personal training & nutrition plan" />
             <RowLink to="/progress" icon="progress" title="Progress & PRs" sub="Charts, records, body weight" />
             <RowLink to="/timers" icon="timer" title="Timers" sub="Stopwatch, intervals, EMOM, AMRAP, HYROX" />
