@@ -159,11 +159,11 @@ select id, public, file_size_limit from storage.buckets where id = 'user-media';
 -- Model: a separate PUBLIC profile layer (social_profiles) that each person creates on purpose — the private
 -- profiles row (Bio, body data, avatar) is never exposed. Everything below is RLS-protected:
 --   * only members (13+) can see anything; signed-out visitors (anon) get nothing
---   * blocked people (either direction) never see each other's profile, posts, stories, comments or likes
+--   * blocked people (either direction) never see each other's profile, posts, stories, comments, likes or reactions
 --   * posts / stories are 'friends' or 'public'; friends-only profiles and under-18s can only publish to friends
 --   * friend requests, blocks and profile creation go through SECURITY DEFINER functions (no direct writes)
 --   * counters and notifications are maintained by triggers, so clients can't fake them
---   * rate limits are enforced by triggers (friend requests, posts, stories, comments, reports)
+--   * rate limits are enforced by triggers (friend requests, posts, stories, comments, reactions, reports)
 
 -- ---------- public profiles ----------
 create table if not exists public.social_profiles (
@@ -313,6 +313,25 @@ create table if not exists public.likes (
 );
 create index if not exists likes_user_idx on public.likes (user_id, created_at desc);
 
+-- Emoji reactions on posts and comments (Like, Love, Haha, Wow, Sad, Angry, Dislike — no Care/hug).
+-- Unique per user+target. Legacy post likes are migrated into kind = 'like' below (safe to re-run).
+create table if not exists public.reactions (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null default auth.uid() references public.social_profiles (id) on delete cascade,
+  target_type  text not null,
+  target_id    uuid not null,
+  kind         text not null,
+  created_at   timestamptz not null default now()
+);
+alter table public.reactions drop constraint if exists reactions_target_type_chk;
+alter table public.reactions add constraint reactions_target_type_chk check (target_type in ('post', 'comment'));
+alter table public.reactions drop constraint if exists reactions_kind_chk;
+alter table public.reactions add constraint reactions_kind_chk check (kind in ('like', 'love', 'haha', 'wow', 'sad', 'angry', 'dislike'));
+alter table public.reactions drop constraint if exists reactions_user_target_key;
+alter table public.reactions add constraint reactions_user_target_key unique (user_id, target_type, target_id);
+create index if not exists reactions_target_idx on public.reactions (target_type, target_id, created_at desc);
+create index if not exists reactions_user_idx on public.reactions (user_id, created_at desc);
+
 create table if not exists public.comments (
   id          uuid primary key default gen_random_uuid(),
   post_id     uuid not null references public.posts (id) on delete cascade,
@@ -376,8 +395,11 @@ create table if not exists public.notifications (
   read_at     timestamptz,
   created_at  timestamptz not null default now()
 );
+alter table public.notifications add column if not exists reaction text;
 alter table public.notifications drop constraint if exists notifications_type_chk;
 alter table public.notifications add constraint notifications_type_chk check (type in ('friend_request', 'friend_accept', 'like', 'comment', 'reshare'));
+alter table public.notifications drop constraint if exists notifications_reaction_chk;
+alter table public.notifications add constraint notifications_reaction_chk check (reaction is null or reaction in ('like', 'love', 'haha', 'wow', 'sad', 'angry', 'dislike'));
 create index if not exists notifications_user_created_idx on public.notifications (user_id, created_at desc);
 create index if not exists notifications_unread_idx on public.notifications (user_id) where read_at is null;
 
@@ -414,6 +436,22 @@ $$;
 create or replace function public.social_post_author(pid uuid) returns uuid
 language sql stable security definer set search_path = '' as $$
   select p.author_id from public.posts p where p.id = pid
+$$;
+create or replace function public.social_comment_post(cid uuid) returns uuid
+language sql stable security definer set search_path = '' as $$
+  select c.post_id from public.comments c where c.id = cid
+$$;
+create or replace function public.social_comment_author(cid uuid) returns uuid
+language sql stable security definer set search_path = '' as $$
+  select c.author_id from public.comments c where c.id = cid
+$$;
+create or replace function public.social_can_view_reaction_target(t text, tid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select case t
+    when 'post' then public.social_can_view_post(tid)
+    when 'comment' then public.social_can_view_post(public.social_comment_post(tid))
+    else false
+  end
 $$;
 -- Storage: who may read an object in the social-media bucket?
 create or replace function public.social_can_view_object(p_name text) returns boolean
@@ -526,20 +564,19 @@ end $$;
 drop trigger if exists stories_before_insert on public.stories;
 create trigger stories_before_insert before insert on public.stories for each row execute function public.stories_before_insert();
 
--- likes: counter + notification (one per liker per post)
+-- likes stay as a compatibility table for old 'like' rows. like_count and notifications
+-- are maintained by reactions_after; this trigger just mirrors a Like reaction.
 create or replace function public.likes_after() returns trigger
 language plpgsql security definer set search_path = '' as $$
-declare owner uuid;
 begin
   if tg_op = 'INSERT' then
-    update public.posts set like_count = like_count + 1 where id = new.post_id returning author_id into owner;
-    if owner is not null and owner <> new.user_id then
-      delete from public.notifications where user_id = owner and actor_id = new.user_id and type = 'like' and post_id = new.post_id;
-      insert into public.notifications (user_id, actor_id, type, post_id) values (owner, new.user_id, 'like', new.post_id);
-    end if;
+    insert into public.reactions (user_id, target_type, target_id, kind, created_at)
+    values (new.user_id, 'post', new.post_id, 'like', new.created_at)
+    on conflict (user_id, target_type, target_id) do update set kind = 'like', created_at = excluded.created_at;
     return new;
   else
-    update public.posts set like_count = greatest(0, like_count - 1) where id = old.post_id;
+    delete from public.reactions
+      where user_id = old.user_id and target_type = 'post' and target_id = old.post_id and kind = 'like';
     return old;
   end if;
 end $$;
@@ -548,6 +585,92 @@ create trigger likes_after after insert or delete on public.likes for each row e
 create or replace function public.likes_before_insert() returns trigger language plpgsql as $$ begin new.created_at := now(); return new; end $$;
 drop trigger if exists likes_before_insert on public.likes;
 create trigger likes_before_insert before insert on public.likes for each row execute function public.likes_before_insert();
+
+-- reactions: rate limit, like_count, notifications, and a likes-row mirror for kind = 'like' on posts
+create or replace function public.reactions_before() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    new.created_at := now();
+    if new.user_id is null then new.user_id := auth.uid(); end if;
+    perform public.social_rate_check((select count(*) from public.reactions where user_id = new.user_id and created_at > now() - interval '1 hour'), 120, 'reactions per hour');
+  elsif tg_op = 'UPDATE' then
+    new.user_id := old.user_id;
+    new.target_type := old.target_type;
+    new.target_id := old.target_id;
+    new.created_at := now();
+  end if;
+  return new;
+end $$;
+drop trigger if exists reactions_before on public.reactions;
+create trigger reactions_before before insert or update on public.reactions for each row execute function public.reactions_before();
+
+create or replace function public.reactions_after() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  owner uuid;
+  post uuid;
+  typ text;
+  kid text;
+  actor uuid;
+  tgt text;
+  tid uuid;
+begin
+  typ := coalesce(new.target_type, old.target_type);
+  tid := coalesce(new.target_id, old.target_id);
+  actor := coalesce(new.user_id, old.user_id);
+  kid := coalesce(new.kind, old.kind);
+
+  if typ = 'post' then
+    post := tid;
+    select author_id into owner from public.posts where id = tid;
+    if tg_op = 'INSERT' then
+      update public.posts set like_count = like_count + 1 where id = tid;
+    elsif tg_op = 'DELETE' then
+      update public.posts set like_count = greatest(0, like_count - 1) where id = tid;
+    end if;
+    -- keep likes in sync only for a current Like on a post
+    if tg_op = 'DELETE' or (tg_op in ('INSERT', 'UPDATE') and coalesce(new.kind, '') <> 'like') then
+      delete from public.likes where post_id = tid and user_id = actor;
+    elsif new.kind = 'like' then
+      insert into public.likes (post_id, user_id, created_at) values (tid, actor, new.created_at)
+      on conflict (post_id, user_id) do nothing;
+    end if;
+  else
+    select author_id, post_id into owner, post from public.comments where id = tid;
+  end if;
+
+  -- notify the content owner (one row per actor per target; changing kind updates it)
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  if owner is not null and owner <> actor then
+    if typ = 'comment' then
+      delete from public.notifications where user_id = owner and actor_id = actor and type = 'like' and comment_id = tid;
+      insert into public.notifications (user_id, actor_id, type, post_id, comment_id, reaction) values (owner, actor, 'like', post, tid, new.kind);
+    else
+      delete from public.notifications where user_id = owner and actor_id = actor and type = 'like' and post_id = tid and comment_id is null;
+      insert into public.notifications (user_id, actor_id, type, post_id, reaction) values (owner, actor, 'like', tid, new.kind);
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists reactions_after on public.reactions;
+create trigger reactions_after after insert or update or delete on public.reactions for each row execute function public.reactions_after();
+
+
+-- Migrate legacy likes into reactions (idempotent). Triggers are disabled so like_count is not double-counted, then recounted.
+do $$
+begin
+  if to_regclass('public.likes') is not null and to_regclass('public.reactions') is not null then
+    alter table public.reactions disable trigger user;
+    insert into public.reactions (user_id, target_type, target_id, kind, created_at)
+    select user_id, 'post', post_id, 'like', created_at from public.likes
+    on conflict (user_id, target_type, target_id) do nothing;
+    alter table public.reactions enable trigger user;
+    update public.posts p set like_count = (select count(*) from public.reactions r where r.target_type = 'post' and r.target_id = p.id);
+  end if;
+end $$;
 
 -- comments: rate limit, counter, notification
 create or replace function public.comments_before_insert() returns trigger
@@ -762,6 +885,7 @@ alter table public.posts           enable row level security;
 alter table public.post_media      enable row level security;
 alter table public.stories         enable row level security;
 alter table public.likes           enable row level security;
+alter table public.reactions       enable row level security;
 alter table public.comments        enable row level security;
 alter table public.saves           enable row level security;
 alter table public.hidden_posts    enable row level security;
@@ -773,7 +897,7 @@ declare r record;
 begin
   -- drop every existing policy on the social tables so this block can be re-run
   for r in select policyname, tablename from pg_policies where schemaname = 'public' and tablename in
-    ('social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications')
+    ('social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'reactions', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications')
   loop
     execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
   end loop;
@@ -824,6 +948,21 @@ create policy "likes_insert_own" on public.likes for insert to authenticated
   with check (user_id = (select auth.uid()) and public.social_can_view_post(post_id));
 create policy "likes_delete_own" on public.likes for delete to authenticated using (user_id = (select auth.uid()));
 
+create policy "reactions_select_visible" on public.reactions for select to authenticated
+  using (public.social_can_view_reaction_target(target_type, target_id)
+         and (user_id = (select auth.uid()) or not public.social_is_blocked((select auth.uid()), user_id)));
+create policy "reactions_insert_own" on public.reactions for insert to authenticated
+  with check (user_id = (select auth.uid()) and public.social_can_view_reaction_target(target_type, target_id)
+              and case target_type
+                when 'post' then not public.social_is_blocked((select auth.uid()), public.social_post_author(target_id))
+                when 'comment' then not public.social_is_blocked((select auth.uid()), public.social_comment_author(target_id))
+                else false
+              end);
+create policy "reactions_update_own" on public.reactions for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()) and public.social_can_view_reaction_target(target_type, target_id));
+create policy "reactions_delete_own" on public.reactions for delete to authenticated using (user_id = (select auth.uid()));
+
 create policy "comments_select_visible" on public.comments for select to authenticated
   using (public.social_can_view_post(post_id) and (author_id = (select auth.uid()) or not public.social_is_blocked((select auth.uid()), author_id)));
 create policy "comments_insert_own" on public.comments for insert to authenticated
@@ -854,15 +993,16 @@ create policy "notifications_delete_own" on public.notifications for delete to a
 
 -- ---------- grants (column-level where clients may only touch some fields) ----------
 revoke all on public.social_profiles, public.social_private, public.social_bans, public.friend_requests, public.friendships, public.blocks,
-  public.posts, public.post_media, public.stories, public.likes, public.comments, public.saves, public.hidden_posts, public.reports, public.notifications from anon;
+  public.posts, public.post_media, public.stories, public.likes, public.reactions, public.comments, public.saves, public.hidden_posts, public.reports, public.notifications from anon;
 revoke all on public.social_profiles, public.social_private, public.social_bans, public.friend_requests, public.friendships, public.blocks,
-  public.posts, public.post_media, public.stories, public.likes, public.comments, public.saves, public.hidden_posts, public.reports, public.notifications from authenticated;
+  public.posts, public.post_media, public.stories, public.likes, public.reactions, public.comments, public.saves, public.hidden_posts, public.reports, public.notifications from authenticated;
 grant select, delete on public.social_profiles to authenticated;
 grant update (username, display_name, avatar_path, public_bio, privacy, show_stats, stats) on public.social_profiles to authenticated;
 grant select on public.social_private, public.friend_requests, public.friendships, public.blocks to authenticated;
 grant select, insert, delete on public.posts to authenticated;
 grant update (body, audience) on public.posts to authenticated;
-grant select, insert, delete on public.post_media, public.stories, public.likes, public.comments, public.saves, public.hidden_posts to authenticated;
+grant select, insert, delete on public.post_media, public.stories, public.likes, public.reactions, public.comments, public.saves, public.hidden_posts to authenticated;
+grant update (kind) on public.reactions to authenticated;
 grant select, insert on public.reports to authenticated;
 grant select, delete on public.notifications to authenticated;
 grant update (read_at) on public.notifications to authenticated;
@@ -907,5 +1047,5 @@ create policy "social_media_delete_own" on storage.objects for delete to authent
 
 -- Check: every social table should show rowsecurity = true, and the bucket must be private
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in
-  ('social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications');
+  ('social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'reactions', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications');
 select id, public, file_size_limit from storage.buckets where id = 'social-media';

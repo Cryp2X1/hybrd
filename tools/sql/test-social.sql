@@ -134,6 +134,31 @@ delete from public.comments where id = '22222222-0000-0000-0000-000000000002';
 select t.as('aaaaaaaa-0000-0000-0000-000000000001');
 select t.ok((select comment_count from public.posts where id = '11111111-0000-0000-0000-000000000001') = 1, 'a stranger cannot delete someone else''s comment');
 
+-- emoji reactions (posts + comments)
+select t.as('bbbbbbbb-0000-0000-0000-000000000002');
+select t.ok((select kind from public.reactions where target_type = 'post' and target_id = '11111111-0000-0000-0000-000000000001' and user_id = auth.uid()) = 'like', 'inserting a like also stores a Like reaction');
+update public.reactions set kind = 'wow' where target_type = 'post' and target_id = '11111111-0000-0000-0000-000000000001' and user_id = auth.uid();
+select t.ok((select like_count from public.posts where id = '11111111-0000-0000-0000-000000000001') = 1, 'changing reaction type does not change like_count');
+select t.ok((select kind from public.reactions where target_type = 'post' and target_id = '11111111-0000-0000-0000-000000000001' and user_id = auth.uid()) = 'wow', 'user can change their reaction');
+select t.ok((select count(*) from public.likes where post_id = '11111111-0000-0000-0000-000000000001' and user_id = auth.uid()) = 0, 'likes row dropped when the reaction is no longer Like');
+select t.fails($$insert into public.reactions (target_type, target_id, kind) values ('post', '11111111-0000-0000-0000-000000000001', 'love')$$, 'unique|duplicate', 'one reaction per user per target');
+select t.fails($$update public.reactions set kind = 'care' where target_type = 'post' and target_id = '11111111-0000-0000-0000-000000000001'$$, 'check|reactions_kind', 'Care/hug and unknown kinds are rejected');
+select t.as('aaaaaaaa-0000-0000-0000-000000000001');
+select t.ok((select reaction from public.notifications where type = 'like' and comment_id is null and actor_id = 'bbbbbbbb-0000-0000-0000-000000000002') = 'wow', 'changing kind updates the existing like notification');
+insert into public.reactions (target_type, target_id, kind) values ('comment', '22222222-0000-0000-0000-000000000002', 'love');
+select t.ok((select like_count from public.posts where id = '11111111-0000-0000-0000-000000000001') = 1, 'comment reactions do not change the post like_count');
+select t.as('bbbbbbbb-0000-0000-0000-000000000002');
+select t.ok((select type from public.notifications where comment_id = '22222222-0000-0000-0000-000000000002' and actor_id = 'aaaaaaaa-0000-0000-0000-000000000001') = 'like', 'comment author is notified of a reaction');
+select t.ok((select reaction from public.notifications where comment_id = '22222222-0000-0000-0000-000000000002') = 'love', 'comment reaction kind is stored on the notification');
+update public.reactions set kind = 'haha' where user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+delete from public.reactions where user_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+select t.ok((select kind from public.reactions where user_id = 'aaaaaaaa-0000-0000-0000-000000000001' and target_type = 'comment') = 'love', 'cannot change or delete someone else''s reaction');
+delete from public.reactions where target_type = 'post' and target_id = '11111111-0000-0000-0000-000000000001' and user_id = auth.uid();
+select t.ok((select like_count from public.posts where id = '11111111-0000-0000-0000-000000000001') = 0, 'removing a reaction decrements like_count');
+select t.as('cccccccc-0000-0000-0000-000000000003');
+select t.fails($$insert into public.reactions (target_type, target_id, kind) values ('post', '11111111-0000-0000-0000-000000000001', 'like')$$, 'row-level security', 'C cannot react to a post it cannot see');
+select t.ok((select count(*) from public.reactions where target_id in ('11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000002')) = 0, 'C cannot see reactions on a post it cannot see');
+
 -- hide
 select t.as('bbbbbbbb-0000-0000-0000-000000000002');
 insert into public.hidden_posts (post_id) values ('11111111-0000-0000-0000-000000000002');
@@ -160,8 +185,11 @@ select t.ok((select count(*) from public.stories) = 1, 'author still sees own ex
 select t.as('bbbbbbbb-0000-0000-0000-000000000002');
 insert into public.reports (target_type, target_id, reason, details, status) values ('post', '11111111-0000-0000-0000-000000000002', 'spam', 'test', 'dismissed');
 select t.ok((select status from public.reports) = 'open' and (select target_user_id from public.reports) = 'aaaaaaaa-0000-0000-0000-000000000001', 'report stored as open with the content owner');
+select t.as('bbbbbbbb-0000-0000-0000-000000000002');
+insert into public.reactions (target_type, target_id, kind) values ('post', '11111111-0000-0000-0000-000000000002', 'haha');
 select t.as('aaaaaaaa-0000-0000-0000-000000000001');
 select t.ok((select count(*) from public.reports) = 0, 'reports are visible only to the reporter');
+select t.ok((select count(*) from public.reactions where user_id = 'bbbbbbbb-0000-0000-0000-000000000002') = 1, 'A can see B''s reaction before a block');
 
 -- block
 select public.social_block('bbbbbbbb-0000-0000-0000-000000000002');
@@ -169,6 +197,7 @@ select t.ok(not public.social_are_friends('aaaaaaaa-0000-0000-0000-000000000001'
 select t.ok((select friend_count from public.social_profiles where id = auth.uid()) = 0, 'friend_count back to 0');
 select t.ok((select count(*) from public.social_profiles where id = 'bbbbbbbb-0000-0000-0000-000000000002') = 0, 'blocker no longer sees the blocked profile');
 select t.ok((select count(*) from public.comments where author_id = 'bbbbbbbb-0000-0000-0000-000000000002') = 0, 'blocked person''s comments hidden');
+select t.ok((select count(*) from public.reactions where user_id = 'bbbbbbbb-0000-0000-0000-000000000002') = 0, 'blocked person''s reactions hidden');
 select t.ok((select count(*) from public.notifications where actor_id = 'bbbbbbbb-0000-0000-0000-000000000002') = 0, 'notifications between them cleared');
 select t.ok((select username from public.social_my_blocks()) = 'athlete.b', 'block list shows the blocked handle');
 select t.as('bbbbbbbb-0000-0000-0000-000000000002');
@@ -191,6 +220,7 @@ reset role;
 set role anon;
 select t.fails($$select count(*) from public.posts$$, 'permission denied', 'anon cannot read posts');
 select t.fails($$select count(*) from public.social_profiles$$, 'permission denied', 'anon cannot read profiles');
+select t.fails($$select count(*) from public.reactions$$, 'permission denied', 'anon cannot read reactions');
 select t.fails($$select public.social_send_request('aaaaaaaa-0000-0000-0000-000000000001')$$, 'permission denied', 'anon cannot call RPCs');
 reset role;
 -- deleting the account cascades everything

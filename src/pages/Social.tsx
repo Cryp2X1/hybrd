@@ -15,11 +15,12 @@ import { appUrl } from '../lib/config';
 import { activityLabel, hybridScore, streak, fmtTime, todayKey } from '../lib/calc';
 import { filterItems, type GalleryItem } from '../lib/media';
 import {
-  ageFromDob, ageGate, cleanText, COMMENT_MAX, inviteUrl, MAX_POST_PHOTOS, notifText, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX,
+  ageFromDob, ageGate, cleanText, COMMENT_MAX, emptyReactionCounts, inviteUrl, MAX_POST_PHOTOS, notifText, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX,
   suggestHandle, timeAgo, validateDisplayName, validateHandle, validatePost, workoutCard, canDeleteComment, compact,
-  type Audience, type Privacy, type PublicProfile, type Relation, type WorkoutCard,
+  REACTION_TYPES, type Audience, type Privacy, type PublicProfile, type ReactionType, type Relation, type WorkoutCard,
 } from '../lib/social';
 import { friendlyError, type CommentView, type PostView, type StoryView, type NotifView } from '../lib/socialApi';
+import { ReactionBar, ReactionSummaryBtn, ReactLabel, ReactorsSheet, usePressToReact } from '../components/Reactions';
 import { prepareSocialImage, type PreparedImg } from '../lib/socialImage';
 import { STORY_BGS } from '../lib/socialArt';
 import type { Workout } from '../lib/types';
@@ -236,6 +237,57 @@ function GalleryPicker({ onPick }: { onPick: (b: Blob) => void }) {
 export function SocialPostPage() {
   return <Shell title="Post" back tabs={false}><PostInner /></Shell>;
 }
+function patchComment(c: CommentView, next: ReactionType | null): CommentView {
+  const counts = { ...emptyReactionCounts(), ...c.reactionSummary.counts };
+  let total = c.reactionSummary.total;
+  if (c.myReaction) { counts[c.myReaction] = Math.max(0, counts[c.myReaction] - 1); total = Math.max(0, total - 1); }
+  if (next) { counts[next] += 1; total += 1; }
+  const top = REACTION_TYPES.filter((t) => counts[t] > 0).sort((a, b) => counts[b] - counts[a] || REACTION_TYPES.indexOf(a) - REACTION_TYPES.indexOf(b)).slice(0, 3);
+  return { ...c, myReaction: next, reactionSummary: { total, counts, top } };
+}
+
+function CommentItem({ c, post, meId, onReact, onReply, onDeleted, onReport }: {
+  c: CommentView; post: PostView; meId: string;
+  onReact: (id: string, next: ReactionType | null) => void;
+  onReply: (handle: string) => void;
+  onDeleted: () => void;
+  onReport: () => void;
+}) {
+  const { backend } = useSocial();
+  const toast = useToast();
+  const [bar, setBar] = useState<{ anchor: DOMRect; pointerId: number | null } | null>(null);
+  const [who, setWho] = useState(false);
+  const pick = (t: ReactionType | null) => onReact(c.id, t);
+  const bubbleBind = usePressToReact({ onOpen: (anchor, pointerId) => setBar({ anchor, pointerId }) });
+  return (
+    <div className="s-comment" data-testid="comment">
+      <Link to={`/social/profile?u=${encodeURIComponent(c.author.username)}`}><SAvatar p={c.author} size={34} /></Link>
+      <div className="s-comment-b">
+        <div className="s-comment-h"><b>{c.author.displayName}</b>{c.author.sample && <SampleTag />}<span className="muted small">@{c.author.username} · {timeAgo(c.createdAt)}</span></div>
+        <div className="s-comment-bubble" data-testid="comment-bubble" {...bubbleBind}>
+          <div className="s-text">{c.text}</div>
+        </div>
+        <div className="s-comment-a">
+          <ReactLabel type={c.myReaction} onPress={(anchor, pointerId) => setBar({ anchor, pointerId })} onTap={() => pick(c.myReaction ? null : 'like')} />
+          <button type="button" onClick={() => onReply(c.author.username)}>Reply</button>
+          <ReactionSummaryBtn summary={c.reactionSummary} onClick={() => setWho(true)} />
+          {canDeleteComment(c, post, meId) && <button onClick={async () => { if (!confirm('Delete this comment?')) return; try { await backend!.deleteComment(c.id); onDeleted(); toast('Comment deleted'); } catch (e) { toast(friendlyError(e)); } }}>Delete</button>}
+          {c.authorId !== meId && <button onClick={onReport}>Report</button>}
+        </div>
+      </div>
+      <ReactionBar
+        open={!!bar}
+        anchor={bar?.anchor ?? null}
+        current={c.myReaction}
+        pointerId={bar?.pointerId}
+        onPick={(t) => { pick(c.myReaction === t ? null : t); setBar(null); }}
+        onClose={() => setBar(null)}
+      />
+      <ReactorsSheet open={who} onClose={() => setWho(false)} load={() => backend ? backend.listReactions('comment', c.id) : Promise.resolve([])} />
+    </div>
+  );
+}
+
 function PostInner() {
   const { backend, me } = useSocial();
   const [sp] = useSearchParams();
@@ -247,6 +299,7 @@ function PostInner() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CommentView | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const load = useCallback(async () => {
     if (!backend) return;
     const [p, c] = await Promise.all([backend.post(id), backend.comments(id)]);
@@ -260,6 +313,17 @@ function PostInner() {
     setBusy(true);
     try { await backend.addComment(post.id, text); setText(''); await load(); } catch (e) { toast(friendlyError(e)); } finally { setBusy(false); }
   };
+  const onReact = async (cid: string, next: ReactionType | null) => {
+    if (!backend) return;
+    const prev = comments.find((x) => x.id === cid);
+    setComments((list) => list.map((x) => (x.id === cid ? patchComment(x, next) : x)));
+    try { await backend.setReaction('comment', cid, next); } catch (e) { toast(friendlyError(e)); if (prev) setComments((list) => list.map((x) => (x.id === cid ? prev : x))); }
+  };
+  const onReply = (handle: string) => {
+    const tag = `@${handle} `;
+    setText((t) => (t.includes(tag) ? t : tag + t));
+    inputRef.current?.focus();
+  };
   return (
     <div className="s-detail">
       <PostCard post={post} detail onRemoved={() => nav('/social')} onChange={setPost} />
@@ -267,21 +331,11 @@ function PostInner() {
         <h3 style={{ marginBottom: 10 }}>Comments · {comments.length}</h3>
         {!comments.length && <p className="muted small">No comments yet. Say something encouraging.</p>}
         {comments.map((c) => (
-          <div key={c.id} className="s-comment" data-testid="comment">
-            <Link to={`/social/profile?u=${encodeURIComponent(c.author.username)}`}><SAvatar p={c.author} size={34} /></Link>
-            <div className="s-comment-b">
-              <div className="s-comment-h"><b>{c.author.displayName}</b>{c.author.sample && <SampleTag />}<span className="muted small">@{c.author.username} · {timeAgo(c.createdAt)}</span></div>
-              <div className="s-text">{c.text}</div>
-              <div className="s-comment-a">
-                {canDeleteComment(c, post, me!.id) && <button onClick={async () => { if (!confirm('Delete this comment?')) return; try { await backend!.deleteComment(c.id); await load(); toast('Comment deleted'); } catch (e) { toast(friendlyError(e)); } }}>Delete</button>}
-                {c.authorId !== me!.id && <button onClick={() => setReport(c)}>Report</button>}
-              </div>
-            </div>
-          </div>
+          <CommentItem key={c.id} c={c} post={post} meId={me!.id} onReact={onReact} onReply={onReply} onDeleted={load} onReport={() => setReport(c)} />
         ))}
         <div className="s-reply">
           <SAvatar p={me} size={34} />
-          <textarea className="input" value={text} maxLength={COMMENT_MAX} onChange={(e) => setText(e.target.value)} placeholder="Add a comment…" aria-label="Add a comment" rows={1} data-testid="comment-input"
+          <textarea ref={inputRef} className="input" value={text} maxLength={COMMENT_MAX} onChange={(e) => setText(e.target.value)} placeholder="Add a comment…" aria-label="Add a comment" rows={1} data-testid="comment-input"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
           <button className="icon-btn y" aria-label="Send comment" disabled={busy || !text.trim()} onClick={send} data-testid="comment-send"><Icon name="send" size={18} /></button>
         </div>
@@ -392,7 +446,7 @@ function NotifInner() {
             <div key={n.id} className={`s-notif ${n.read ? '' : 'unread'}`} data-testid="notif">
               <Link to={`/social/profile?u=${encodeURIComponent(n.actor.username)}`} className="s-notif-av"><SAvatar p={n.actor} size={42} /><span className={`s-notif-ic t-${n.type}`}><Icon name={n.type === 'like' ? 'heart' : n.type === 'comment' ? 'comment' : n.type === 'reshare' ? 'repost' : 'useradd'} size={12} fill={n.type === 'like'} /></span></Link>
               <Link to={n.postId ? `/social/post?id=${n.postId}` : `/social/profile?u=${encodeURIComponent(n.actor.username)}`} className="s-notif-t">
-                <span><b>{n.actor.displayName}</b>{n.actor.sample && <SampleTag />} {notifText(n.type)}{n.postPreview ? <span className="muted">: “{n.postPreview}”</span> : ''}</span>
+                <span><b>{n.actor.displayName}</b>{n.actor.sample && <SampleTag />} {notifText(n.type, { commentId: n.commentId, reaction: n.reaction })}{n.postPreview ? <span className="muted">: “{n.postPreview}”</span> : ''}</span>
                 <span className="muted small">{timeAgo(n.createdAt)}</span>
               </Link>
               {n.type === 'friend_request' && <RelButton p={n.actor} rel="incoming" />}

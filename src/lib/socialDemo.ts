@@ -3,29 +3,31 @@
 // Uses the same pure rules as the server (src/lib/social.ts), so the demo behaves like the real thing.
 // Persistence and blob URLs are injected so tools/test-social.ts can run this in Node.
 import {
-  applyAction, canDeleteComment, canSee, cleanText, effectiveAudience, feedFor, friendIds, incoming, isBlocked, isStoryActive, LIMITS,
-  normalizeHandle, notifyTarget, outgoing, rateCheck, relation, SocialError, storyExpiry, toggleCount, validateDisplayName, validateHandle,
-  visibleComments, ageGate, socialAllowed, COMMENT_MAX, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX, REPORT_DETAILS_MAX,
-  type Comment, type Graph, type GraphAction, type Notif, type Post, type PublicProfile, type Story, type ViewCtx, type WorkoutCard,
+  applyAction, applyReaction, canDeleteComment, canReactOn, canSee, cleanText, effectiveAudience, feedFor, friendIds, incoming, isBlocked, isStoryActive, LIMITS,
+  migrateLikesToReactions, normalizeHandle, notifyTarget, outgoing, rateCheck, relation, SocialError, storyExpiry, summarizeReactions, validateDisplayName, validateHandle,
+  visibleComments, visibleReactions, ageGate, socialAllowed, COMMENT_MAX, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX, REPORT_DETAILS_MAX,
+  type Comment, type Graph, type GraphAction, type Notif, type Post, type PublicProfile, type Reaction, type ReactionTarget, type ReactionType, type Story, type ViewCtx, type WorkoutCard,
 } from './social';
-import type { CommentView, GraphView, NewPost, NewReport, NewStory, NotifView, PostView, ProfileInput, SocialBackend, StoryView } from './socialApi';
+import type { CommentView, GraphView, NewPost, NewReport, NewStory, NotifView, PostView, ProfileInput, ReactorView, SocialBackend, StoryView } from './socialApi';
 import { artUrl } from './socialArt';
 
 export const DEMO_ME = 'me';
 type Media = { url: string; w: number; h: number };
 export interface DemoState {
-  v: 1;
+  v: 1 | 2;
   profiles: Record<string, PublicProfile>;
   graph: Graph;
   posts: Post[];
   stories: Story[];
   comments: Comment[];
-  myLikes: string[];
+  /** @deprecated v1 only; migrated to reactions on load */
+  myLikes?: string[];
+  reactions: Reaction[];
   saves: string[];
   hidden: string[];
   notifs: Notif[];
   reports: (NewReport & { id: string; createdAt: number })[];
-  times: Record<'req' | 'post' | 'story' | 'comment' | 'report', number[]>;
+  times: Record<'req' | 'post' | 'story' | 'comment' | 'report' | 'react', number[]>;
   blobs: Record<string, Blob>;
   dob?: string;
   seededAt: number;
@@ -89,6 +91,24 @@ export function seedDemo(now: number): DemoState {
     { id: 'c5', postId: 'p5', authorId: 's6', text: 'Great cue.', createdAt: now - 20 * H },
   ];
   for (const p of posts) p.commentCount = comments.filter((c) => c.postId === p.id).length;
+  const rx = (id: string, userId: string, targetType: Reaction['targetType'], targetId: string, type: ReactionType, ago: number): Reaction => ({ id, userId, targetType, targetId, type, createdAt: now - ago });
+  const reactions: Reaction[] = [
+    rx('rp1a', 's2', 'post', 'p1', 'like', 1.8 * H), rx('rp1b', 's3', 'post', 'p1', 'love', 1.6 * H), rx('rp1c', 's6', 'post', 'p1', 'haha', 1.4 * H),
+    rx('rp1d', 's7', 'post', 'p1', 'wow', 1.3 * H), rx('rp1e', 's5', 'post', 'p1', 'like', 1.1 * H), rx('rp1f', 's4', 'post', 'p1', 'love', 0.9 * H),
+    rx('rp2a', 's1', 'post', 'p2', 'love', 4.5 * H), rx('rp2b', 's3', 'post', 'p2', 'like', 4.2 * H), rx('rp2c', 's6', 'post', 'p2', 'wow', 3.8 * H),
+    rx('rp3a', 's1', 'post', 'p3', 'like', 7 * H), rx('rp3b', 's2', 'post', 'p3', 'like', 6.5 * H), rx('rp3c', 's7', 'post', 'p3', 'love', 6 * H),
+    rx('rp3d', 's6', 'post', 'p3', 'haha', 5.5 * H), rx('rp3e', 's3', 'post', 'p3', 'wow', 5 * H), rx('rp3f', 's5', 'post', 'p3', 'like', 4.5 * H),
+    rx('rp4a', 's1', 'post', 'p4', 'like', 18 * H), rx('rp4b', 's2', 'post', 'p4', 'haha', 16 * H),
+    rx('rp5a', 's1', 'post', 'p5', 'like', 24 * H), rx('rp5b', 's2', 'post', 'p5', 'love', 22 * H), rx('rp5c', 's6', 'post', 'p5', 'like', 21 * H),
+    rx('rp5d', 's3', 'post', 'p5', 'wow', 20 * H), rx('rp5e', 's4', 'post', 'p5', 'like', 19 * H),
+    rx('rp6a', 's2', 'post', 'p6', 'like', 28 * H), rx('rp6b', 's3', 'post', 'p6', 'like', 27 * H),
+    rx('rp8a', 's1', 'post', 'p8', 'like', 48 * H), rx('rp8b', 's3', 'post', 'p8', 'love', 46 * H), rx('rp8c', 's6', 'post', 'p8', 'like', 44 * H),
+    rx('rc1a', 's1', 'comment', 'c1', 'love', 1.4 * H), rx('rc1b', 's3', 'comment', 'c1', 'haha', 1.3 * H), rx('rc1c', 's6', 'comment', 'c1', 'like', 1.1 * H),
+    rx('rc2a', 's1', 'comment', 'c2', 'like', 1.0 * H), rx('rc2b', 's2', 'comment', 'c2', 'wow', 0.9 * H),
+    rx('rc3a', 's2', 'comment', 'c3', 'like', 0.8 * H), rx('rc3b', 's3', 'comment', 'c3', 'like', 0.7 * H),
+    rx('rc4a', 's2', 'comment', 'c4', 'love', 3.5 * H),
+    rx('rc5a', 's7', 'comment', 'c5', 'like', 18 * H), rx('rc5b', 's1', 'comment', 'c5', 'haha', 16 * H),
+  ];
   const stories: Story[] = [
     { id: 'st1', authorId: 's1', text: '5:30 AM club', media: { url: 'art:sunrise', w: 800, h: 1000 }, audience: 'friends', createdAt: now - 1 * H, expiresAt: storyExpiry(now - 1 * H) },
     { id: 'st2', authorId: 's2', text: 'HYROX in 6 weeks. No days off from the plan.', bg: '#FFE600', audience: 'friends', createdAt: now - 3 * H, expiresAt: storyExpiry(now - 3 * H) },
@@ -101,7 +121,7 @@ export function seedDemo(now: number): DemoState {
     { id: 'n2', userId: DEMO_ME, actorId: 's5', type: 'friend_request', createdAt: now - 26 * H, read: false },
     { id: 'n3', userId: DEMO_ME, actorId: 's3', type: 'friend_accept', createdAt: now - 72 * H, read: true },
   ];
-  const s: DemoState = { v: 1, profiles, graph, posts, stories, comments, myLikes: [], saves: [], hidden: [], notifs, reports: [], times: { req: [], post: [], story: [], comment: [], report: [] }, blobs: {}, seededAt: now };
+  const s: DemoState = { v: 2, profiles, graph, posts, stories, comments, reactions, saves: [], hidden: [], notifs, reports: [], times: { req: [], post: [], story: [], comment: [], report: [], react: [] }, blobs: {}, seededAt: now };
   recount(s);
   return s;
 }
@@ -110,6 +130,18 @@ function recount(s: DemoState) {
     p.friendCount = friendIds(s.graph, p.id).length;
     p.postCount = s.posts.filter((x) => x.authorId === p.id).length;
   }
+  for (const p of s.posts) p.likeCount = s.reactions.filter((r) => r.targetType === 'post' && r.targetId === p.id).length;
+}
+
+/** Upgrade a persisted v1 demo (plain likes) to v2 reactions. Safe to run on v2. */
+export function migrateDemoState(s: DemoState): DemoState {
+  const likes = (s.myLikes || []).map((postId) => ({ userId: DEMO_ME, postId, createdAt: s.seededAt }));
+  s.reactions = migrateLikesToReactions(likes, s.reactions || []);
+  s.times = { req: s.times?.req || [], post: s.times?.post || [], story: s.times?.story || [], comment: s.times?.comment || [], report: s.times?.report || [], react: s.times?.react || [] };
+  s.v = 2;
+  delete s.myLikes;
+  recount(s);
+  return s;
 }
 
 export class DemoBackend implements SocialBackend {
@@ -123,7 +155,7 @@ export class DemoBackend implements SocialBackend {
   private async st(): Promise<DemoState> {
     if (!this.s) {
       const loaded = await this.deps.load();
-      this.s = loaded && loaded.v === 1 ? loaded : seedDemo(this.now());
+      this.s = loaded && (loaded.v === 1 || loaded.v === 2) ? migrateDemoState(loaded) : seedDemo(this.now());
       // keep the sample stories alive: if they've all expired, refresh their timestamps
       const samples = this.s.stories.filter((x) => x.authorId !== DEMO_ME);
       if (samples.length && samples.every((x) => !isStoryActive(x, this.now()))) {
@@ -150,9 +182,12 @@ export class DemoBackend implements SocialBackend {
   }
   private view(s: DemoState, p: Post, depth = 0): PostView {
     const orig = p.reshareOf ? s.posts.find((x) => x.id === p.reshareOf) : undefined;
+    const mine = s.reactions.find((r) => r.userId === DEMO_ME && r.targetType === 'post' && r.targetId === p.id);
+    const summary = summarizeReactions(visibleReactions(s.reactions.filter((r) => r.targetType === 'post' && r.targetId === p.id), this.ctx(s)));
     return {
       ...p, media: p.media.map((m) => ({ ...m, url: this.url(m.url) })), author: this.prof(s, p.authorId),
-      liked: s.myLikes.includes(p.id), saved: s.saves.includes(p.id), mine: p.authorId === DEMO_ME,
+      likeCount: summary.total, liked: mine?.type === 'like', myReaction: mine?.type ?? null, reactionSummary: summary,
+      saved: s.saves.includes(p.id), mine: p.authorId === DEMO_ME,
       original: p.reshareOf ? (orig && depth === 0 && canSee(orig, this.ctx(s)) ? this.view(s, orig, 1) : null) : undefined,
     };
   }
@@ -241,14 +276,16 @@ export class DemoBackend implements SocialBackend {
     await this.commit();
     return id;
   }
-  /** Demo only: two sample friends like the new post and one comments, so notifications can be explored. */
+  /** Demo only: two sample friends react to the new post and one comments, so notifications can be explored. */
   private sampleReactions(s: DemoState, postId: string) {
     const p = s.posts.find((x) => x.id === postId)!;
     const fr = friendIds(s.graph, DEMO_ME).filter((id) => s.profiles[id]?.sample);
     const t = this.now();
+    const kinds: ReactionType[] = ['like', 'love'];
     fr.slice(0, 2).forEach((id, i) => {
-      p.likeCount++;
-      if (notifyTarget({ type: 'like', actor: id, owner: DEMO_ME }, s.graph)) s.notifs.unshift({ id: `n${t}${i}`, userId: DEMO_ME, actorId: id, type: 'like', postId, createdAt: t + i, read: false });
+      const type = kinds[i] || 'like';
+      s.reactions.push({ id: `rx${t}${i}`, userId: id, targetType: 'post', targetId: postId, type, createdAt: t + i });
+      if (notifyTarget({ type: 'like', actor: id, owner: DEMO_ME }, s.graph)) s.notifs.unshift({ id: `n${t}${i}`, userId: DEMO_ME, actorId: id, type: 'like', postId, reaction: type, createdAt: t + i, read: false });
     });
     if (fr[2] || fr[0]) {
       const by = fr[2] || fr[0];
@@ -271,17 +308,57 @@ export class DemoBackend implements SocialBackend {
     s.posts = s.posts.filter((x) => !gone.has(x.id));
     s.comments = s.comments.filter((c) => !gone.has(c.postId));
     s.notifs = s.notifs.filter((n) => !n.postId || !gone.has(n.postId));
-    s.saves = s.saves.filter((x) => !gone.has(x)); s.myLikes = s.myLikes.filter((x) => !gone.has(x));
+    s.saves = s.saves.filter((x) => !gone.has(x));
+    const commentIds = new Set(s.comments.filter((c) => gone.has(c.postId)).map((c) => c.id));
+    s.reactions = s.reactions.filter((r) => !(r.targetType === 'post' && gone.has(r.targetId)) && !(r.targetType === 'comment' && commentIds.has(r.targetId)));
     for (const m of p.media) if (m.url.startsWith('idb:')) delete s.blobs[m.url.slice(4)];
     await this.commit();
   }
-  async setLike(id: string, on: boolean) {
-    const s = await this.st(); this.requireMe(s); const p = s.posts.find((x) => x.id === id);
-    if (!p || !canSee(p, this.ctx(s))) throw new SocialError('That post is no longer available.');
-    const was = s.myLikes.includes(id);
-    p.likeCount = toggleCount(p.likeCount, was, on);
-    s.myLikes = on ? [...new Set([...s.myLikes, id])] : s.myLikes.filter((x) => x !== id);
+  async setLike(id: string, on: boolean) { return this.setReaction('post', id, on ? 'like' : null); }
+  async setReaction(targetType: ReactionTarget, targetId: string, type: ReactionType | null) {
+    const s = await this.st(); this.requireMe(s);
+    const ctx = this.ctx(s);
+    let authorId: string | undefined;
+    let postId: string | undefined;
+    if (targetType === 'post') {
+      const p = s.posts.find((x) => x.id === targetId);
+      if (!p || !canSee(p, ctx)) throw new SocialError('That post is no longer available.');
+      if (!canReactOn(true, DEMO_ME, p.authorId, s.graph)) throw new SocialError('You can’t react to this.');
+      authorId = p.authorId; postId = p.id;
+    } else {
+      const c = s.comments.find((x) => x.id === targetId);
+      const p = c && s.posts.find((x) => x.id === c.postId);
+      if (!c || !p || !canSee(p, ctx) || !visibleComments([c], ctx).length) throw new SocialError('That comment is no longer available.');
+      if (!canReactOn(true, DEMO_ME, c.authorId, s.graph)) throw new SocialError('You can’t react to this.');
+      authorId = c.authorId; postId = p.id;
+    }
+    const prev = s.reactions.find((r) => r.userId === DEMO_ME && r.targetType === targetType && r.targetId === targetId)?.type ?? null;
+    // rate-limit new or changed reactions, not removals
+    if (type && type !== prev) this.limit(s, 'react', LIMITS.reactHour);
+    const next = applyReaction(s.reactions, DEMO_ME, targetType, targetId, type, this.now(), () => 'rx' + this.now().toString(36) + Math.random().toString(36).slice(2, 6));
+    s.reactions = next.list;
+    if (next.next && authorId) {
+      const to = notifyTarget({ type: 'like', actor: DEMO_ME, owner: authorId }, s.graph);
+      if (to) {
+        s.notifs = s.notifs.filter((n) => !(n.type === 'like' && n.actorId === DEMO_ME && (targetType === 'comment' ? n.commentId === targetId : n.postId === postId && !n.commentId)));
+        s.notifs.unshift({ id: 'n' + this.now().toString(36), userId: to, actorId: DEMO_ME, type: 'like', postId, commentId: targetType === 'comment' ? targetId : undefined, reaction: next.next, createdAt: this.now(), read: false });
+      }
+    }
     await this.commit();
+  }
+  async listReactions(targetType: ReactionTarget, targetId: string): Promise<ReactorView[]> {
+    const s = await this.st();
+    if (targetType === 'post') {
+      const p = s.posts.find((x) => x.id === targetId);
+      if (!p || !canSee(p, this.ctx(s))) return [];
+    } else {
+      const c = s.comments.find((x) => x.id === targetId);
+      const p = c && s.posts.find((x) => x.id === c.postId);
+      if (!c || !p || !canSee(p, this.ctx(s))) return [];
+    }
+    return visibleReactions(s.reactions.filter((r) => r.targetType === targetType && r.targetId === targetId), this.ctx(s))
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((r) => ({ user: this.prof(s, r.userId), type: r.type, createdAt: r.createdAt }));
   }
   async setSave(id: string, on: boolean) { const s = await this.st(); this.requireMe(s); s.saves = on ? [id, ...s.saves.filter((x) => x !== id)] : s.saves.filter((x) => x !== id); await this.commit(); }
   async hidePost(id: string) { const s = await this.st(); s.hidden = [...new Set([...s.hidden, id])]; await this.commit(); }
@@ -289,7 +366,12 @@ export class DemoBackend implements SocialBackend {
   async comments(postId: string): Promise<CommentView[]> {
     const s = await this.st(); const p = s.posts.find((x) => x.id === postId);
     if (!p || !canSee(p, this.ctx(s))) return [];
-    return visibleComments(s.comments.filter((c) => c.postId === postId), { me: DEMO_ME, graph: s.graph }).sort((a, b) => a.createdAt - b.createdAt).map((c) => ({ ...c, author: this.prof(s, c.authorId) }));
+    const ctx = { me: DEMO_ME, graph: s.graph };
+    return visibleComments(s.comments.filter((c) => c.postId === postId), ctx).sort((a, b) => a.createdAt - b.createdAt).map((c) => {
+      const mine = s.reactions.find((r) => r.userId === DEMO_ME && r.targetType === 'comment' && r.targetId === c.id);
+      const summary = summarizeReactions(visibleReactions(s.reactions.filter((r) => r.targetType === 'comment' && r.targetId === c.id), ctx));
+      return { ...c, author: this.prof(s, c.authorId), myReaction: mine?.type ?? null, reactionSummary: summary };
+    });
   }
   async addComment(postId: string, text: string) {
     const s = await this.st(); this.requireMe(s); const p = s.posts.find((x) => x.id === postId);
@@ -304,6 +386,7 @@ export class DemoBackend implements SocialBackend {
     const s = await this.st(); const c = s.comments.find((x) => x.id === id); const p = c && s.posts.find((x) => x.id === c.postId);
     if (!c || !p || !canDeleteComment(c, p, DEMO_ME)) throw new SocialError('You can only delete your own comments or comments on your posts.');
     s.comments = s.comments.filter((x) => x.id !== id); p.commentCount = Math.max(0, p.commentCount - 1);
+    s.reactions = s.reactions.filter((r) => !(r.targetType === 'comment' && r.targetId === id));
     await this.commit();
   }
   async stories(): Promise<StoryView[]> {

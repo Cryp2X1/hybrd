@@ -1,9 +1,10 @@
 // Social: Friends & Stories — the backend contract shared by the live (Supabase) and demo (sample people, on-device) backends.
-import type { Audience, Comment, GraphAction, Notif, Post, Privacy, PublicProfile, Relation, ReportReason, ReportTarget, Story, WorkoutCard } from './social';
+import type { Audience, Comment, GraphAction, Notif, Post, Privacy, PublicProfile, Reaction, ReactionSummary, ReactionTarget, ReactionType, Relation, ReportReason, ReportTarget, Story, WorkoutCard } from './social';
 
-export interface PostView extends Post { author: PublicProfile; liked: boolean; saved: boolean; mine: boolean; original?: PostView | null }
+export interface PostView extends Post { author: PublicProfile; liked: boolean; saved: boolean; mine: boolean; myReaction: ReactionType | null; reactionSummary: ReactionSummary; original?: PostView | null }
 export interface StoryView extends Story { author: PublicProfile }
-export interface CommentView extends Comment { author: PublicProfile }
+export interface CommentView extends Comment { author: PublicProfile; myReaction: ReactionType | null; reactionSummary: ReactionSummary }
+export interface ReactorView { user: PublicProfile; type: ReactionType; createdAt: number }
 export interface NotifView extends Notif { actor: PublicProfile; postPreview?: string }
 export interface RequestView { id: string; user: PublicProfile; createdAt: number; direction: 'in' | 'out' }
 export interface GraphView { friends: PublicProfile[]; incoming: RequestView[]; outgoing: RequestView[]; blocked: PublicProfile[] }
@@ -33,6 +34,8 @@ export interface SocialBackend {
   editPost(id: string, text: string, audience: Audience): Promise<void>;
   deletePost(id: string): Promise<void>;
   setLike(id: string, on: boolean): Promise<void>;
+  setReaction(targetType: ReactionTarget, targetId: string, type: ReactionType | null): Promise<void>;
+  listReactions(targetType: ReactionTarget, targetId: string): Promise<ReactorView[]>;
   setSave(id: string, on: boolean): Promise<void>;
   hidePost(id: string): Promise<void>;
   saved(): Promise<PostView[]>;
@@ -62,4 +65,4 @@ export function friendlyError(e: unknown): string {
   if (/Failed to fetch|NetworkError|network/i.test(m)) return 'You’re offline. Try again when you have a connection.';
   return m.replace(/^SocialError:\s*/, '');
 }
-export type { Relation };
+export type { Reaction, ReactionSummary, ReactionTarget, ReactionType, Relation };

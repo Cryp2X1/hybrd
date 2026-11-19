@@ -3,10 +3,10 @@
 // this client only asks for data and shows what RLS returns.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  cleanText, normalizeHandle, validateDisplayName, validateHandle, COMMENT_MAX, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX, REPORT_DETAILS_MAX,
-  type Audience, type GraphAction, type PublicProfile, type Relation, type WorkoutCard,
+  cleanText, isReactionType, normalizeHandle, summarizeReactions, validateDisplayName, validateHandle, COMMENT_MAX, POST_MAX, PUBLIC_BIO_MAX, STORY_TEXT_MAX, REPORT_DETAILS_MAX,
+  type Audience, type GraphAction, type PublicProfile, type ReactionType, type ReactionTarget, type Relation, type WorkoutCard,
 } from './social';
-import type { CommentView, GraphView, NewPost, NewReport, NewStory, NotifView, PostView, ProfileInput, SocialBackend, StoryView } from './socialApi';
+import type { CommentView, GraphView, NewPost, NewReport, NewStory, NotifView, PostView, ProfileInput, ReactorView, SocialBackend, StoryView } from './socialApi';
 
 export const SOCIAL_BUCKET = 'social-media';
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -59,18 +59,29 @@ export class SupabaseSocial implements SocialBackend {
     const origRows = origIds.length ? ((await this.q(this.sb.from('posts').select(POST_COLS).in('id', origIds))) as Row[]).filter((r) => r.author) : [];
     const all = [...rows, ...origRows];
     const allIds = [...ids, ...origRows.map((r) => r.id)];
-    const [likes, saves, urls] = await Promise.all([
-      allIds.length ? this.q(this.sb.from('likes').select('post_id').eq('user_id', this.myId).in('post_id', allIds)) : [],
+    const [rxRows, saves, urls] = await Promise.all([
+      allIds.length ? this.q(this.sb.from('reactions').select('target_id, kind, user_id').eq('target_type', 'post').in('target_id', allIds)) : [],
       allIds.length ? this.q(this.sb.from('saves').select('post_id').eq('user_id', this.myId).in('post_id', allIds)) : [],
       this.sign(all.flatMap((r) => [r.author?.avatar_path, ...(r.post_media || []).map((m: Row) => m.path)])),
     ]);
-    const liked = new Set((likes as Row[]).map((x) => x.post_id)); const saved = new Set((saves as Row[]).map((x) => x.post_id));
-    const one = (r: Row): PostView => ({
-      id: r.id, authorId: r.author_id, text: r.body || '', workout: (r.workout as WorkoutCard) || undefined, audience: r.audience, reshareOf: r.reshare_of || undefined,
-      media: [...(r.post_media || [])].sort((a: Row, b: Row) => a.position - b.position).map((m: Row) => ({ url: urls.get(m.path) || '', w: m.w || 1, h: m.h || 1, path: m.path })),
-      createdAt: ts(r.created_at), editedAt: r.edited_at ? ts(r.edited_at) : undefined, likeCount: r.like_count, commentCount: r.comment_count, shareCount: r.share_count,
-      author: this.profile(r.author, urls), liked: liked.has(r.id), saved: saved.has(r.id), mine: r.author_id === this.myId,
-    });
+    const byPost = new Map<string, { type: ReactionType; userId: string }[]>();
+    for (const x of rxRows as Row[]) {
+      if (!isReactionType(x.kind)) continue;
+      const list = byPost.get(x.target_id) || []; list.push({ type: x.kind, userId: x.user_id }); byPost.set(x.target_id, list);
+    }
+    const saved = new Set((saves as Row[]).map((x) => x.post_id));
+    const one = (r: Row): PostView => {
+      const rx = byPost.get(r.id) || [];
+      const mine = rx.find((x) => x.userId === this.myId)?.type ?? null;
+      const summary = summarizeReactions(rx);
+      return {
+        id: r.id, authorId: r.author_id, text: r.body || '', workout: (r.workout as WorkoutCard) || undefined, audience: r.audience, reshareOf: r.reshare_of || undefined,
+        media: [...(r.post_media || [])].sort((a: Row, b: Row) => a.position - b.position).map((m: Row) => ({ url: urls.get(m.path) || '', w: m.w || 1, h: m.h || 1, path: m.path })),
+        createdAt: ts(r.created_at), editedAt: r.edited_at ? ts(r.edited_at) : undefined,
+        likeCount: summary.total, commentCount: r.comment_count, shareCount: r.share_count,
+        author: this.profile(r.author, urls), liked: mine === 'like', myReaction: mine, reactionSummary: summary, saved: saved.has(r.id), mine: r.author_id === this.myId,
+      };
+    };
     const origMap = new Map(origRows.map((r) => [r.id, one(r)]));
     return rows.map((r) => ({ ...one(r), original: r.reshare_of ? origMap.get(r.reshare_of) ?? null : undefined })).filter((p) => p.original !== null);
   }
@@ -190,9 +201,21 @@ export class SupabaseSocial implements SocialBackend {
     await this.q(this.sb.from('posts').delete().eq('id', id).eq('author_id', this.myId));
     if (media.length) await this.sb.storage.from(SOCIAL_BUCKET).remove(media.map((m) => m.path));
   }
-  async setLike(id: string, on: boolean) {
-    if (on) { const { error } = await this.sb.from('likes').insert({ post_id: id, user_id: this.myId }); if (error && !/duplicate/.test(error.message)) throw new Error(error.message); }
-    else await this.q(this.sb.from('likes').delete().eq('post_id', id).eq('user_id', this.myId));
+  async setLike(id: string, on: boolean) { return this.setReaction('post', id, on ? 'like' : null); }
+  async setReaction(targetType: ReactionTarget, targetId: string, type: ReactionType | null) {
+    if (!type) {
+      await this.q(this.sb.from('reactions').delete().eq('user_id', this.myId).eq('target_type', targetType).eq('target_id', targetId));
+      return;
+    }
+    const row = { user_id: this.myId, target_type: targetType, target_id: targetId, kind: type };
+    const { error } = await this.sb.from('reactions').upsert(row, { onConflict: 'user_id,target_type,target_id' });
+    if (error) throw new Error(error.message);
+  }
+  async listReactions(targetType: ReactionTarget, targetId: string): Promise<ReactorView[]> {
+    const rows = (await this.q(this.sb.from('reactions').select(`kind, created_at, user_id, user:social_profiles!reactions_user_id_fkey(${PROFILE_COLS})`)
+      .eq('target_type', targetType).eq('target_id', targetId).order('created_at', { ascending: false }))) as Row[];
+    const urls = await this.sign(rows.map((r) => r.user?.avatar_path));
+    return rows.filter((r) => r.user && isReactionType(r.kind)).map((r) => ({ user: this.profile(r.user, urls), type: r.kind as ReactionType, createdAt: ts(r.created_at) }));
   }
   async setSave(id: string, on: boolean) {
     if (on) { const { error } = await this.sb.from('saves').insert({ post_id: id, user_id: this.myId }); if (error && !/duplicate/.test(error.message)) throw new Error(error.message); }
@@ -208,8 +231,21 @@ export class SupabaseSocial implements SocialBackend {
   }
   async comments(postId: string): Promise<CommentView[]> {
     const rows = (await this.q(this.sb.from('comments').select(`id, post_id, author_id, body, created_at, author:social_profiles!comments_author_id_fkey(${PROFILE_COLS})`).eq('post_id', postId).order('created_at').limit(200))) as Row[];
-    const urls = await this.sign(rows.map((r) => r.author?.avatar_path));
-    return rows.filter((r) => r.author).map((r) => ({ id: r.id, postId: r.post_id, authorId: r.author_id, text: r.body, createdAt: ts(r.created_at), author: this.profile(r.author, urls) }));
+    const ids = rows.map((r) => r.id);
+    const [urls, rxRows] = await Promise.all([
+      this.sign(rows.map((r) => r.author?.avatar_path)),
+      ids.length ? this.q(this.sb.from('reactions').select('target_id, kind, user_id').eq('target_type', 'comment').in('target_id', ids)) : [],
+    ]);
+    const byC = new Map<string, { type: ReactionType; userId: string }[]>();
+    for (const x of rxRows as Row[]) {
+      if (!isReactionType(x.kind)) continue;
+      const list = byC.get(x.target_id) || []; list.push({ type: x.kind, userId: x.user_id }); byC.set(x.target_id, list);
+    }
+    return rows.filter((r) => r.author).map((r) => {
+      const rx = byC.get(r.id) || [];
+      const mine = rx.find((x) => x.userId === this.myId)?.type ?? null;
+      return { id: r.id, postId: r.post_id, authorId: r.author_id, text: r.body, createdAt: ts(r.created_at), author: this.profile(r.author, urls), myReaction: mine, reactionSummary: summarizeReactions(rx) };
+    });
   }
   async addComment(postId: string, text: string) {
     const body = cleanText(text, COMMENT_MAX); if (!body) throw new Error('Write something first.');
@@ -238,11 +274,11 @@ export class SupabaseSocial implements SocialBackend {
     const p = rows[0]?.media_path; if (p) await this.sb.storage.from(SOCIAL_BUCKET).remove([p]);
   }
   async notifications(): Promise<NotifView[]> {
-    const rows = (await this.q(this.sb.from('notifications').select(`id, user_id, actor_id, type, post_id, comment_id, read_at, created_at, actor:social_profiles!notifications_actor_id_fkey(${PROFILE_COLS}), post:posts(body)`)
+    const rows = (await this.q(this.sb.from('notifications').select(`id, user_id, actor_id, type, post_id, comment_id, reaction, read_at, created_at, actor:social_profiles!notifications_actor_id_fkey(${PROFILE_COLS}), post:posts(body)`)
       .eq('user_id', this.myId).order('created_at', { ascending: false }).limit(80))) as Row[];
     const urls = await this.sign(rows.map((r) => r.actor?.avatar_path));
     return rows.filter((r) => r.actor).map((r) => ({
-      id: r.id, userId: r.user_id, actorId: r.actor_id, type: r.type, postId: r.post_id || undefined, commentId: r.comment_id || undefined, read: !!r.read_at, createdAt: ts(r.created_at),
+      id: r.id, userId: r.user_id, actorId: r.actor_id, type: r.type, postId: r.post_id || undefined, commentId: r.comment_id || undefined, reaction: isReactionType(r.reaction || '') ? r.reaction : undefined, read: !!r.read_at, createdAt: ts(r.created_at),
       actor: this.profile(r.actor, urls), postPreview: r.post?.body ? String(r.post.body).slice(0, 60) : undefined,
     }));
   }

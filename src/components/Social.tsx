@@ -10,10 +10,11 @@ import { useToast } from '../lib/toast';
 import { appUrl } from '../lib/config';
 import { fmtTime, KM_PER_MI } from '../lib/calc';
 import {
-  compact, postUrl, REPORT_REASONS, groupStories, storyTimeLeft, timeAgo, REPORT_DETAILS_MAX,
-  type PublicProfile, type ReportReason, type ReportTarget, type WorkoutCard,
+  compact, emptyReactionCounts, postUrl, REPORT_REASONS, groupStories, storyTimeLeft, timeAgo, REPORT_DETAILS_MAX, REACTION_META, REACTION_TYPES,
+  type PublicProfile, type ReactionType, type ReportReason, type ReportTarget, type WorkoutCard,
 } from '../lib/social';
 import { friendlyError, type PostView, type StoryView } from '../lib/socialApi';
+import { ReactionBar, ReactionSummaryBtn, ReactorsSheet, usePressToReact } from './Reactions';
 
 // ---------- identity ----------
 export function SAvatar({ p, size = 40, ring }: { p?: Pick<PublicProfile, 'avatarUrl' | 'displayName'> | null; size?: number; ring?: 'new' | 'seen' }) {
@@ -147,13 +148,24 @@ export function PostCard({ post, onChange, onRemoved, detail }: { post: PostView
   const [report, setReport] = useState<{ type: ReportTarget; id: string; who: PublicProfile } | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.text);
+  const [bar, setBar] = useState<{ anchor: DOMRect; pointerId: number | null } | null>(null);
+  const [who, setWho] = useState(false);
   useEffect(() => { setP(post); setDraft(post.text); }, [post]);
   const upd = (n: PostView) => { setP(n); onChange?.(n); };
-  const like = async () => {
+  const applyReact = async (next: ReactionType | null) => {
     if (!backend) return;
-    const on = !p.liked; upd({ ...p, liked: on, likeCount: Math.max(0, p.likeCount + (on ? 1 : -1)) });
-    try { await backend.setLike(p.id, on); } catch (e) { toast(friendlyError(e)); upd(p); }
+    const prev = p.myReaction;
+    const counts = { ...emptyReactionCounts(), ...p.reactionSummary.counts };
+    let total = p.reactionSummary.total;
+    if (prev) { counts[prev] = Math.max(0, counts[prev] - 1); total = Math.max(0, total - 1); }
+    if (next) { counts[next] += 1; total += 1; }
+    const top = REACTION_TYPES.filter((t) => counts[t] > 0).sort((a, b) => counts[b] - counts[a] || REACTION_TYPES.indexOf(a) - REACTION_TYPES.indexOf(b)).slice(0, 3);
+    upd({ ...p, myReaction: next, liked: next === 'like', likeCount: total, reactionSummary: { total, counts, top } });
+    setBar(null);
+    try { await backend.setReaction('post', p.id, next); } catch (e) { toast(friendlyError(e)); upd(p); }
   };
+  const tapLike = () => applyReact(p.myReaction ? null : 'like');
+  const likeBind = usePressToReact({ onOpen: (anchor, pointerId) => setBar({ anchor, pointerId }), onTap: tapLike });
   const save = async () => {
     if (!backend) return;
     const on = !p.saved; upd({ ...p, saved: on });
@@ -188,12 +200,32 @@ export function PostCard({ post, onChange, onRemoved, detail }: { post: PostView
         </Link>
       )}
       <footer className="s-actions">
-        <button className={`s-act ${p.liked ? 'on' : ''}`} onClick={like} aria-pressed={p.liked} aria-label={p.liked ? 'Unlike' : 'Like'} data-testid="like-btn"><Icon name="heart" fill={p.liked} />{compact(p.likeCount)}</button>
+        <ReactionSummaryBtn summary={p.reactionSummary} onClick={() => setWho(true)} />
+        <button
+          className={`s-act ${p.myReaction ? 'on' : ''}`}
+          style={p.myReaction ? { color: REACTION_META[p.myReaction].color } : undefined}
+          aria-pressed={!!p.myReaction}
+          aria-label={p.myReaction ? REACTION_META[p.myReaction].label : 'Like'}
+          data-testid="like-btn"
+          {...likeBind}
+        >
+          {p.myReaction ? <span className="react-emoji" aria-hidden="true">{REACTION_META[p.myReaction].emoji}</span> : <Icon name="heart" fill={p.liked} />}
+          <span data-testid="like-count">{compact(p.reactionSummary.total)}</span>
+        </button>
         <button className="s-act" onClick={() => nav(`/social/post?id=${p.id}`)} aria-label="Comments" data-testid="comment-btn"><Icon name="comment" />{compact(p.commentCount)}</button>
         <button className="s-act" onClick={() => setShare(true)} aria-label="Share" data-testid="share-btn"><Icon name="repost" />{compact(p.shareCount)}</button>
         <span className="spacer" />
         <button className={`s-act ${p.saved ? 'on' : ''}`} onClick={save} aria-pressed={p.saved} aria-label={p.saved ? 'Remove from Saved' : 'Save'} data-testid="save-btn"><Icon name="bookmark" fill={p.saved} /></button>
       </footer>
+      <ReactionBar
+        open={!!bar}
+        anchor={bar?.anchor ?? null}
+        current={p.myReaction}
+        pointerId={bar?.pointerId}
+        onPick={(t) => applyReact(p.myReaction === t ? null : t)}
+        onClose={() => setBar(null)}
+      />
+      <ReactorsSheet open={who} onClose={() => setWho(false)} load={() => backend ? backend.listReactions('post', p.id) : Promise.resolve([])} />
       <Sheet open={menu} onClose={() => setMenu(false)} title="Post">
         <div className="s-menu">
           {p.mine ? <>

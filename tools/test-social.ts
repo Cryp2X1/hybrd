@@ -7,10 +7,11 @@ import {
   applyAction, relation, friendIds, incoming, outgoing, isBlocked, areFriends, SocialError, rateCheck, LIMITS, canSee, effectiveAudience, feedFor,
   visibleComments, canDeleteComment, storyExpiry, isStoryActive, storyTimeLeft, storyGroups, groupStories, toggleCount, compact, plural, badgeCount,
   notifyTarget, notifText, inviteUrl, postUrl, profileUrl, workoutCard, validatePost, checkSocialImage, timeAgo,
+  applyReaction, summarizeReactions, migrateLikesToReactions, visibleReactions, canReactOn, REACTION_TYPES, REACTION_META,
   STORY_MS, POST_MAX, COMMENT_MAX, MIN_SOCIAL_AGE,
-  type Graph, type Post, type Story, type ViewCtx,
+  type Graph, type Post, type Reaction, type Story, type ViewCtx,
 } from '../src/lib/social.ts';
-import { DemoBackend, seedDemo, DEMO_ME, type DemoState } from '../src/lib/socialDemo.ts';
+import { DemoBackend, seedDemo, migrateDemoState, DEMO_ME, type DemoState } from '../src/lib/socialDemo.ts';
 import { friendlyError } from '../src/lib/socialApi.ts';
 import { FEATURES, can } from '../src/lib/entitlements.ts';
 
@@ -132,6 +133,30 @@ check('plural', plural(1, 'like') === '1 like' && plural(3, 'like') === '3 likes
 check('badge = requests + unread non-request notifications', badgeCount(2, [{ read: false, type: 'like' }, { read: true, type: 'comment' }, { read: false, type: 'friend_request' }]) === 3);
 check('no self notifications, none across blocks', notifyTarget({ type: 'like', actor: 'a', owner: 'a' }, G) === null && notifyTarget({ type: 'like', actor: 'bl', owner: 'me' }, G) === null && notifyTarget({ type: 'comment', actor: 'fr', owner: 'me' }, G) === 'me');
 check('notification text', notifText('friend_request') === 'sent you a friend request' && notifText('like') === 'liked your post');
+check('notification text: comment like / other reaction', notifText('like', { commentId: 'c1' }) === 'liked your comment' && notifText('like', { commentId: 'c1', reaction: 'love' }) === 'reacted to your comment' && notifText('like', { reaction: 'wow' }) === 'reacted to your post');
+
+// ---------- reactions ----------
+const idFn = (() => { let n = 0; return () => 'r' + (++n); })();
+let rx: Reaction[] = [];
+const go = (user: string, target: 'post' | 'comment', id: string, type: Parameters<typeof applyReaction>[4], now = 1) => {
+  const r = applyReaction(rx, user, target, id, type, now, idFn); rx = r.list; return r;
+};
+let r1 = go('a', 'post', 'p', 'like');
+check('reaction: add Like', r1.next === 'like' && rx.length === 1 && summarizeReactions(rx).total === 1 && summarizeReactions(rx).counts.like === 1);
+const r2 = go('a', 'post', 'p', 'love');
+check('reaction: change Like to Love (still one row)', r2.prev === 'like' && r2.next === 'love' && rx.length === 1 && rx[0].type === 'love');
+const r3 = go('a', 'post', 'p', 'love');
+check('reaction: picking the same type again removes it', r3.prev === 'love' && r3.next === null && rx.length === 0);
+go('a', 'comment', 'c', 'haha'); go('b', 'comment', 'c', 'wow'); go('d', 'comment', 'c', 'wow'); go('e', 'comment', 'c', 'like'); go('f', 'comment', 'c', 'sad');
+const sum = summarizeReactions(rx);
+check('reaction: counts and top-3 (ties broken by standard order)', sum.total === 5 && sum.counts.wow === 2 && sum.top.join() === 'wow,like,haha', sum);
+const migrated = migrateLikesToReactions([{ userId: 'a', postId: 'p9', createdAt: 5 }, { userId: 'b', postId: 'p9', createdAt: 6 }], [{ id: 'x', userId: 'a', targetType: 'post', targetId: 'p9', type: 'love', createdAt: 1 }]);
+check('reaction: migrate likes, keep an existing reaction on the same post', migrated.length === 2 && migrated.find((x) => x.userId === 'a')!.type === 'love' && migrated.find((x) => x.userId === 'b')!.type === 'like');
+check('reaction set: 7 types, no Care/hug, includes Dislike', REACTION_TYPES.join() === 'like,love,haha,wow,sad,angry,dislike' && REACTION_META.dislike.emoji === '👎' && !Object.values(REACTION_META).some((m) => /care|hug/i.test(m.label)));
+const gBlock: Graph = { requests: [], friends: [], blocks: [['me', 'bl']] };
+check('reaction: blocked users hidden from the summary, own reaction kept', visibleReactions([{ userId: 'me', type: 'like' } as Reaction, { userId: 'bl', type: 'love' } as Reaction], { me: 'me', graph: gBlock }).map((x) => x.userId).join() === 'me');
+check('reaction: cannot react when blocked or the post is hidden', !canReactOn(true, 'me', 'bl', gBlock) && !canReactOn(false, 'me', 'fr', G));
+
 
 // ---------- rate limits ----------
 const now = 10_000_000;
@@ -175,11 +200,27 @@ const demo = new DemoBackend({ load: async () => saved, save: async (s) => { sav
   const f0 = await demo.feed();
   check('demo: feed hides friends-only post of a non-friend (Kai)', !f0.some((p) => p.authorId === 's8') && f0.some((p) => p.authorId === 's6'));
   check('demo: feed includes reshare with original attached', f0.some((p) => p.reshareOf === 'p5' && p.original?.id === 'p5'));
+  const p1before = await demo.post('p1');
+  const p1count = p1before!.likeCount;
+  check('demo: seed post has mixed reactions and a top-3 summary', p1count >= 3 && p1before!.reactionSummary.top.length >= 2 && p1before!.myReaction === null);
   await demo.setLike('p1', true);
   const p1 = await demo.post('p1');
-  check('demo: like increments count and marks liked', p1!.liked && p1!.likeCount === 15);
+  check('demo: like increments count and marks liked', p1!.liked && p1!.myReaction === 'like' && p1!.likeCount === p1count + 1);
+  await demo.setReaction('post', 'p1', 'love');
+  check('demo: change Like to Love keeps the count', (await demo.post('p1'))!.myReaction === 'love' && (await demo.post('p1'))!.likeCount === p1count + 1 && !(await demo.post('p1'))!.liked);
+  await demo.setReaction('post', 'p1', 'love');
+  check('demo: picking Love again removes it', (await demo.post('p1'))!.myReaction === null && (await demo.post('p1'))!.likeCount === p1count);
+  await demo.setLike('p1', true);
   await demo.setLike('p1', false);
-  check('demo: unlike decrements', (await demo.post('p1'))!.likeCount === 14);
+  check('demo: unlike decrements', (await demo.post('p1'))!.likeCount === p1count);
+  const c0 = await demo.comments('p1');
+  const c1 = c0.find((x) => x.id === 'c1')!;
+  const c1n = c1.reactionSummary.total;
+  await demo.setReaction('comment', 'c1', 'dislike');
+  const c1b = (await demo.comments('p1')).find((x) => x.id === 'c1')!;
+  check('demo: comment reaction toggles, counts and appears in the list', c1b.myReaction === 'dislike' && c1b.reactionSummary.total === c1n + 1 && (await demo.listReactions('comment', 'c1')).some((x) => x.user.id === DEMO_ME && x.type === 'dislike'));
+  await demo.setReaction('comment', 'c1', null);
+  check('demo: comment reaction removed', (await demo.comments('p1')).find((x) => x.id === 'c1')!.myReaction === null);
   await demo.setSave('p2', true);
   check('demo: saved tab', (await demo.saved()).map((p) => p.id).join() === 'p2');
   await demo.addComment('p1', 'Great run, sh!t!');
@@ -207,11 +248,18 @@ const demo = new DemoBackend({ load: async () => saved, save: async (s) => { sav
   check('demo: Kai (friends-only, not a friend) relation none → send request', (await demo.act({ type: 'send', to: 's8' })) === 'sent' && (await demo.relationTo('s8')) === 'outgoing');
   await demo.act({ type: 'cancel', to: 's8' });
   check('demo: cancel request', (await demo.relationTo('s8')) === 'none');
+  const p2beforeBlock = await demo.post('p2');
   await demo.act({ type: 'block', other: 's1' });
   const gv2 = await demo.graph();
   check('demo: block removes friend and hides everywhere', !gv2.friends.some((p) => p.id === 's1') && gv2.blocked[0].id === 's1'
     && !(await demo.feed()).some((p) => p.authorId === 's1') && (await demo.post('p1')) === null && !(await demo.stories()).some((s) => s.authorId === 's1')
     && (await demo.search('maya')).length === 0 && (await demo.profileByHandle('sample.maya')) === null && !(await demo.comments('p2')).some((x) => x.authorId === 's1'));
+  check('demo: blocked person\'s reactions hidden from counts and lists', (await demo.post('p2'))!.likeCount === p2beforeBlock!.likeCount - 1
+    && !(await demo.listReactions('post', 'p2')).some((x) => x.user.id === 's1'));
+  let reactErr = '';
+  try { await demo.setReaction('comment', 'c4', 'like'); } catch (e) { reactErr = (e as Error).message; }
+  // c4 is Maya (s1) on p2; p2 is still visible (Leo) but the comment author is blocked, so the comment is hidden and reacting should fail
+  check('demo: cannot react to a blocked person\'s comment', /can’t react|no longer available/.test(reactErr), reactErr);
   await demo.act({ type: 'unblock', other: 's1' });
   check('demo: unblock → visible again but not friends', (await demo.relationTo('s1')) === 'none' && (await demo.profileByHandle('sample.maya')) !== null);
   await demo.hidePost('p3');
@@ -230,14 +278,17 @@ const demo = new DemoBackend({ load: async () => saved, save: async (s) => { sav
   await demo.deletePost(pid);
   check('demo: delete own post removes it and its reshares’ comments', (await demo.post(pid)) === null);
   check('demo: persists via injected store', !!saved && saved.profiles[DEMO_ME].username === 'jose.cruz');
+  const v1 = { ...structuredClone(saved!), v: 1 as const, myLikes: ['p3'], reactions: [] as DemoState['reactions'] };
+  const v2 = migrateDemoState(v1);
+  check('demo: v1 likes migrate to Like reactions', v2.v === 2 && v2.reactions.some((r) => r.userId === DEMO_ME && r.targetType === 'post' && r.targetId === 'p3' && r.type === 'like') && !v2.myLikes);
 
   // ---------- schema + wiring ----------
   const sql = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
-  const tables = ['social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications'];
+  const tables = ['social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'reactions', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications'];
   check('schema: every social table created idempotently with RLS', tables.every((t) => sql.includes(`create table if not exists public.${t} (`) && sql.includes(`alter table public.${t}`) && new RegExp(`alter table public\\.${t}\\s+enable row level security`).test(sql)), tables.filter((t) => !new RegExp(`alter table public\\.${t}\\s+enable row level security`).test(sql)));
   check('schema: social-media bucket private, 8 MB, images only', /'social-media', 'social-media', false, 8388608, array\['image\/jpeg', 'image\/png', 'image\/webp'\]/.test(sql));
-  check('schema: RPCs + triggers present', ['social_create_profile', 'social_send_request', 'social_respond_request', 'social_block', 'social_unblock', 'social_unfriend', 'social_cancel_request', 'social_my_blocks', 'likes_after', 'comments_after', 'friendships_after', 'posts_before_insert', 'stories_before_insert', 'reports_before_insert'].every((f) => sql.includes(`function public.${f}(`)));
-  check('schema: under-13 + rate limits server-side', sql.includes("interval '13 years'") && sql.includes("20, 'friend requests per hour'") && sql.includes("30, 'posts per day'") && sql.includes("60, 'comments per hour'"));
+  check('schema: RPCs + triggers present', ['social_create_profile', 'social_send_request', 'social_respond_request', 'social_block', 'social_unblock', 'social_unfriend', 'social_cancel_request', 'social_my_blocks', 'likes_after', 'reactions_after', 'comments_after', 'friendships_after', 'posts_before_insert', 'stories_before_insert', 'reports_before_insert'].every((f) => sql.includes(`function public.${f}(`)));
+  check('schema: under-13 + rate limits server-side', sql.includes("interval '13 years'") && sql.includes("20, 'friend requests per hour'") && sql.includes("30, 'posts per day'") && sql.includes("60, 'comments per hour'") && sql.includes("120, 'reactions per hour'"));
   check('schema: anon gets nothing', /revoke all on public\.social_profiles[\s\S]*from anon;/.test(sql));
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   const pb = readFileSync(new URL('./postbuild.mjs', import.meta.url), 'utf8');

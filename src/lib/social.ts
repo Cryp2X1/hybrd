@@ -79,7 +79,83 @@ export interface Post {
 export interface Story { id: string; authorId: string; text?: string; bg?: string; media?: { url: string; w: number; h: number; path?: string }; audience: Audience; createdAt: number; expiresAt: number }
 export interface Comment { id: string; postId: string; authorId: string; text: string; createdAt: number }
 export type NotifType = 'friend_request' | 'friend_accept' | 'like' | 'comment' | 'reshare';
-export interface Notif { id: string; userId: string; actorId: string; type: NotifType; postId?: string; commentId?: string; createdAt: number; read: boolean }
+export interface Notif { id: string; userId: string; actorId: string; type: NotifType; postId?: string; commentId?: string; reaction?: ReactionType; createdAt: number; read: boolean }
+
+// ---------- reactions (posts + comments) ----------
+export const REACTION_TYPES = ['like', 'love', 'haha', 'wow', 'sad', 'angry', 'dislike'] as const;
+export type ReactionType = typeof REACTION_TYPES[number];
+export type ReactionTarget = 'post' | 'comment';
+export const isReactionType = (s: string): s is ReactionType => (REACTION_TYPES as readonly string[]).includes(s);
+/** Label, system emoji and accent colour for each reaction. No Care/hug; Dislike is the seventh. Not Facebook artwork. */
+export const REACTION_META: Record<ReactionType, { emoji: string; label: string; color: string }> = {
+  like: { emoji: '👍', label: 'Like', color: '#60a5fa' },
+  love: { emoji: '❤️', label: 'Love', color: '#ef4444' },
+  haha: { emoji: '😆', label: 'Haha', color: '#facc15' },
+  wow: { emoji: '😮', label: 'Wow', color: '#fbbf24' },
+  sad: { emoji: '😢', label: 'Sad', color: '#38bdf8' },
+  angry: { emoji: '😠', label: 'Angry', color: '#f97316' },
+  dislike: { emoji: '👎', label: 'Dislike', color: '#94a3b8' },
+};
+export interface Reaction {
+  id: string;
+  userId: string;
+  targetType: ReactionTarget;
+  targetId: string;
+  type: ReactionType;
+  createdAt: number;
+}
+export interface ReactionSummary {
+  total: number;
+  counts: Record<ReactionType, number>;
+  /** Up to three types, highest count first, then the standard order. */
+  top: ReactionType[];
+}
+export const emptyReactionCounts = (): Record<ReactionType, number> => ({ like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0, dislike: 0 });
+export function summarizeReactions(rs: Pick<Reaction, 'type'>[]): ReactionSummary {
+  const counts = emptyReactionCounts();
+  for (const r of rs) counts[r.type]++;
+  const top = REACTION_TYPES.filter((t) => counts[t] > 0).sort((a, b) => counts[b] - counts[a] || REACTION_TYPES.indexOf(a) - REACTION_TYPES.indexOf(b)).slice(0, 3);
+  return { total: rs.length, counts, top };
+}
+/** Same type again (or null) removes; a different type replaces. One reaction per user per target. */
+export function applyReaction(
+  list: Reaction[],
+  userId: string,
+  targetType: ReactionTarget,
+  targetId: string,
+  type: ReactionType | null,
+  now: number,
+  newId: () => string = () => 'rx' + now.toString(36),
+): { list: Reaction[]; prev: ReactionType | null; next: ReactionType | null } {
+  const idx = list.findIndex((r) => r.userId === userId && r.targetType === targetType && r.targetId === targetId);
+  const prev = idx >= 0 ? list[idx].type : null;
+  if (type === null || type === prev) {
+    return { list: idx >= 0 ? list.filter((_, i) => i !== idx) : list, prev, next: null };
+  }
+  if (idx >= 0) {
+    const next = list.slice();
+    next[idx] = { ...next[idx], type, createdAt: now };
+    return { list: next, prev, next: type };
+  }
+  return { list: [...list, { id: newId(), userId, targetType, targetId, type, createdAt: now }], prev, next: type };
+}
+/** Turn legacy per-post likes into Like reactions. Existing reactions for the same user+post are left alone. */
+export function migrateLikesToReactions(likes: { userId: string; postId: string; createdAt?: number; id?: string }[], existing: Reaction[] = []): Reaction[] {
+  const out = existing.slice();
+  const have = new Set(out.filter((r) => r.targetType === 'post').map((r) => `${r.userId}:${r.targetId}`));
+  for (const l of likes) {
+    const k = `${l.userId}:${l.postId}`;
+    if (have.has(k)) continue;
+    have.add(k);
+    out.push({ id: l.id || `mlike-${l.userId}-${l.postId}`, userId: l.userId, targetType: 'post', targetId: l.postId, type: 'like', createdAt: l.createdAt || 0 });
+  }
+  return out;
+}
+/** Hidden when the reactor is blocked either way (your own reaction always stays). */
+export const visibleReactions = <R extends Pick<Reaction, 'userId'>>(rs: R[], v: Pick<ViewCtx, 'me' | 'graph'>) => rs.filter((r) => r.userId === v.me || !isBlocked(v.graph, v.me, r.userId));
+export function canReactOn(visible: boolean, me: string, authorId: string, g: Graph): boolean {
+  return visible && !isBlocked(g, me, authorId);
+}
 export type ReportTarget = 'post' | 'comment' | 'user' | 'story';
 export type ReportReason = 'spam' | 'harassment' | 'hate' | 'nudity' | 'violence' | 'self_harm' | 'misinformation' | 'underage' | 'impersonation' | 'other';
 export const REPORT_REASONS: { v: ReportReason; label: string; sub: string }[] = [
@@ -281,6 +357,7 @@ export const LIMITS = {
   postDay: { max: 30, windowMs: 86_400_000, label: 'posts a day' },
   storyDay: { max: 30, windowMs: 86_400_000, label: 'stories a day' },
   commentHour: { max: 60, windowMs: 3600_000, label: 'comments an hour' },
+  reactHour: { max: 120, windowMs: 3600_000, label: 'reactions an hour' },
   reportDay: { max: 30, windowMs: 86_400_000, label: 'reports a day' },
 } satisfies Record<string, Limit>;
 /** Returns null if allowed, or a friendly message + ms until the next slot frees up. */
@@ -353,11 +430,16 @@ export const plural = (n: number, one: string, many = one + 's') => `${compact(n
 export const badgeCount = (incomingCount: number, notifs: Pick<Notif, 'read' | 'type'>[]) => incomingCount + notifs.filter((n) => !n.read && n.type !== 'friend_request').length;
 
 // ---------- notifications ----------
-export function notifText(type: NotifType): string {
+export function notifText(type: NotifType, ev?: { commentId?: string; reaction?: ReactionType }): string {
   switch (type) {
     case 'friend_request': return 'sent you a friend request';
     case 'friend_accept': return 'accepted your friend request';
-    case 'like': return 'liked your post';
+    case 'like': {
+      const onComment = !!ev?.commentId;
+      const named = ev?.reaction && ev.reaction !== 'like';
+      if (onComment) return named ? 'reacted to your comment' : 'liked your comment';
+      return named ? 'reacted to your post' : 'liked your post';
+    }
     case 'comment': return 'commented on your post';
     case 'reshare': return 'shared your post';
   }

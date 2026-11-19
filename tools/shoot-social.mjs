@@ -40,7 +40,7 @@ async function run(browser, kind) {
   const shot = async (name, full = false) => {
     await sleep(700);
     await page.evaluate(() => { let st = document.getElementById('shot-css'); if (!st) { st = document.createElement('style'); st.id = 'shot-css'; document.head.appendChild(st); } st.textContent = '.toast{display:none!important}'; });
-    const ov = await page.evaluate(() => { const W = document.documentElement.clientWidth; if (document.documentElement.scrollWidth <= W + 1) return ''; return [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > W + 1 && !e.closest('.s-tabs, .seg, .s-stories, .chips')).slice(0, 6).map((e) => e.tagName + '.' + [...e.classList].join('.') + ':' + Math.round(e.getBoundingClientRect().right)).join(' '); });
+    const ov = await page.evaluate(() => { const W = document.documentElement.clientWidth; if (document.documentElement.scrollWidth <= W + 1) return ''; return [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > W + 1 && !e.closest('.s-tabs, .seg, .s-stories, .chips, .react-bar, .react-tip')).slice(0, 6).map((e) => e.tagName + '.' + [...e.classList].join('.') + ':' + Math.round(e.getBoundingClientRect().right)).join(' '); });
     check(!ov, `${name}: no horizontal overflow ${ov}`);
     await page.screenshot({ path: `${OUT}${name}.png`, fullPage: full });
     console.log('shot', name);
@@ -125,13 +125,54 @@ async function run(browser, kind) {
   else await shot('desktop-social-feed');
 
   // like + save on the first post (p1 = Maya's long run)
-  const firstLikes = await page.$eval('[data-testid="like-btn"]', (e) => e.textContent.trim());
+  const firstLikes = await page.$eval('[data-testid="like-count"]', (e) => e.textContent.trim());
   await click('[data-testid="like-btn"]');
-  check((await page.$eval('[data-testid="like-btn"]', (e) => e.textContent.trim())) === String(+firstLikes + 1), 'Like increments the count');
+  check((await page.$eval('[data-testid="like-count"]', (e) => e.textContent.trim())) === String(+firstLikes + 1), 'Like increments the count');
   await click('[data-testid="save-btn"]');
   await page.evaluate(() => document.querySelectorAll('[data-testid="save-btn"]')[1]?.click()); await sleep(300);
 
   if (phone) {
+    // ----- comment + post reaction bar -----
+    await go('/social/post?id=p1', 1500);
+    await page.waitForSelector('[data-testid="comment-bubble"]', { timeout: 10000 });
+    await page.evaluate(() => document.querySelector('[data-testid="comment-bubble"]')?.scrollIntoView({ block: 'center' }));
+    await sleep(400);
+    const bubble = await page.$('[data-testid="comment-bubble"]');
+    const box = await bubble.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(20, box.height / 2));
+    await page.mouse.down();
+    await sleep(550);
+    await page.mouse.up();
+    await sleep(400);
+    check(!!(await page.$('[data-testid="reaction-bar"]')), 'Long-press on a comment opens the reaction bar');
+    check((await page.$$('[data-testid="reaction-bar"] [data-reaction]')).length === 7, 'Reaction bar has 7 emoji (no Care, includes Dislike)');
+    const kinds = await page.$$eval('[data-testid="reaction-bar"] [data-reaction]', (els) => els.map((e) => e.getAttribute('data-reaction')).join());
+    check(kinds === 'like,love,haha,wow,sad,angry,dislike', 'Reaction order is Like, Love, Haha, Wow, Sad, Angry, Dislike');
+    await shot('phone-reactions-comment-bar');
+    await click('[data-testid="reaction-love"]');
+    await sleep(500);
+    check(/Love/.test(await page.$eval('[data-testid="comment-react"]', (e) => e.textContent)), 'Chosen Love reaction is shown on the comment');
+    await shot('phone-reactions-chosen');
+    await click('[data-testid="comment"] [data-testid="reaction-summary"]');
+    await sleep(700);
+    check(!!(await page.$('[data-testid="reactors-sheet"]')), 'Tapping the count opens the reactor list');
+    await shot('phone-reactions-sheet');
+    await page.keyboard.press('Escape'); await sleep(400);
+    // post reaction bar
+    await page.evaluate(() => document.querySelector('[data-testid="like-btn"]')?.scrollIntoView({ block: 'center' }));
+    await sleep(500);
+    const likeBtn = await page.$('[data-testid="like-btn"]');
+    const lb = await likeBtn.boundingBox();
+    await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
+    await page.mouse.down();
+    await sleep(550);
+    await page.mouse.up();
+    await sleep(400);
+    check(!!(await page.$('[data-testid="reaction-bar"]')), 'Long-press on the post Like button opens the reaction bar');
+    await shot('phone-reactions-post-bar');
+    await page.keyboard.press('Escape'); await sleep(400);
+    await go('/social');
+
     // ----- stories viewer -----
     await click('[data-testid="story-bubble"]');
     await sleep(900);
