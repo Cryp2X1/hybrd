@@ -13,6 +13,7 @@ import { Icon } from '../components/Icon';
 import { isIOS, isStandalone, onWakeLock, unlockAudio, wakeLockSupported } from '../lib/cues';
 import type { BikeKind, GpsRoute, Workout } from '../lib/types';
 import { useToast } from '../lib/toast';
+import RecordMapScreen from './RecordMapScreen';
 const MapView = lazy(() => import('../components/MapView').then((m) => ({ default: m.MapView })));
 
 const LABEL: Record<RecType, string> = { run: 'Run', walk: 'Walk', cycle: 'Ride', 'indoor-cycle': 'Indoor Bike' };
@@ -129,6 +130,81 @@ export default function Record() {
 
   const typeOpts: { v: RecType; label: string }[] = [{ v: 'run', label: 'Run' }, { v: 'walk', label: 'Walk' }, { v: 'cycle', label: 'Ride' }, { v: 'indoor-cycle', label: 'Indoor' }];
 
+  const finishSheet = (
+      <Sheet open={finishing} onClose={() => setFinishing(false)} title="Finish activity">
+      <div className="grid3" style={{ marginBottom: 12 }}>
+        <div className="stat accent"><div className="stat-v">{fmtTime(el)}</div><div className="stat-l">time</div></div>
+        <div className="stat"><div className="stat-v">{s.indoor ? (indoorDist || '—') : toDist(s.distanceM, u).toFixed(2)}</div><div className="stat-l">{distUnit(u)}</div></div>
+        <div className="stat"><div className="stat-v">{indoorBike ? (avgSpeed || '—') : (avgPace ? fmtTime(avgPace) : '—')}</div><div className="stat-l">{indoorBike ? `avg ${speedUnit(u)}` : `avg /${distUnit(u)}`}</div></div>
+      </div>
+      {onFoot && (steps > 0 || s.indoor) && <p className="muted small" style={{ marginTop: 0 }}>{sensor ? `${s.steps.toLocaleString()} steps counted by the motion sensor` : s.indoor ? 'Steps will be estimated from the distance you enter' : `≈ ${steps.toLocaleString()} steps (est. from distance ÷ ${Math.round(stride * 100)} cm step)`}{avgCad ? ` · ${avgCad} spm avg` : ''}. They’re added to today’s step total.</p>}
+      <label className="field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+      {s.indoor && <label className="field"><span>Distance ({distUnit(u)})</span><input inputMode="decimal" value={indoorDist} onChange={(e) => indoorBike ? fillSpeedFromDist(e.target.value) : setIndoorDist(e.target.value)} placeholder={indoorBike ? 'From the bike console (optional)' : 'From the treadmill display'} /></label>}
+      {indoorBike && <>
+        <label className="field"><span>Average speed ({speedUnit(u)})</span><input inputMode="decimal" value={avgSpeed} onChange={(e) => fillDistFromSpeed(e.target.value)} placeholder="Optional — fills distance from time" /></label>
+        <label className="field"><span>Average cadence (rpm)</span><input inputMode="numeric" value={cadenceRpm} onChange={(e) => setCadenceRpm(e.target.value)} placeholder="Optional" /></label>
+        <label className="field"><span>Resistance level</span><input inputMode="decimal" value={resistance} onChange={(e) => setResistance(e.target.value)} placeholder="As shown on the bike (optional)" /></label>
+        <div className="row gap8" style={{ alignItems: 'stretch' }}>
+          <label className="field" style={{ flex: 1 }}><span>Avg watts</span><input inputMode="numeric" value={avgW} onChange={(e) => setAvgW(e.target.value)} placeholder="Optional" /></label>
+          <label className="field" style={{ flex: 1 }}><span>Max watts</span><input inputMode="numeric" value={maxW} onChange={(e) => setMaxW(e.target.value)} placeholder="Optional" /></label>
+        </div>
+        <p className="muted small">If you enter average watts, calories use mechanical work ÷ 24% efficiency (an estimate). Otherwise heart rate if a strap was connected, otherwise a MET estimate from the effort you log below.</p>
+      </>}
+      <div className="field"><span>Effort (RPE)</span><div className="rpe">{Array.from({ length: 10 }, (_, k) => k + 1).map((n) => <button key={n} className={rpe === n ? 'on' : ''} onClick={() => setRpe(n)}>{n}</button>)}</div></div>
+      {s.gaps.length > 0 && <p className="muted small">Tracking paused {s.gaps.length}× for {fmtTime(s.gaps.reduce((a, g) => a + g.sec, 0))} total (screen off / no signal). Those gaps aren’t counted.</p>}
+      <div className="row wrap"><button className="btn y" onClick={save}>Save activity</button><button className="btn" onClick={() => { setFinishing(false); resume(); }}>Resume</button><button className="btn danger" onClick={() => { if (confirm('Discard this activity?')) { r.discard(); setFinishing(false); } }}>Discard</button></div>
+    </Sheet>
+  );
+
+  // ---- Map-first screen for outdoor GPS run / walk / ride (indoor + treadmill keep the classic screen below)
+  if (!s.indoor && s.type !== 'indoor-cycle') {
+    const mapMore = (
+      <div data-testid="rm-more">
+        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}><b>Distance units</b><DistToggle /></div>
+        {s.status === 'idle' && <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ autoPause: !s.autoPause })}><span><b>Auto-pause</b><div className="muted small">Pauses when you stop for ~10 s (lights, traffic)</div></span><span className={`switch ${s.autoPause ? 'on' : ''}`} /></button>}
+        {s.status === 'idle' && <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ indoor: true })}><span><b>Indoor / treadmill</b><div className="muted small">Timer only, enter the distance at the end</div></span><span className="switch" /></button>}
+        <div className="card" style={{ margin: '10px 0' }}><div className="card-head"><h3>Heart rate</h3><span className="muted small">Optional · Bluetooth</span></div><HrPanel /></div>
+        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}><span><b>Music</b><div className="muted small">Spotify / Apple Music shortcuts</div></span><MusicButton /></div>
+        {wakeLockSupported() && <p className="muted small">{wake ? 'Screen stays on while you record.' : 'HYBRD keeps the screen on while you record.'}</p>}
+        {isIOS() && <Banner tone="warn"><b>iPhone: keep the screen on.</b> iOS stops web GPS when the screen locks or you switch apps. {isStandalone() ? 'HYBRD keeps it awake in the Home Screen app (iOS 18.4+).' : 'For this to work reliably, add HYBRD to your Home Screen (iOS 18.4+).'} Use an armband or bike mount.</Banner>}
+        {onFoot && <p className="muted small"><b>Steps &amp; cadence:</b> {!motionSupported() ? 'this browser has no motion sensor, so steps are estimated from distance.' : motionNeedsPermission() ? 'counted with the motion sensor while the screen is on — tap Allow motion access if your phone asks after Start.' : 'counted with the motion sensor while the screen is on; estimated from distance if no sensor is found.'}</p>}
+        <Banner>We use GPS only while this screen is open and while you record. Routes stay on this device unless you sign in to sync.</Banner>
+        <Link className="btn sm block" to="/routes" style={{ marginTop: 8 }}><Icon name="map" size={16} />Route history</Link>
+      </div>
+    );
+    const mapExtra = (
+      <>
+        <HrLive />
+        <div className="grid3">
+          <div className="stat"><div className="stat-v">{Math.round(toElev(s.elevGainM, u))}<small> {elevUnit(u)}</small></div><div className="stat-l">elev. gain</div></div>
+          <div className="stat"><div className="stat-v">{s.status === 'idle' || s.lastAcc == null ? '—' : `±${Math.round(toElev(s.lastAcc, u))}`}</div><div className="stat-l">GPS {elevUnit(u)}</div></div>
+          <div className="stat"><div className="stat-v">{wakeLockSupported() ? (wake ? 'On' : 'Auto') : '—'}</div><div className="stat-l">screen</div></div>
+        </div>
+        {onFoot && <div className="grid3" data-testid="steps">
+          <div className="stat accent"><div className="stat-v">{steps.toLocaleString()}{!sensor && <small> est.</small>}</div><div className="stat-l">steps{sensor ? ' · sensor' : ''}</div></div>
+          <div className="stat"><div className="stat-v">{cadNow || '—'}{!sensor && cadNow ? <small> est.</small> : null}</div><div className="stat-l">cadence spm</div></div>
+          <div className="stat"><div className="stat-v">{avgCad || '—'}</div><div className="stat-l">avg spm</div></div>
+        </div>}
+        {onFoot && motionNote && <p className="muted small">{motionNote}</p>}
+        {splits.length > 0 && <div className="lap-list" data-testid="live-splits">{splits.slice(-5).reverse().map((sp2) => <div key={sp2.label}><span>{distUnit(u)} {sp2.label}</span><span>{fmtTime(sp2.sec)}</span></div>)}</div>}
+      </>
+    );
+    const mapBanners = (
+      <>
+        {s.restored && <div className="rm-banner warn">Session restored after the app closed. GPS was off in between — tap Resume to continue or hold Finish.</div>}
+        {s.error && <div className="rm-banner warn">{s.error}</div>}
+        {stale && <div className="rm-banner warn">No GPS fix for {Math.round((Date.now() - s.lastFixAt) / 1000)} s — distance resumes when the signal returns.</div>}
+        {isIOS() && !wake && s.status === 'recording' && <div className="rm-banner warn">Keep this screen on — iPhone can’t track GPS with the screen locked.</div>}
+      </>
+    );
+    return (
+      <>
+        <RecordMapScreen label={recLabel(s.type, s.bikeKind)} onStart={begin} onResume={resume} onAskFinish={askFinish} expandedExtra={mapExtra} more={mapMore} banners={mapBanners} liveKcal={liveKcal.kcal} />
+        {finishSheet}
+      </>
+    );
+  }
+
   if (s.status === 'idle') return (
     <Page title="Record" kicker={indoorBike ? 'Indoor bike · no GPS' : 'GPS · Run · Walk · Ride'} actions={<><MusicButton /><Link className="btn sm" to="/routes"><Icon name="map" size={18} />Routes</Link></>}>
       <div className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
@@ -228,29 +304,7 @@ export default function Record() {
         <HoldButton onHold={askFinish} label="Hold to finish" />
       </div>
 
-      <Sheet open={finishing} onClose={() => setFinishing(false)} title="Finish activity">
-        <div className="grid3" style={{ marginBottom: 12 }}>
-          <div className="stat accent"><div className="stat-v">{fmtTime(el)}</div><div className="stat-l">time</div></div>
-          <div className="stat"><div className="stat-v">{s.indoor ? (indoorDist || '—') : toDist(s.distanceM, u).toFixed(2)}</div><div className="stat-l">{distUnit(u)}</div></div>
-          <div className="stat"><div className="stat-v">{indoorBike ? (avgSpeed || '—') : (avgPace ? fmtTime(avgPace) : '—')}</div><div className="stat-l">{indoorBike ? `avg ${speedUnit(u)}` : `avg /${distUnit(u)}`}</div></div>
-        </div>
-        {onFoot && (steps > 0 || s.indoor) && <p className="muted small" style={{ marginTop: 0 }}>{sensor ? `${s.steps.toLocaleString()} steps counted by the motion sensor` : s.indoor ? 'Steps will be estimated from the distance you enter' : `≈ ${steps.toLocaleString()} steps (est. from distance ÷ ${Math.round(stride * 100)} cm step)`}{avgCad ? ` · ${avgCad} spm avg` : ''}. They’re added to today’s step total.</p>}
-        <label className="field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        {s.indoor && <label className="field"><span>Distance ({distUnit(u)})</span><input inputMode="decimal" value={indoorDist} onChange={(e) => indoorBike ? fillSpeedFromDist(e.target.value) : setIndoorDist(e.target.value)} placeholder={indoorBike ? 'From the bike console (optional)' : 'From the treadmill display'} /></label>}
-        {indoorBike && <>
-          <label className="field"><span>Average speed ({speedUnit(u)})</span><input inputMode="decimal" value={avgSpeed} onChange={(e) => fillDistFromSpeed(e.target.value)} placeholder="Optional — fills distance from time" /></label>
-          <label className="field"><span>Average cadence (rpm)</span><input inputMode="numeric" value={cadenceRpm} onChange={(e) => setCadenceRpm(e.target.value)} placeholder="Optional" /></label>
-          <label className="field"><span>Resistance level</span><input inputMode="decimal" value={resistance} onChange={(e) => setResistance(e.target.value)} placeholder="As shown on the bike (optional)" /></label>
-          <div className="row gap8" style={{ alignItems: 'stretch' }}>
-            <label className="field" style={{ flex: 1 }}><span>Avg watts</span><input inputMode="numeric" value={avgW} onChange={(e) => setAvgW(e.target.value)} placeholder="Optional" /></label>
-            <label className="field" style={{ flex: 1 }}><span>Max watts</span><input inputMode="numeric" value={maxW} onChange={(e) => setMaxW(e.target.value)} placeholder="Optional" /></label>
-          </div>
-          <p className="muted small">If you enter average watts, calories use mechanical work ÷ 24% efficiency (an estimate). Otherwise heart rate if a strap was connected, otherwise a MET estimate from the effort you log below.</p>
-        </>}
-        <div className="field"><span>Effort (RPE)</span><div className="rpe">{Array.from({ length: 10 }, (_, k) => k + 1).map((n) => <button key={n} className={rpe === n ? 'on' : ''} onClick={() => setRpe(n)}>{n}</button>)}</div></div>
-        {s.gaps.length > 0 && <p className="muted small">Tracking paused {s.gaps.length}× for {fmtTime(s.gaps.reduce((a, g) => a + g.sec, 0))} total (screen off / no signal). Those gaps aren’t counted.</p>}
-        <div className="row wrap"><button className="btn y" onClick={save}>Save activity</button><button className="btn" onClick={() => { setFinishing(false); resume(); }}>Resume</button><button className="btn danger" onClick={() => { if (confirm('Discard this activity?')) { r.discard(); setFinishing(false); } }}>Discard</button></div>
-      </Sheet>
+      {finishSheet}
     </div>
   );
 }

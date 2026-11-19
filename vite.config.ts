@@ -43,6 +43,26 @@ export default defineConfig({
             options: { cacheName: 'hybrd-config', networkTimeoutSeconds: 3 },
           },
           {
+            // Record map: OpenFreeMap style JSON, vector tiles, fonts and sprites (keyless, OSM data)
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'ofm-tiles',
+              expiration: { maxEntries: 800, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Record map satellite: EOX Sentinel-2 cloudless 2016 + USGS imagery
+            urlPattern: /^https:\/\/(tiles\.maps\.eox\.at|basemap\.nationalmap\.gov)\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'sat-tiles',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/,
             handler: 'CacheFirst',
             options: {
@@ -55,5 +75,13 @@ export default defineConfig({
       },
     }),
   ],
-  build: { target: 'es2020', chunkSizeWarningLimit: 900 },
+  build: {
+    target: 'es2020',
+    // MapLibre (~1 MB min, ~280 KB gzip) is its own lazy chunk, loaded only by the Record map
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      // The MapLibre worker ships as .mjs; give it a .js name so every static host serves it as JavaScript.
+      output: { assetFileNames: (a) => (/\.mjs$/.test(a.names?.[0] || a.name || '') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]') },
+    },
+  },
 });
