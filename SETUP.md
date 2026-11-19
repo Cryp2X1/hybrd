@@ -295,6 +295,39 @@ update public.reports set status = 'actioned', reviewed_at = now(), moderator_no
 **11.4 Test it**
 Create two accounts in two browsers (one private window). Set up a social profile in each with an adult date of birth. In browser A, open Friends › Find and search B's handle, then **Add friend**. Accept in B, where the Alerts badge appears. Post a photo in A as **Friends**, then like it and comment on it in B. Report the comment in A, and confirm it appears in `public.reports`. Finally, block B from A, and confirm the two can no longer find each other.
 
+## 12. Messages (DMs + group chats) — created by `schema.sql`
+
+Messages are private to the people in each chat and protected by Row Level Security. **They are not end-to-end encrypted**: the database owner (you, in the Supabase dashboard) can read them, and reported messages are snapshotted for review. Say this plainly in your privacy policy.
+
+**12.1 What `schema.sql` creates** (safe to re-run)
+- Tables: `dm_settings`, `conversations`, `conversation_members`, `messages`, `message_reactions`, `message_hidden`, `message_reports` and `push_subscriptions`. All have RLS on.
+- Functions: `dm_open_direct`, `dm_create_group`, `dm_add_members`, `dm_remove_member`, `dm_set_admin`, `dm_rename_group`, `dm_leave`, `dm_accept`, `dm_decline`, `dm_mark_read`, `dm_mark_delivered`, `dm_heartbeat`, `dm_can_message`, `dm_members`, `dm_inbox` and `dm_presence`. Triggers enforce blocks, the 3-message request limit, under-18 rules, rate limits, the 15-minute edit window and unsend.
+- Storage bucket **`message-media`**: private, 50 MB per file, images (JPEG/PNG/WebP) and video (MP4/MOV/WebM). Files live at `<conversation id>/<sender id>/…`. Only active members can upload into a chat's folder, and only people who can read the message can open the file.
+
+**12.2 Turn on Realtime** (new messages, typing, "seen")
+1. **Database → Publications → `supabase_realtime`**: check that `messages`, `message_reactions` and `conversation_members` are listed. `schema.sql` adds them when the publication exists; if not, toggle them on there.
+2. **Realtime → Settings**: turn **off** "Allow public access", so private channels are required. Typing and "seen" pings use Broadcast on private channels named `dm:<conversation id>`, and `schema.sql` adds policies on `realtime.messages` so only active members can join. If you skip this step typing still works, but anyone signed in who guesses a chat id could listen to typing pings; message content never goes over Broadcast.
+3. Without Realtime the app still works: it refreshes every 45 s and when you open a chat.
+
+**12.3 Moderation** (SQL editor)
+```sql
+-- open message reports, newest first (snapshot = the reported message, or the last 20 messages of the chat)
+select id, created_at, reason, details, target_type, target_user_id, snapshot from public.message_reports where status = 'open' order by created_at desc;
+-- mark handled
+update public.message_reports set status = 'actioned', reviewed_at = now(), moderator_note = 'warned' where id = '<report id>';
+-- remove a message for everyone (keeps a placeholder)
+update public.messages set deleted_at = now(), body = '', media = null where id = '<message id>';
+-- ban: stops them posting, commenting and sending messages
+insert into public.social_bans (user_id, reason) values ('<user id>', 'harassment in DMs');
+```
+Media files of removed messages stay in Storage → `message-media` → `<conversation id>/<sender id>/` until you delete them. Treat self-harm, threats and anything involving a minor as urgent; where the law requires it, report to the authorities or NCMEC.
+
+**12.4 Push notifications (later)**
+`push_subscriptions` is ready (own rows only). Add Web Push (installed PWA, iOS 16.4+) or APNs/FCM, and send from an Edge Function on a `messages` insert webhook. Never include the text of message **requests** in a notification.
+
+**12.5 Test it**
+Use two accounts in two browsers. A opens B's profile → **Message** and sends "hi". B sees it under Messages › **Requests**, and A sees only "Sent". Try a 4th message from A: it's refused. B taps **Accept**, and A now sees "Seen" when B reads. Send a photo, react with a long-press, reply, edit within 15 minutes, then unsend. In B, go to Messages › Privacy › **Friends only**, then try to start a new chat from a third account: it's refused. Report a message and confirm it appears in `public.message_reports`.
+
 ## Local development
 ```bash
 npm install

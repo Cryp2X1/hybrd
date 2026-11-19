@@ -198,6 +198,11 @@ export class DemoBackend implements SocialBackend {
   }
   private visibleProfile(s: DemoState, id: string) { return !!s.profiles[id] && !isBlocked(s.graph, DEMO_ME, id); }
 
+  /** For the Messages demo: the current friend graph and display-ready profiles (read-only copies). */
+  async peek(): Promise<{ graph: Graph; profiles: Record<string, PublicProfile> }> {
+    const s = await this.st();
+    return { graph: JSON.parse(JSON.stringify(s.graph)), profiles: Object.fromEntries(Object.keys(s.profiles).map((id) => [id, this.prof(s, id)])) };
+  }
   async me() { const s = await this.st(); return s.profiles[DEMO_ME] ? this.prof(s, DEMO_ME) : null; }
   async saveProfile(p: ProfileInput) {
     const s = await this.st();

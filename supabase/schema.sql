@@ -1049,3 +1049,754 @@ create policy "social_media_delete_own" on storage.objects for delete to authent
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in
   ('social_profiles', 'social_private', 'social_bans', 'friend_requests', 'friendships', 'blocks', 'posts', 'post_media', 'stories', 'likes', 'reactions', 'comments', 'saves', 'hidden_posts', 'reports', 'notifications');
 select id, public, file_size_limit from storage.buckets where id = 'social-media';
+
+-- =====================================================================================================================
+-- MESSAGES: private 1:1 chats, message requests and group chats (SETUP.md §12, APP-BUILDER-NOTES.md › "Messages").
+-- Safe to re-run. Messages are stored in this database and protected by Row Level Security: only members of a
+-- conversation can read it. This is NOT end-to-end encryption (the project owner / service role can read messages).
+-- =====================================================================================================================
+
+-- ---------- tables ----------
+create table if not exists public.dm_settings (
+  user_id          uuid primary key default auth.uid() references public.social_profiles (id) on delete cascade,
+  who_can_message  text not null default 'everyone',     -- everyone | fof (friends of friends) | friends | none
+  read_receipts    boolean not null default true,        -- reciprocal: off = others don't see yours, you don't see theirs
+  show_activity    boolean not null default true,        -- "Active now" / typing; reciprocal like read receipts
+  last_active_at   timestamptz,
+  updated_at       timestamptz not null default now()
+);
+alter table public.dm_settings drop constraint if exists dm_settings_who_chk;
+alter table public.dm_settings add constraint dm_settings_who_chk check (who_can_message in ('everyone', 'fof', 'friends', 'none'));
+
+create table if not exists public.conversations (
+  id               uuid primary key default gen_random_uuid(),
+  kind             text not null default 'direct',        -- direct | group
+  title            text,                                  -- groups only
+  created_by       uuid references public.social_profiles (id) on delete set null,
+  direct_key       text,                                  -- "<smaller uuid>:<larger uuid>" for 1:1 chats (one chat per pair)
+  created_at       timestamptz not null default now(),
+  last_message_at  timestamptz
+);
+alter table public.conversations drop constraint if exists conversations_kind_chk;
+alter table public.conversations add constraint conversations_kind_chk check (kind in ('direct', 'group'));
+alter table public.conversations drop constraint if exists conversations_title_len;
+alter table public.conversations add constraint conversations_title_len check (title is null or char_length(title) between 1 and 50);
+alter table public.conversations drop constraint if exists conversations_direct_key_chk;
+alter table public.conversations add constraint conversations_direct_key_chk check ((kind = 'direct') = (direct_key is not null));
+create unique index if not exists conversations_direct_key_idx on public.conversations (direct_key) where direct_key is not null;
+
+create table if not exists public.conversation_members (
+  conversation_id    uuid not null references public.conversations (id) on delete cascade,
+  user_id            uuid not null references public.social_profiles (id) on delete cascade,
+  role               text not null default 'member',      -- admin | member (groups)
+  state              text not null default 'active',      -- active | request (message request, not accepted yet) | declined | left | removed
+  added_by           uuid references public.social_profiles (id) on delete set null,
+  joined_at          timestamptz not null default now(),
+  last_read_at       timestamptz,                         -- private; others only see it through dm_members().seen_at
+  last_delivered_at  timestamptz,
+  muted_until        timestamptz,
+  archived           boolean not null default false,
+  pinned_at          timestamptz,
+  cleared_at         timestamptz,                         -- "delete chat" for me, and the join time of people added to a group later
+  primary key (conversation_id, user_id)
+);
+alter table public.conversation_members drop constraint if exists conversation_members_role_chk;
+alter table public.conversation_members add constraint conversation_members_role_chk check (role in ('admin', 'member'));
+alter table public.conversation_members drop constraint if exists conversation_members_state_chk;
+alter table public.conversation_members add constraint conversation_members_state_chk check (state in ('active', 'request', 'declined', 'left', 'removed'));
+create index if not exists conversation_members_user_idx on public.conversation_members (user_id, state);
+
+create table if not exists public.messages (
+  id               uuid primary key default gen_random_uuid(),   -- the app sends its own UUID so offline retries can't duplicate
+  conversation_id  uuid not null references public.conversations (id) on delete cascade,
+  sender_id        uuid default auth.uid() references public.social_profiles (id) on delete set null,
+  kind             text not null default 'text',          -- text | image | video | workout | system
+  body             text not null default '',
+  media            jsonb,                                 -- {path, w, h, mime, size, duration, poster_path} in the private message-media bucket
+  workout          jsonb,                                 -- shared HYBRD workout / activity card
+  meta             jsonb,                                 -- system events: {type, actor, targets, title}
+  reply_to         uuid references public.messages (id) on delete set null,
+  forwarded        boolean not null default false,
+  created_at       timestamptz not null default now(),
+  edited_at        timestamptz,
+  deleted_at       timestamptz                            -- unsent for everyone (body + media wiped, placeholder stays)
+);
+alter table public.messages drop constraint if exists messages_kind_chk;
+alter table public.messages add constraint messages_kind_chk check (kind in ('text', 'image', 'video', 'workout', 'system'));
+alter table public.messages drop constraint if exists messages_body_len;
+alter table public.messages add constraint messages_body_len check (char_length(body) <= 2000);
+create index if not exists messages_conv_created_idx on public.messages (conversation_id, created_at desc);
+create index if not exists messages_sender_created_idx on public.messages (sender_id, created_at desc);
+
+create table if not exists public.message_reactions (
+  message_id  uuid not null references public.messages (id) on delete cascade,
+  user_id     uuid not null default auth.uid() references public.social_profiles (id) on delete cascade,
+  kind        text not null,
+  created_at  timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+alter table public.message_reactions drop constraint if exists message_reactions_kind_chk;
+alter table public.message_reactions add constraint message_reactions_kind_chk check (kind in ('like', 'love', 'haha', 'wow', 'sad', 'angry', 'dislike'));
+
+-- "Delete for me": hides one message for one person.
+create table if not exists public.message_hidden (
+  message_id  uuid not null references public.messages (id) on delete cascade,
+  user_id     uuid not null default auth.uid() references public.social_profiles (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+
+-- Moderation records. No foreign keys to the message / conversation so a report survives deletion; snapshot keeps the text.
+create table if not exists public.message_reports (
+  id               uuid primary key default gen_random_uuid(),
+  reporter_id      uuid default auth.uid() references auth.users (id) on delete set null,
+  target_type      text not null,                         -- message | conversation
+  conversation_id  uuid not null,
+  message_id       uuid,
+  target_user_id   uuid references auth.users (id) on delete set null,
+  reason           text not null,
+  details          text,
+  snapshot         jsonb,
+  status           text not null default 'open',
+  created_at       timestamptz not null default now(),
+  reviewed_at      timestamptz,
+  moderator_note   text
+);
+alter table public.message_reports drop constraint if exists message_reports_target_chk;
+alter table public.message_reports add constraint message_reports_target_chk check (target_type in ('message', 'conversation'));
+alter table public.message_reports drop constraint if exists message_reports_reason_chk;
+alter table public.message_reports add constraint message_reports_reason_chk check (reason in ('spam', 'harassment', 'hate', 'nudity', 'violence', 'self_harm', 'misinformation', 'underage', 'impersonation', 'other'));
+alter table public.message_reports drop constraint if exists message_reports_status_chk;
+alter table public.message_reports add constraint message_reports_status_chk check (status in ('open', 'reviewing', 'actioned', 'dismissed'));
+alter table public.message_reports drop constraint if exists message_reports_details_len;
+alter table public.message_reports add constraint message_reports_details_len check (details is null or char_length(details) <= 500);
+create index if not exists message_reports_status_idx on public.message_reports (status, created_at);
+
+-- Ready for push notifications later (Web Push / APNs / FCM tokens). Nothing writes here yet; owner-only.
+create table if not exists public.push_subscriptions (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  platform      text not null,
+  token         text not null,
+  created_at    timestamptz not null default now(),
+  last_seen_at  timestamptz,
+  unique (user_id, token)
+);
+alter table public.push_subscriptions drop constraint if exists push_subscriptions_platform_chk;
+alter table public.push_subscriptions add constraint push_subscriptions_platform_chk check (platform in ('web', 'ios', 'android'));
+
+-- ---------- helpers (SECURITY DEFINER: read past RLS, return small answers only) ----------
+create or replace function public.dm_member_state(c uuid, u uuid) returns text
+language sql stable security definer set search_path = '' as $$
+  select m.state from public.conversation_members m where m.conversation_id = c and m.user_id = u
+$$;
+create or replace function public.dm_is_participant(c uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce(public.dm_member_state(c, auth.uid()) in ('active', 'request'), false)
+$$;
+create or replace function public.dm_is_active(c uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce(public.dm_member_state(c, auth.uid()) = 'active', false)
+$$;
+-- Can the signed-in user read a message sent at `at` in conversation `c`? (members only; not before they joined / cleared the chat)
+create or replace function public.dm_can_read(c uuid, at timestamptz) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.conversation_members m where m.conversation_id = c and m.user_id = auth.uid()
+                 and m.state in ('active', 'request') and (m.cleared_at is null or at > m.cleared_at))
+$$;
+create or replace function public.dm_can_read_message(mid uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select public.dm_can_read(x.conversation_id, x.created_at) from public.messages x where x.id = mid), false)
+$$;
+create or replace function public.dm_who(u uuid) returns text
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select s.who_can_message from public.dm_settings s where s.user_id = u),
+                  case when coalesce((select p.is_minor from public.social_profiles p where p.id = u), false) then 'friends' else 'everyone' end)
+$$;
+create or replace function public.dm_receipts(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select s.read_receipts from public.dm_settings s where s.user_id = u), true)
+$$;
+create or replace function public.dm_activity(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select s.show_activity from public.dm_settings s where s.user_id = u), true)
+$$;
+create or replace function public.dm_is_minor(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select p.is_minor from public.social_profiles p where p.id = u), false)
+$$;
+create or replace function public.dm_is_fof(a uuid, b uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.friendships f1 join public.friendships f2
+      on (case when f1.user_a = a then f1.user_b else f1.user_a end) = (case when f2.user_a = b then f2.user_b else f2.user_a end)
+    where (f1.user_a = a or f1.user_b = a) and (f2.user_a = b or f2.user_b = b))
+$$;
+-- May `me` start a 1:1 chat with `other`? 'ok' (straight to Chats), 'request' (lands in their Requests) or an error code.
+-- Mirrors eligibility() in src/lib/messages.ts. Blocks are never revealed: both directions return dm_unavailable.
+-- Under-18 safety: a minor and an adult can only chat while they are friends (checked again on every message).
+create or replace function public.dm_minor_block(a uuid, b uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select public.dm_is_minor(a) <> public.dm_is_minor(b) and not public.social_are_friends(a, b)
+$$;
+create or replace function public.dm_check(me uuid, other uuid) returns text
+language plpgsql stable security definer set search_path = '' as $$
+declare fr boolean; who text;
+begin
+  if me = other then return 'dm_self'; end if;
+  if not public.social_is_member(other) or public.social_is_blocked(me, other) then return 'dm_unavailable'; end if;
+  fr := public.social_are_friends(me, other);
+  if not fr and public.dm_is_minor(me) <> public.dm_is_minor(other) then return 'dm_minor'; end if;
+  who := public.dm_who(other);
+  if who = 'none' then return 'dm_no_one'; end if;
+  if fr then return 'ok'; end if;
+  if who = 'friends' then return 'dm_friends_only'; end if;
+  if who = 'fof' and not public.dm_is_fof(me, other) then return 'dm_fof_only'; end if;
+  return 'request';
+end $$;
+-- Group rule: you add your own friends; nobody blocked (either way) with a member; under-18s and adults only when friends.
+create or replace function public.dm_check_add(adder uuid, u uuid, members uuid[]) returns text
+language plpgsql stable security definer set search_path = '' as $$
+declare m uuid;
+begin
+  if u = adder or u = any(members) then return 'dm_already_member'; end if;
+  if not public.social_is_member(u) or not public.social_are_friends(adder, u) then return 'dm_friends_only'; end if;
+  if public.dm_who(u) = 'none' then return 'dm_no_one'; end if;
+  foreach m in array members loop
+    if public.social_is_blocked(m, u) then return 'dm_unavailable'; end if;
+    if public.dm_is_minor(m) <> public.dm_is_minor(u) and not public.social_are_friends(m, u) then return 'dm_minor'; end if;
+  end loop;
+  return null;
+end $$;
+create or replace function public.dm_system_message(c uuid, ev jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform set_config('hybrd.dm_system', '1', true);
+  insert into public.messages (conversation_id, sender_id, kind, body, meta) values (c, auth.uid(), 'system', '', ev);
+  perform set_config('hybrd.dm_system', '', true);
+end $$;
+create or replace function public.dm_uuid_or_null(s text) returns uuid
+language plpgsql immutable as $$
+begin return s::uuid; exception when others then return null; end $$;
+-- Storage: who may read an object in the message-media bucket (<conversation id>/<sender id>/<file>)?
+create or replace function public.dm_can_read_object(p_name text) returns boolean
+language plpgsql stable security definer set search_path = '' as $$
+declare parts text[] := string_to_array(p_name, '/'); c uuid; owner uuid;
+begin
+  if auth.uid() is null or parts is null or array_length(parts, 1) < 3 then return false; end if;
+  begin c := parts[1]::uuid; owner := parts[2]::uuid; exception when others then return false; end;
+  if owner = auth.uid() and public.dm_is_participant(c) then return true; end if;
+  return exists (select 1 from public.messages x where x.conversation_id = c and x.sender_id = owner and x.deleted_at is null
+                 and (x.media->>'path' = p_name or x.media->>'poster_path' = p_name) and public.dm_can_read(c, x.created_at));
+end $$;
+create or replace function public.dm_topic_ok(topic text) returns boolean
+language plpgsql stable security definer set search_path = '' as $$
+declare c uuid;
+begin
+  if topic is null or topic not like 'dm:%' then return false; end if;
+  begin c := substr(topic, 4)::uuid; exception when others then return false; end;
+  return public.dm_is_active(c);
+end $$;
+
+-- ---------- triggers ----------
+create or replace function public.messages_before_insert() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare k text; other uuid; ostate text; n bigint;
+begin
+  new.sender_id := auth.uid(); new.created_at := now(); new.edited_at := null; new.deleted_at := null;
+  if new.kind = 'system' then
+    if coalesce(current_setting('hybrd.dm_system', true), '') <> '1' then raise exception 'dm_system: not allowed' using errcode = 'P0001'; end if;
+    return new;
+  end if;
+  if new.sender_id is null or public.dm_member_state(new.conversation_id, new.sender_id) is distinct from 'active' then
+    raise exception 'dm_not_member: you are not in this chat' using errcode = 'P0001';
+  end if;
+  if exists (select 1 from public.social_bans b where b.user_id = new.sender_id) then raise exception 'banned' using errcode = 'P0001'; end if;
+  select c.kind into k from public.conversations c where c.id = new.conversation_id;
+  if k = 'direct' then
+    select m.user_id, m.state into other, ostate from public.conversation_members m where m.conversation_id = new.conversation_id and m.user_id <> new.sender_id limit 1;
+    if other is not null and public.social_is_blocked(new.sender_id, other) then raise exception 'dm_blocked: you can''t message this account' using errcode = 'P0001'; end if;
+    if other is not null and public.dm_minor_block(new.sender_id, other) then raise exception 'dm_minor: under-18s and adults can only chat while they are friends' using errcode = 'P0001'; end if;
+    if ostate in ('request', 'declined') then
+      select count(*) into n from public.messages x where x.conversation_id = new.conversation_id and x.sender_id = new.sender_id and x.kind <> 'system';
+      if n >= 3 then raise exception 'dm_request_limit: wait for them to accept your request' using errcode = 'P0001'; end if;
+    end if;
+  end if;
+  perform public.social_rate_check((select count(*) from public.messages x where x.sender_id = new.sender_id and x.created_at > now() - interval '1 minute'), 30, 'messages a minute');
+  perform public.social_rate_check((select count(*) from public.messages x where x.sender_id = new.sender_id and x.created_at > now() - interval '1 hour'), 400, 'messages an hour');
+  if new.kind = 'text' and btrim(new.body) = '' then raise exception 'dm_empty: write something first' using errcode = 'P0001'; end if;
+  if new.kind = 'workout' and new.workout is null then raise exception 'dm_invalid: workout missing' using errcode = 'P0001'; end if;
+  if new.kind in ('image', 'video') then
+    if new.media is null or coalesce(new.media->>'path', '') not like new.conversation_id::text || '/' || new.sender_id::text || '/%'
+       or (new.media ? 'poster_path' and coalesce(new.media->>'poster_path', '') not like new.conversation_id::text || '/' || new.sender_id::text || '/%') then
+      raise exception 'dm_media_path: media must be uploaded to this chat''s folder' using errcode = 'P0001';
+    end if;
+  else
+    new.media := null;
+  end if;
+  if new.reply_to is not null and not exists (select 1 from public.messages x where x.id = new.reply_to and x.conversation_id = new.conversation_id) then new.reply_to := null; end if;
+  new.meta := null;
+  return new;
+end $$;
+drop trigger if exists messages_before_insert on public.messages;
+create trigger messages_before_insert before insert on public.messages for each row execute function public.messages_before_insert();
+
+create or replace function public.messages_after_insert() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.conversations set last_message_at = new.created_at where id = new.conversation_id and (last_message_at is null or last_message_at < new.created_at);
+  update public.conversation_members set last_read_at = new.created_at, last_delivered_at = new.created_at, archived = false
+   where conversation_id = new.conversation_id and user_id = new.sender_id;
+  return new;
+end $$;
+drop trigger if exists messages_after_insert on public.messages;
+create trigger messages_after_insert after insert on public.messages for each row execute function public.messages_after_insert();
+
+-- Only the sender may change a message (RLS); only the text within 15 minutes, or unsend (deleted_at). Everything else is frozen.
+create or replace function public.messages_before_update() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return new; end if;   -- service role / maintenance
+  if old.deleted_at is not null then raise exception 'dm_deleted: this message was unsent' using errcode = 'P0001'; end if;
+  new.conversation_id := old.conversation_id; new.sender_id := old.sender_id; new.kind := old.kind; new.created_at := old.created_at;
+  new.reply_to := old.reply_to; new.forwarded := old.forwarded; new.meta := old.meta;
+  if new.deleted_at is not null then
+    new.deleted_at := now(); new.body := ''; new.media := null; new.workout := null; new.edited_at := old.edited_at;
+    return new;
+  end if;
+  new.media := old.media; new.workout := old.workout;
+  if new.body is distinct from old.body then
+    if old.kind in ('system', 'workout') then raise exception 'dm_not_editable: this message can''t be edited' using errcode = 'P0001'; end if;
+    if now() - old.created_at > interval '15 minutes' then raise exception 'dm_edit_window: messages can only be edited for 15 minutes' using errcode = 'P0001'; end if;
+    if old.kind = 'text' and btrim(new.body) = '' then raise exception 'dm_empty: write something first' using errcode = 'P0001'; end if;
+    new.edited_at := now();
+  else
+    new.edited_at := old.edited_at;
+  end if;
+  return new;
+end $$;
+drop trigger if exists messages_before_update on public.messages;
+create trigger messages_before_update before update on public.messages for each row execute function public.messages_before_update();
+
+create or replace function public.messages_after_update() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.deleted_at is not null and old.deleted_at is null then delete from public.message_reactions where message_id = new.id; end if;
+  return new;
+end $$;
+drop trigger if exists messages_after_update on public.messages;
+create trigger messages_after_update after update on public.messages for each row execute function public.messages_after_update();
+
+-- Members: read markers only move forward; at most 3 pinned chats.
+create or replace function public.conversation_members_before_update() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return new; end if;
+  if new.last_read_at is distinct from old.last_read_at then new.last_read_at := greatest(old.last_read_at, least(new.last_read_at, now())); end if;
+  if new.last_delivered_at is distinct from old.last_delivered_at then new.last_delivered_at := greatest(old.last_delivered_at, least(new.last_delivered_at, now())); end if;
+  if new.pinned_at is not null and old.pinned_at is null then
+    new.pinned_at := now();
+    if (select count(*) from public.conversation_members m where m.user_id = new.user_id and m.pinned_at is not null and m.conversation_id <> new.conversation_id) >= 3 then
+      raise exception 'dm_pins: you can pin up to 3 chats' using errcode = 'P0001';
+    end if;
+  end if;
+  if new.cleared_at is distinct from old.cleared_at and new.cleared_at is not null then new.cleared_at := greatest(coalesce(old.cleared_at, new.cleared_at), least(new.cleared_at, now())); end if;
+  return new;
+end $$;
+drop trigger if exists conversation_members_before_update on public.conversation_members;
+create trigger conversation_members_before_update before update on public.conversation_members for each row execute function public.conversation_members_before_update();
+
+create or replace function public.message_reactions_before() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare c uuid; s uuid; k text; d timestamptz;
+begin
+  new.user_id := auth.uid(); new.created_at := now();
+  if tg_op = 'UPDATE' then new.message_id := old.message_id; end if;
+  select x.conversation_id, x.sender_id, x.kind, x.deleted_at into c, s, k, d from public.messages x where x.id = new.message_id;
+  if c is null or not public.dm_is_active(c) or not public.dm_can_read_message(new.message_id) then raise exception 'dm_not_member: you are not in this chat' using errcode = 'P0001'; end if;
+  if k = 'system' or d is not null then raise exception 'dm_invalid: can''t react to this' using errcode = 'P0001'; end if;
+  if s is not null and s <> new.user_id and public.social_is_blocked(new.user_id, s) then raise exception 'dm_blocked: can''t react to this' using errcode = 'P0001'; end if;
+  if tg_op = 'INSERT' then
+    perform public.social_rate_check((select count(*) from public.message_reactions r where r.user_id = new.user_id and r.created_at > now() - interval '1 hour'), 300, 'reactions an hour');
+  end if;
+  return new;
+end $$;
+drop trigger if exists message_reactions_before on public.message_reactions;
+create trigger message_reactions_before before insert or update on public.message_reactions for each row execute function public.message_reactions_before();
+
+create or replace function public.message_reports_before_insert() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  new.reporter_id := auth.uid(); new.status := 'open'; new.created_at := now(); new.reviewed_at := null; new.moderator_note := null;
+  if not public.dm_is_participant(new.conversation_id) then raise exception 'dm_not_member: you are not in this chat' using errcode = 'P0001'; end if;
+  perform public.social_rate_check((select count(*) from public.message_reports r where r.reporter_id = new.reporter_id and r.created_at > now() - interval '1 day'), 30, 'reports per day');
+  if new.target_type = 'message' then
+    select x.sender_id, jsonb_build_object('body', x.body, 'kind', x.kind, 'media', x.media, 'workout', x.workout, 'created_at', x.created_at, 'edited_at', x.edited_at)
+      into new.target_user_id, new.snapshot from public.messages x where x.id = new.message_id and x.conversation_id = new.conversation_id;
+    if new.snapshot is null then raise exception 'dm_not_found: message not found' using errcode = 'P0001'; end if;
+  else
+    new.message_id := null;
+    select m.user_id into new.target_user_id from public.conversation_members m join public.conversations c on c.id = m.conversation_id
+     where m.conversation_id = new.conversation_id and c.kind = 'direct' and m.user_id <> new.reporter_id limit 1;
+    -- context for moderators: the last 20 messages (text, media paths, who sent them)
+    select jsonb_build_object('recent', coalesce(jsonb_agg(jsonb_build_object('sender_id', r.sender_id, 'kind', r.kind, 'body', r.body, 'media', r.media, 'created_at', r.created_at) order by r.created_at), '[]'::jsonb))
+      into new.snapshot from (select * from public.messages x where x.conversation_id = new.conversation_id and x.kind <> 'system' order by x.created_at desc limit 20) r;
+  end if;
+  return new;
+end $$;
+drop trigger if exists message_reports_before_insert on public.message_reports;
+create trigger message_reports_before_insert before insert on public.message_reports for each row execute function public.message_reports_before_insert();
+
+create or replace function public.dm_settings_before() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is not null then new.user_id := auth.uid(); end if;
+  new.updated_at := now();
+  if tg_op = 'INSERT' and new.last_active_at is not null then new.last_active_at := now(); end if;
+  return new;
+end $$;
+drop trigger if exists dm_settings_before on public.dm_settings;
+create trigger dm_settings_before before insert or update on public.dm_settings for each row execute function public.dm_settings_before();
+
+-- Becoming friends turns a pending message request between the two into a normal chat.
+create or replace function public.friendships_dm_after() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.conversation_members m set state = 'active'
+   from public.conversations c
+   where c.id = m.conversation_id and c.direct_key = new.user_a::text || ':' || new.user_b::text and m.state = 'request';
+  return new;
+end $$;
+drop trigger if exists friendships_dm_after on public.friendships;
+create trigger friendships_dm_after after insert on public.friendships for each row execute function public.friendships_dm_after();
+
+-- ---------- RPCs ----------
+create or replace function public.dm_can_message(p_other uuid) returns text
+language plpgsql stable security definer set search_path = '' as $$
+declare me uuid := auth.uid(); cid uuid;
+begin
+  if me is null or not public.social_is_member(me) then return 'not_member'; end if;
+  select c.id into cid from public.conversations c where c.direct_key = least(me, p_other)::text || ':' || greatest(me, p_other)::text;
+  if public.social_is_member(p_other) and not public.social_is_blocked(me, p_other) and public.dm_minor_block(me, p_other) then return 'dm_minor'; end if;
+  if cid is not null and not public.social_is_blocked(me, p_other) and public.dm_member_state(cid, p_other) = 'active'
+     and exists (select 1 from public.messages x where x.conversation_id = cid) then return 'ok'; end if;
+  return public.dm_check(me, p_other);
+end $$;
+
+create or replace function public.dm_open_direct(p_other uuid) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); k text; cid uuid; v text;
+begin
+  if me is null or not public.social_is_member(me) then raise exception 'not_member' using errcode = 'P0001'; end if;
+  if p_other = me then raise exception 'dm_self: that''s you' using errcode = 'P0001'; end if;
+  k := least(me, p_other)::text || ':' || greatest(me, p_other)::text;
+  select c.id into cid from public.conversations c where c.direct_key = k;
+  if cid is not null then
+    if public.social_is_blocked(me, p_other) then raise exception 'dm_unavailable: you can''t message this account' using errcode = 'P0001'; end if;
+    if public.dm_minor_block(me, p_other) then raise exception 'dm_minor: not allowed' using errcode = 'P0001'; end if;
+    if public.dm_member_state(cid, p_other) <> 'active' or not exists (select 1 from public.messages x where x.conversation_id = cid) then
+      v := public.dm_check(me, p_other);
+      if v not in ('ok', 'request') and public.dm_member_state(cid, me) <> 'request' then raise exception '%: not allowed', v using errcode = 'P0001'; end if;
+    end if;
+    -- opening a chat yourself = you're in it (accepts a pending request, un-hides a declined one)
+    update public.conversation_members set state = 'active' where conversation_id = cid and user_id = me and state in ('request', 'declined');
+    return cid;
+  end if;
+  v := public.dm_check(me, p_other);
+  if v not in ('ok', 'request') then raise exception '%: not allowed', v using errcode = 'P0001'; end if;
+  perform public.social_rate_check((select count(*) from public.conversations c where c.created_by = me and c.created_at > now() - interval '1 hour'), 20, 'new chats an hour');
+  if v = 'request' then
+    perform public.social_rate_check((select count(*) from public.conversation_members m join public.conversations c on c.id = m.conversation_id
+      where m.added_by = me and m.state in ('request', 'declined') and c.created_at > now() - interval '1 day'), 30, 'message requests a day');
+  end if;
+  insert into public.conversations (kind, created_by, direct_key) values ('direct', me, k) on conflict (direct_key) where direct_key is not null do nothing returning id into cid;
+  if cid is null then select c.id into cid from public.conversations c where c.direct_key = k; return cid; end if;
+  insert into public.conversation_members (conversation_id, user_id, role, state, added_by, last_read_at) values
+    (cid, me, 'member', 'active', me, now()),
+    (cid, p_other, 'member', case when v = 'request' then 'request' else 'active' end, me, null);
+  return cid;
+end $$;
+
+create or replace function public.dm_create_group(p_title text, p_members uuid[]) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); cid uuid; u uuid; added uuid[] := '{}'; t text := btrim(regexp_replace(coalesce(p_title, ''), '\s+', ' ', 'g')); err text;
+begin
+  if me is null or not public.social_is_member(me) then raise exception 'not_member' using errcode = 'P0001'; end if;
+  if t = '' or char_length(t) > 50 then raise exception 'dm_title: give the group a name (up to 50 characters)' using errcode = 'P0001'; end if;
+  if coalesce(array_length(p_members, 1), 0) = 0 then raise exception 'dm_empty: add at least one friend' using errcode = 'P0001'; end if;
+  if (select count(distinct x) from unnest(p_members) x where x <> me) + 1 > 32 then raise exception 'dm_group_full: groups can have up to 32 people' using errcode = 'P0001'; end if;
+  perform public.social_rate_check((select count(*) from public.conversations c where c.created_by = me and c.kind = 'group' and c.created_at > now() - interval '1 day'), 20, 'new groups a day');
+  foreach u in array p_members loop
+    continue when u = me or u = any(added);
+    err := public.dm_check_add(me, u, array_prepend(me, added));
+    if err is not null then raise exception '%: % can''t be added', err, u using errcode = 'P0001'; end if;
+    added := added || u;
+  end loop;
+  insert into public.conversations (kind, title, created_by) values ('group', t, me) returning id into cid;
+  insert into public.conversation_members (conversation_id, user_id, role, state, added_by, last_read_at) values (cid, me, 'admin', 'active', me, now());
+  insert into public.conversation_members (conversation_id, user_id, role, state, added_by) select cid, x, 'member', 'active', me from unnest(added) x;
+  perform public.dm_system_message(cid, jsonb_build_object('type', 'created', 'actor', me, 'title', t));
+  perform public.dm_system_message(cid, jsonb_build_object('type', 'added', 'actor', me, 'targets', to_jsonb(added)));
+  return cid;
+end $$;
+
+create or replace function public.dm_add_members(p_conv uuid, p_members uuid[]) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); u uuid; cur uuid[]; added uuid[] := '{}'; err text;
+begin
+  if (select kind from public.conversations where id = p_conv) is distinct from 'group' or public.dm_member_state(p_conv, me) is distinct from 'active' then raise exception 'dm_not_member' using errcode = 'P0001'; end if;
+  select array_agg(user_id) into cur from public.conversation_members where conversation_id = p_conv and state = 'active';
+  foreach u in array p_members loop
+    continue when u = any(cur) or u = any(added);
+    err := public.dm_check_add(me, u, cur || added);
+    if err is not null then raise exception '%: % can''t be added', err, u using errcode = 'P0001'; end if;
+    added := added || u;
+  end loop;
+  if coalesce(array_length(cur, 1), 0) + coalesce(array_length(added, 1), 0) > 32 then raise exception 'dm_group_full: groups can have up to 32 people' using errcode = 'P0001'; end if;
+  if coalesce(array_length(added, 1), 0) = 0 then return; end if;
+  -- new members see the chat from the moment they join (cleared_at), not the history before
+  insert into public.conversation_members (conversation_id, user_id, role, state, added_by, joined_at, cleared_at)
+    select p_conv, x, 'member', 'active', me, now(), now() - interval '1 microsecond' from unnest(added) x
+    on conflict (conversation_id, user_id) do update set state = 'active', role = 'member', added_by = me, joined_at = now(), cleared_at = now() - interval '1 microsecond', pinned_at = null, archived = false;
+  perform public.dm_system_message(p_conv, jsonb_build_object('type', 'added', 'actor', me, 'targets', to_jsonb(added)));
+end $$;
+
+create or replace function public.dm_remove_member(p_conv uuid, p_user uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if (select role from public.conversation_members where conversation_id = p_conv and user_id = me and state = 'active') is distinct from 'admin'
+     or (select kind from public.conversations where id = p_conv) <> 'group' then raise exception 'dm_not_admin: only group admins can remove people' using errcode = 'P0001'; end if;
+  if p_user = me then raise exception 'dm_self: use leave instead' using errcode = 'P0001'; end if;
+  update public.conversation_members set state = 'removed', role = 'member' where conversation_id = p_conv and user_id = p_user and state = 'active';
+  if found then perform public.dm_system_message(p_conv, jsonb_build_object('type', 'removed', 'actor', me, 'targets', jsonb_build_array(p_user))); end if;
+end $$;
+
+create or replace function public.dm_set_admin(p_conv uuid, p_user uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if (select role from public.conversation_members where conversation_id = p_conv and user_id = me and state = 'active') is distinct from 'admin' then raise exception 'dm_not_admin' using errcode = 'P0001'; end if;
+  update public.conversation_members set role = 'admin' where conversation_id = p_conv and user_id = p_user and state = 'active' and role <> 'admin';
+  if found then perform public.dm_system_message(p_conv, jsonb_build_object('type', 'admin', 'actor', me, 'targets', jsonb_build_array(p_user))); end if;
+end $$;
+
+create or replace function public.dm_rename_group(p_conv uuid, p_title text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); t text := btrim(regexp_replace(coalesce(p_title, ''), '\s+', ' ', 'g'));
+begin
+  if (select role from public.conversation_members where conversation_id = p_conv and user_id = me and state = 'active') is distinct from 'admin' then raise exception 'dm_not_admin: only group admins can rename the group' using errcode = 'P0001'; end if;
+  if t = '' or char_length(t) > 50 then raise exception 'dm_title: give the group a name (up to 50 characters)' using errcode = 'P0001'; end if;
+  update public.conversations set title = t where id = p_conv and kind = 'group';
+  perform public.dm_system_message(p_conv, jsonb_build_object('type', 'renamed', 'actor', me, 'title', t));
+end $$;
+
+create or replace function public.dm_leave(p_conv uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); nxt uuid;
+begin
+  if (select kind from public.conversations where id = p_conv) is distinct from 'group' or public.dm_member_state(p_conv, me) is distinct from 'active' then raise exception 'dm_not_member' using errcode = 'P0001'; end if;
+  perform public.dm_system_message(p_conv, jsonb_build_object('type', 'left', 'actor', me));
+  update public.conversation_members set state = 'left', role = 'member', pinned_at = null where conversation_id = p_conv and user_id = me;
+  if not exists (select 1 from public.conversation_members where conversation_id = p_conv and state = 'active' and role = 'admin') then
+    select user_id into nxt from public.conversation_members where conversation_id = p_conv and state = 'active' order by joined_at, user_id limit 1;
+    if nxt is not null then update public.conversation_members set role = 'admin' where conversation_id = p_conv and user_id = nxt; end if;
+  end if;
+end $$;
+
+create or replace function public.dm_accept(p_conv uuid) returns void
+language sql security definer set search_path = '' as $$
+  update public.conversation_members set state = 'active', last_read_at = now(), last_delivered_at = now() where conversation_id = p_conv and user_id = auth.uid() and state = 'request';
+$$;
+create or replace function public.dm_decline(p_conv uuid) returns void
+language sql security definer set search_path = '' as $$
+  update public.conversation_members set state = 'declined', pinned_at = null where conversation_id = p_conv and user_id = auth.uid() and state = 'request';
+$$;
+create or replace function public.dm_mark_read(p_conv uuid) returns void
+language sql security definer set search_path = '' as $$
+  update public.conversation_members set last_read_at = now(), last_delivered_at = now() where conversation_id = p_conv and user_id = auth.uid() and state in ('active', 'request');
+$$;
+create or replace function public.dm_mark_delivered() returns void
+language sql security definer set search_path = '' as $$
+  update public.conversation_members m set last_delivered_at = now() from public.conversations c
+   where c.id = m.conversation_id and m.user_id = auth.uid() and m.state = 'active' and c.last_message_at > coalesce(m.last_delivered_at, '-infinity');
+$$;
+create or replace function public.dm_heartbeat() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or not public.social_is_member(auth.uid()) then return; end if;
+  insert into public.dm_settings (user_id, who_can_message, last_active_at)
+  values (auth.uid(), case when public.dm_is_minor(auth.uid()) then 'friends' else 'everyone' end, now())
+  on conflict (user_id) do update set last_active_at = now();
+end $$;
+
+-- Members of a chat as the caller may see them: requests that were declined still look pending to the sender, and
+-- seen_at is only shared when both people have read receipts on (and never before a request is accepted).
+create or replace function public.dm_members(p_conv uuid) returns table (user_id uuid, role text, state text, joined_at timestamptz, seen_at timestamptz, delivered_at timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select m.user_id, m.role,
+         case when m.state = 'declined' and m.user_id <> auth.uid() then 'request' else m.state end,
+         m.joined_at,
+         case when m.user_id = auth.uid() then m.last_read_at
+              when m.state = 'active' and public.dm_receipts(auth.uid()) and public.dm_receipts(m.user_id) then m.last_read_at end,
+         case when m.user_id = auth.uid() or m.state = 'active' then m.last_delivered_at end
+  from public.conversation_members m
+  where m.conversation_id = p_conv and public.dm_is_participant(p_conv) and m.state in ('active', 'request', 'declined')
+$$;
+
+-- One call for the inbox: my memberships with unread counts, the visible members and the last visible message.
+create or replace function public.dm_inbox() returns table (
+  conversation_id uuid, kind text, title text, created_by uuid, created_at timestamptz, last_message_at timestamptz,
+  role text, state text, last_read_at timestamptz, muted_until timestamptz, archived boolean, pinned_at timestamptz, cleared_at timestamptz,
+  unread bigint, requests_sent bigint, members jsonb, last_message jsonb)
+language sql stable security definer set search_path = '' as $$
+  select c.id, c.kind, c.title, c.created_by, c.created_at, c.last_message_at,
+         me.role, me.state, me.last_read_at, me.muted_until, me.archived, me.pinned_at, me.cleared_at,
+         (select count(*) from public.messages x where x.conversation_id = c.id and x.sender_id is distinct from me.user_id and x.kind <> 'system' and x.deleted_at is null
+            and x.created_at > greatest(coalesce(me.last_read_at, '-infinity'), coalesce(me.cleared_at, '-infinity'))
+            and not exists (select 1 from public.message_hidden h where h.message_id = x.id and h.user_id = me.user_id)),
+         (select count(*) from public.messages x where x.conversation_id = c.id and x.sender_id = me.user_id and x.kind <> 'system'),
+         (select coalesce(jsonb_agg(to_jsonb(dm) order by dm.joined_at), '[]'::jsonb) from public.dm_members(c.id) dm),
+         (select to_jsonb(l) from (select x.id, x.sender_id, x.kind, x.body, x.media, x.workout, x.meta, x.created_at, x.edited_at, x.deleted_at
+            from public.messages x where x.conversation_id = c.id and x.created_at > coalesce(me.cleared_at, '-infinity')
+              and not exists (select 1 from public.message_hidden h where h.message_id = x.id and h.user_id = me.user_id)
+            order by x.created_at desc limit 1) l)
+  from public.conversation_members me join public.conversations c on c.id = me.conversation_id
+  where me.user_id = auth.uid() and me.state in ('active', 'request')
+  order by c.last_message_at desc nulls last
+$$;
+
+-- "Active now": only between people who share a chat, both with activity status on, never across a block.
+create or replace function public.dm_presence(p_users uuid[]) returns table (user_id uuid, last_active_at timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select s.user_id, s.last_active_at from public.dm_settings s
+  where s.user_id = any(p_users) and s.show_activity and public.dm_activity(auth.uid()) and not public.social_is_blocked(auth.uid(), s.user_id)
+    and exists (select 1 from public.conversation_members a join public.conversation_members b on a.conversation_id = b.conversation_id
+                where a.user_id = auth.uid() and b.user_id = s.user_id and a.state = 'active' and b.state = 'active')
+$$;
+
+-- ---------- Row Level Security ----------
+alter table public.dm_settings          enable row level security;
+alter table public.conversations        enable row level security;
+alter table public.conversation_members enable row level security;
+alter table public.messages             enable row level security;
+alter table public.message_reactions    enable row level security;
+alter table public.message_hidden       enable row level security;
+alter table public.message_reports      enable row level security;
+alter table public.push_subscriptions   enable row level security;
+
+do $$
+declare r record;
+begin
+  for r in select policyname, tablename from pg_policies where schemaname = 'public' and tablename in
+    ('dm_settings', 'conversations', 'conversation_members', 'messages', 'message_reactions', 'message_hidden', 'message_reports', 'push_subscriptions')
+  loop
+    execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end $$;
+
+create policy "dm_settings_select_own" on public.dm_settings for select to authenticated using (user_id = (select auth.uid()));
+create policy "dm_settings_insert_own" on public.dm_settings for insert to authenticated with check (user_id = (select auth.uid()) and public.social_is_member((select auth.uid())));
+create policy "dm_settings_update_own" on public.dm_settings for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- conversations + members: created and changed only through the dm_* functions above
+create policy "conversations_select_member" on public.conversations for select to authenticated using (public.dm_is_participant(id));
+create policy "conversation_members_select_own" on public.conversation_members for select to authenticated using (user_id = (select auth.uid()));
+create policy "conversation_members_update_own" on public.conversation_members for update to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+create policy "messages_select_member" on public.messages for select to authenticated using (public.dm_can_read(conversation_id, created_at));
+create policy "messages_insert_member" on public.messages for insert to authenticated
+  with check (sender_id = (select auth.uid()) and kind <> 'system' and public.dm_member_state(conversation_id, (select auth.uid())) = 'active');
+create policy "messages_update_sender" on public.messages for update to authenticated
+  using (sender_id = (select auth.uid())) with check (sender_id = (select auth.uid()));
+
+create policy "message_reactions_select_member" on public.message_reactions for select to authenticated
+  using (public.dm_can_read_message(message_id) and (user_id = (select auth.uid()) or not public.social_is_blocked((select auth.uid()), user_id)));
+create policy "message_reactions_insert_own" on public.message_reactions for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "message_reactions_update_own" on public.message_reactions for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "message_reactions_delete_own" on public.message_reactions for delete to authenticated using (user_id = (select auth.uid()));
+
+create policy "message_hidden_select_own" on public.message_hidden for select to authenticated using (user_id = (select auth.uid()));
+create policy "message_hidden_insert_own" on public.message_hidden for insert to authenticated with check (user_id = (select auth.uid()) and public.dm_can_read_message(message_id));
+create policy "message_hidden_delete_own" on public.message_hidden for delete to authenticated using (user_id = (select auth.uid()));
+
+-- reports: insert only (moderators read them in the dashboard / with the service role)
+create policy "message_reports_insert_own" on public.message_reports for insert to authenticated with check (reporter_id = (select auth.uid()));
+
+create policy "push_subscriptions_own" on public.push_subscriptions for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- ---------- grants ----------
+revoke all on public.dm_settings, public.conversations, public.conversation_members, public.messages, public.message_reactions,
+  public.message_hidden, public.message_reports, public.push_subscriptions from anon;
+revoke all on public.dm_settings, public.conversations, public.conversation_members, public.messages, public.message_reactions,
+  public.message_hidden, public.message_reports, public.push_subscriptions from authenticated;
+grant select, insert on public.dm_settings to authenticated;
+grant update (who_can_message, read_receipts, show_activity) on public.dm_settings to authenticated;
+grant select on public.conversations to authenticated;
+grant select on public.conversation_members to authenticated;
+grant update (last_read_at, last_delivered_at, muted_until, archived, pinned_at, cleared_at) on public.conversation_members to authenticated;
+grant select, insert on public.messages to authenticated;
+grant update (body, deleted_at) on public.messages to authenticated;
+grant select, insert, delete on public.message_reactions, public.message_hidden to authenticated;
+grant update (kind) on public.message_reactions to authenticated;
+grant insert on public.message_reports to authenticated;
+grant select, insert, update, delete on public.push_subscriptions to authenticated;
+
+revoke execute on function public.dm_can_message(uuid), public.dm_open_direct(uuid), public.dm_create_group(text, uuid[]), public.dm_add_members(uuid, uuid[]),
+  public.dm_remove_member(uuid, uuid), public.dm_set_admin(uuid, uuid), public.dm_rename_group(uuid, text), public.dm_leave(uuid), public.dm_accept(uuid),
+  public.dm_decline(uuid), public.dm_mark_read(uuid), public.dm_mark_delivered(), public.dm_heartbeat(), public.dm_members(uuid), public.dm_inbox(),
+  public.dm_presence(uuid[]), public.dm_system_message(uuid, jsonb), public.dm_check(uuid, uuid), public.dm_check_add(uuid, uuid, uuid[]) from public, anon;
+grant execute on function public.dm_can_message(uuid), public.dm_open_direct(uuid), public.dm_create_group(text, uuid[]), public.dm_add_members(uuid, uuid[]),
+  public.dm_remove_member(uuid, uuid), public.dm_set_admin(uuid, uuid), public.dm_rename_group(uuid, text), public.dm_leave(uuid), public.dm_accept(uuid),
+  public.dm_decline(uuid), public.dm_mark_read(uuid), public.dm_mark_delivered(), public.dm_heartbeat(), public.dm_members(uuid), public.dm_inbox(),
+  public.dm_presence(uuid[]) to authenticated;
+revoke execute on function public.dm_system_message(uuid, jsonb), public.dm_check(uuid, uuid), public.dm_check_add(uuid, uuid, uuid[]) from authenticated;
+-- settings lookups are only used inside the functions above (never let clients read someone else's settings)
+revoke execute on function public.dm_who(uuid), public.dm_receipts(uuid), public.dm_activity(uuid), public.dm_is_minor(uuid), public.dm_is_fof(uuid, uuid), public.dm_minor_block(uuid, uuid) from public, anon, authenticated;
+
+-- ---------- Realtime ----------
+-- New messages, edits/unsends, reactions and my membership changes stream to the app (Realtime applies the RLS above).
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['messages', 'message_reactions', 'conversation_members'] loop
+      if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
+-- Typing indicators + "seen" pings use Realtime Broadcast on private channels named dm:<conversation id>; only active members may join.
+do $$
+begin
+  if to_regclass('realtime.messages') is not null then
+    execute 'drop policy if exists "dm_broadcast_read" on realtime.messages';
+    execute 'drop policy if exists "dm_broadcast_write" on realtime.messages';
+    execute $p$create policy "dm_broadcast_read" on realtime.messages for select to authenticated using (public.dm_topic_ok(realtime.topic()))$p$;
+    execute $p$create policy "dm_broadcast_write" on realtime.messages for insert to authenticated with check (public.dm_topic_ok(realtime.topic()))$p$;
+  end if;
+end $$;
+
+-- ---------- Storage: message-media bucket (photos + videos sent in chats) ----------
+-- Private. Path: <conversation id>/<sender id>/<message id>.<ext>. Readable only by members who can read the message that uses it.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('message-media', 'message-media', false, 52428800, array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "message_media_select" on storage.objects;
+drop policy if exists "message_media_insert_member" on storage.objects;
+drop policy if exists "message_media_delete_own" on storage.objects;
+create policy "message_media_select" on storage.objects for select to authenticated
+  using (bucket_id = 'message-media' and public.dm_can_read_object(name));
+create policy "message_media_insert_member" on storage.objects for insert to authenticated
+  with check (bucket_id = 'message-media' and (storage.foldername(name))[2] = (select auth.uid())::text
+              and public.dm_is_active(public.dm_uuid_or_null((storage.foldername(name))[1])));
+create policy "message_media_delete_own" on storage.objects for delete to authenticated
+  using (bucket_id = 'message-media' and (storage.foldername(name))[2] = (select auth.uid())::text);
+
+-- Check: every Messages table should show rowsecurity = true, and the bucket must be private
+select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in
+  ('dm_settings', 'conversations', 'conversation_members', 'messages', 'message_reactions', 'message_hidden', 'message_reports', 'push_subscriptions');
+select id, public, file_size_limit from storage.buckets where id = 'message-media';

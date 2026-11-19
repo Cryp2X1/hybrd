@@ -8,6 +8,8 @@ import { setCuePrefs } from './lib/cues';
 import Home from './pages/Home';
 import { Avatar } from './components/Avatar';
 import { useSocial } from './lib/socialStore';
+import { useMessages } from './lib/messagesStore';
+import { DmBanner, MessagesLink } from './components/Messages';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Train = lazy(() => import('./pages/Train'));
@@ -57,6 +59,9 @@ const SocialSaved = lazy(() => import('./pages/Social').then((m) => ({ default: 
 const SocialProfile = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialProfile })));
 const SocialSetup = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialSetup })));
 const SocialRules = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialRules })));
+const MessagesPage = lazy(() => import('./pages/Messages'));
+const NewMessage = lazy(() => import('./pages/Messages').then((m) => ({ default: m.NewMessage })));
+const MessageSettings = lazy(() => import('./pages/Messages').then((m) => ({ default: m.MessageSettings })));
 const InvitePage = lazy(() => import('./pages/Social').then((m) => ({ default: m.InvitePage })));
 
 const NAV = [
@@ -70,14 +75,16 @@ const NAV = [
   { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
   { to: '/social', icon: 'users', label: 'Social' },
+  { to: '/messages', icon: 'chat', label: 'Messages' },
 ];
 
 export function ModeChip() {
   const { configured, user } = useAuth();
   const { syncStatus } = useStore();
-  if (!configured) return <NavLink to="/me/account" className="mode-chip"><span className="dot" />Local mode</NavLink>;
-  if (!user) return <NavLink to="/sign-in" className="mode-chip"><span className="dot" />Sign in to sync</NavLink>;
-  return <NavLink to="/me/account" className={`mode-chip ${syncStatus === 'error' ? 'err' : 'on'}`}><span className="dot" />{syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'error' ? 'Sync error' : syncStatus === 'offline' ? 'Offline' : 'Synced'}</NavLink>;
+  if (!configured) return <NavLink to="/me/account" className="mode-chip" title="Local mode" aria-label="Local mode"><span className="dot" /><span className="mode-chip-t">Local mode</span></NavLink>;
+  if (!user) return <NavLink to="/sign-in" className="mode-chip" title="Sign in to sync" aria-label="Sign in to sync"><span className="dot" /><span className="mode-chip-t">Sign in to sync</span></NavLink>;
+  const label = syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'error' ? 'Sync error' : syncStatus === 'offline' ? 'Offline' : 'Synced';
+  return <NavLink to="/me/account" className={`mode-chip ${syncStatus === 'error' ? 'err' : 'on'}`} title={label} aria-label={label}><span className="dot" /><span className="mode-chip-t">{label}</span></NavLink>;
 }
 
 export function App() {
@@ -85,6 +92,7 @@ export function App() {
   const { session } = useAuth();
   const { s: rec } = useRecorder();
   const { badge } = useSocial();
+  const { badge: dmBadge } = useMessages();
   const loc = useLocation();
   const nav = useNavigate();
 
@@ -103,17 +111,18 @@ export function App() {
     return <Suspense fallback={null}><Onboarding /></Suspense>;
   }
   const live = rec.status !== 'idle';
+  const dmChat = loc.pathname === '/messages/chat';
   return (
-    <div className={`shell ${live && loc.pathname === '/record' ? 'focus' : ''}`}>
+    <div className={`shell ${live && loc.pathname === '/record' ? 'focus' : ''} ${loc.pathname.startsWith('/messages') ? 'dm-route' : ''} ${dmChat ? 'dm-chat-open' : ''}`}>
       <nav className="side-nav" aria-label="Main">
         <div className="brand"><span className="brand-mark">H</span>HYBRD</div>
-        {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}{n.to === '/social' && badge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-social-badge">{badge}</span>}</NavLink>)}
+        {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}{n.to === '/social' && badge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-social-badge">{badge}</span>}{n.to === '/messages' && dmBadge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-dm-badge">{dmBadge}</span>}</NavLink>)}
         <NavLink to="/me" className="side-me" data-testid="side-me"><Avatar size={26} /><span className="side-me-n">{profile.name ? profile.name.split(' ')[0] : 'Me'}</span></NavLink>
         <NavLink to="/train/log" className="side-cta">Log a workout</NavLink>
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><MessagesLink /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -164,6 +173,10 @@ export function App() {
             <Route path="/social/profile" element={<SocialProfile />} />
             <Route path="/social/setup" element={<SocialSetup />} />
             <Route path="/social/rules" element={<SocialRules />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/chat" element={<MessagesPage />} />
+            <Route path="/messages/new" element={<NewMessage />} />
+            <Route path="/messages/settings" element={<MessageSettings />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/sign-in" element={<Auth mode="sign-in" />} />
             <Route path="/sign-up" element={<Auth mode="sign-up" />} />
@@ -173,6 +186,7 @@ export function App() {
           </Routes>
         </Suspense>
       </main>
+      <DmBanner />
       <nav className="bottom-nav" aria-label="Main">
         <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
         <NavLink to="/train"><Icon name="train" /><span>Train</span></NavLink>

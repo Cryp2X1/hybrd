@@ -387,7 +387,7 @@ function FriendsInner() {
         ]} />
         {tab === 'friends' && (
           <Card>
-            {graph.friends.length ? graph.friends.map((p) => <UserRow key={p.id} p={p} right={<button className="icon-btn" aria-label={`Options for ${p.displayName}`} onClick={() => setMenu(p)}><Icon name="more" stroke={3.2} /></button>} />)
+            {graph.friends.length ? graph.friends.map((p) => <UserRow key={p.id} p={p} right={<span className="row" style={{ gap: 6 }}><Link className="icon-btn" to={`/messages/chat?to=${encodeURIComponent(p.username)}`} aria-label={`Message ${p.displayName}`} data-testid="friend-message"><Icon name="chat" size={20} /></Link><button className="icon-btn" aria-label={`Options for ${p.displayName}`} onClick={() => setMenu(p)}><Icon name="more" stroke={3.2} /></button></span>} />)
               : <Empty icon="users" title="No friends yet">Find people or share your invite link. <button className="link" onClick={() => setTab('find')}>Find people →</button></Empty>}
           </Card>
         )}
@@ -419,6 +419,7 @@ function FriendsInner() {
       <Sheet open={!!menu} onClose={() => setMenu(null)} title={menu?.displayName || ''}>
         {menu && <div className="s-menu">
           <Link to={`/social/profile?u=${encodeURIComponent(menu.username)}`}><Icon name="me" />View profile</Link>
+          <Link to={`/messages/chat?to=${encodeURIComponent(menu.username)}`}><Icon name="chat" />Message</Link>
           <button onClick={() => { if (confirm(`Unfriend ${menu.displayName}? They won’t be notified.`)) act({ type: 'unfriend', other: menu.id }, 'Unfriended'); }} data-testid="unfriend"><Icon name="minus" />Unfriend</button>
           <button onClick={() => { setReport(menu); setMenu(null); }}><Icon name="flag" />Report</button>
           <button className="bad" onClick={() => { if (confirm(`Block @${menu.username}? You won’t see each other anywhere on HYBRD.`)) act({ type: 'block', other: menu.id }, `Blocked @${menu.username}`); }}><Icon name="ban" />Block</button>
@@ -519,7 +520,7 @@ function ProfileInner() {
           <div className="s-counts"><div><b>{compact(p.friendCount)}</b><span>Friends</span></div><div><b>{compact(p.postCount)}</b><span>Posts</span></div>
             {p.showStats && p.stats && <>{p.stats.workouts30d !== undefined && <div><b>{p.stats.workouts30d}</b><span>Workouts · 30d</span></div>}{typeof p.stats.hybridScore === 'number' && <div><b className="y">{p.stats.hybridScore}</b><span>Hybrid Score</span></div>}{!!p.stats.streak && <div><b>{p.stats.streak}</b><span>Day streak</span></div>}</>}
           </div>
-          <div className="row wrap" style={{ marginTop: 12 }}><RelButton p={p} rel={rel} onDone={load} />{self && <Link className="btn sm" to="/social/friends?tab=find"><Icon name="useradd" size={16} />Find friends</Link>}</div>
+          <div className="row wrap" style={{ marginTop: 12 }}><RelButton p={p} rel={rel} onDone={load} />{!self && rel !== 'blocked' && rel !== 'blocked_by' && <Link className="btn sm" to={`/messages/chat?to=${encodeURIComponent(p.username)}`} data-testid="profile-message"><Icon name="chat" size={16} />Message</Link>}{self && <Link className="btn sm" to="/social/friends?tab=find"><Icon name="useradd" size={16} />Find friends</Link>}</div>
         </Card>
         {hiddenPosts ? <Card><Empty icon="lock" title="Friends-only profile">Add {p.displayName.split(' ')[0]} as a friend to see their posts and stories.</Empty></Card>
           : posts.length ? posts.map((x) => <PostCard key={x.id} post={x} onRemoved={(id) => setPosts((l) => l.filter((q) => q.id !== id))} />)

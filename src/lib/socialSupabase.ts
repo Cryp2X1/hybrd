@@ -47,7 +47,7 @@ export class SupabaseSocial implements SocialBackend {
     };
   }
   private async profiles(rows: Row[]): Promise<PublicProfile[]> { const urls = await this.sign(rows.map((r) => r.avatar_path)); return rows.map((r) => this.profile(r, urls)); }
-  private async profilesById(ids: string[]): Promise<Map<string, PublicProfile>> {
+  async profilesById(ids: string[]): Promise<Map<string, PublicProfile>> {
     if (!ids.length) return new Map();
     const rows = await this.q(this.sb.from('social_profiles').select(PROFILE_COLS).in('id', [...new Set(ids)]));
     return new Map((await this.profiles(rows as Row[])).map((p) => [p.id, p]));

@@ -5,6 +5,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Card, Sheet } from './ui';
 import { useSocial } from '../lib/socialStore';
+import { useMessages } from '../lib/messagesStore';
 import { useStore } from '../lib/store';
 import { useToast } from '../lib/toast';
 import { appUrl } from '../lib/config';
@@ -96,6 +97,7 @@ export function SocialTabs() {
   const { graph, notifs } = useSocial();
   const req = graph?.incoming.length || 0;
   const unread = notifs.filter((n) => !n.read && n.type !== 'friend_request').length;
+  const { badge: dmBadge } = useMessages();
   return (
     <nav className="s-tabs" aria-label="Social">
       <NavLink to="/social" end>Feed</NavLink>
@@ -103,6 +105,7 @@ export function SocialTabs() {
       <NavLink to="/social/notifications">Alerts{unread > 0 && <span className="s-badge">{unread}</span>}</NavLink>
       <NavLink to="/social/saved">Saved</NavLink>
       <NavLink to="/social/profile">Profile</NavLink>
+      <NavLink to="/messages" data-testid="social-tab-messages">Messages{dmBadge > 0 && <span className="s-badge">{dmBadge}</span>}</NavLink>
     </nav>
   );
 }

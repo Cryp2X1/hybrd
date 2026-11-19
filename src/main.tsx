@@ -15,6 +15,7 @@ import { RecorderProvider } from './lib/recorder';
 import { MediaProvider } from './lib/gallery';
 import { ToastProvider } from './lib/toast';
 import { SocialProvider } from './lib/socialStore';
+import { MessagesProvider } from './lib/messagesStore';
 import { captureSpotifyCallback } from './lib/spotify';
 import { captureStravaCallback } from './lib/strava';
 
@@ -31,11 +32,13 @@ createRoot(document.getElementById('root')!).render(
         <StoreProvider>
           <MediaProvider>
             <SocialProvider>
-              <RecorderProvider>
-                <ToastProvider>
-                  <App />
-                </ToastProvider>
-              </RecorderProvider>
+              <MessagesProvider>
+                <RecorderProvider>
+                  <ToastProvider>
+                    <App />
+                  </ToastProvider>
+                </RecorderProvider>
+              </MessagesProvider>
             </SocialProvider>
           </MediaProvider>
         </StoreProvider>

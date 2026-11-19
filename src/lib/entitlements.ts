@@ -31,7 +31,8 @@ export type Feature =
   | 'gallery.videos' // gallery videos: upload / record, poster + duration, player, download, location tags removed
   | 'profile.bio' // Me › Bio (free-form text)
   | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research' // Train › Ultra & Backyard
-  | 'social.profile' | 'social.friends' | 'social.invite' | 'social.posts' | 'social.stories' | 'social.reactions' | 'social.saved' | 'social.notifications' | 'social.safety'; // Social: Friends & Stories
+  | 'social.profile' | 'social.friends' | 'social.invite' | 'social.posts' | 'social.stories' | 'social.reactions' | 'social.saved' | 'social.notifications' | 'social.safety' // Social: Friends & Stories
+  | 'messages.direct' | 'messages.requests' | 'messages.groups' | 'messages.media' | 'messages.reactions' | 'messages.privacy' | 'messages.safety'; // Messages (DMs)
 
 export interface FeatureInfo { free: boolean; label: string }
 export const FEATURES: Record<Feature, FeatureInfo> = {
@@ -79,6 +80,13 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'social.saved': { free: true, label: 'Saved posts' },
   'social.notifications': { free: true, label: 'Notifications' },
   'social.safety': { free: true, label: 'Report, block & hide (always free)' },
+  'messages.direct': { free: true, label: 'Private 1:1 messages' },
+  'messages.requests': { free: true, label: 'Message requests from non-friends' },
+  'messages.groups': { free: true, label: 'Group chats (up to 32 people)' },
+  'messages.media': { free: true, label: 'Photos, videos & workout cards in chats' },
+  'messages.reactions': { free: true, label: 'Reactions, replies, edit & unsend' },
+  'messages.privacy': { free: true, label: 'Who can message me, read receipts, activity status' },
+  'messages.safety': { free: true, label: 'Block, report & request filtering (always free)' },
 };
 
 export interface Entitlements { premium: boolean; source: 'none' | 'stripe' | 'revenuecat' | 'promo' }
