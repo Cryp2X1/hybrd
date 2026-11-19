@@ -4,6 +4,7 @@
 //
 // PRIVACY: messages are stored in Supabase and protected by Row Level Security (only people in the chat can read them).
 // They are NOT end-to-end encrypted. Never describe them as encrypted in the UI.
+import { callPreview, defaultCallWho, normalizeCallWho, type CallLog, type CallWho } from './calls';
 import { areFriends, cleanText, friendIds, isBlocked, maskProfanity, rateCheck, summarizeReactions, REACTION_TYPES, type Graph, type Limit, type PublicProfile, type ReactionSummary, type ReactionType, type WorkoutCard } from './social';
 import { crisisInText } from './mind';
 
@@ -37,18 +38,25 @@ export const DM_LIMITS = {
 
 // ---------- types ----------
 export type DmWho = 'everyone' | 'fof' | 'friends' | 'none';
-export interface DmSettings { who: DmWho; readReceipts: boolean; activity: boolean }
+export interface DmSettings {
+  who: DmWho; readReceipts: boolean; activity: boolean;
+  /** Who can call me (voice / video). Under-18s: friends only at most. */
+  calls: CallWho;
+  /** Do not disturb for calls: calls don't ring until this time (null = off). */
+  dndUntil: number | null;
+}
 export const DM_WHO: { v: DmWho; label: string; sub: string }[] = [
   { v: 'everyone', label: 'Everyone', sub: 'Friends chat with you. Anyone else lands in Requests.' },
   { v: 'fof', label: 'Friends of friends', sub: 'Friends, plus requests from people you share a friend with.' },
   { v: 'friends', label: 'Friends only', sub: 'Only your friends can start a chat with you.' },
   { v: 'none', label: 'No one', sub: 'No new chats. Chats you already have keep working.' },
 ];
-export const defaultDmSettings = (isMinor = false): DmSettings => ({ who: isMinor ? 'friends' : 'everyone', readReceipts: true, activity: true });
+export const defaultDmSettings = (isMinor = false): DmSettings => ({ who: isMinor ? 'friends' : 'everyone', readReceipts: true, activity: true, calls: defaultCallWho(isMinor), dndUntil: null });
 export function normalizeDmSettings(s: Partial<DmSettings> | null | undefined, isMinor = false): DmSettings {
   const d = defaultDmSettings(isMinor);
   const who = s?.who && ['everyone', 'fof', 'friends', 'none'].includes(s.who) ? s.who : d.who;
-  return { who, readReceipts: s?.readReceipts ?? d.readReceipts, activity: s?.activity ?? d.activity };
+  const dnd = typeof s?.dndUntil === 'number' && Number.isFinite(s.dndUntil) && s.dndUntil > 0 ? s.dndUntil : null;
+  return { who, readReceipts: s?.readReceipts ?? d.readReceipts, activity: s?.activity ?? d.activity, calls: normalizeCallWho(s?.calls ?? d.calls, isMinor), dndUntil: dnd };
 }
 
 export type ConvKind = 'direct' | 'group';
@@ -72,8 +80,8 @@ export interface Member {
 export interface Conversation { id: string; kind: ConvKind; title?: string; createdBy: string; createdAt: number; lastMessageAt: number; members: Member[] }
 export type MsgKind = 'text' | 'image' | 'video' | 'workout' | 'system';
 export interface MsgMedia { url: string; path?: string; w: number; h: number; mime: string; size?: number; duration?: number; poster?: string; posterPath?: string }
-export type SystemType = 'created' | 'renamed' | 'added' | 'removed' | 'left' | 'admin' | 'accepted';
-export interface SystemEvent { type: SystemType; actor: string; targets?: string[]; title?: string }
+export type SystemType = 'created' | 'renamed' | 'added' | 'removed' | 'left' | 'admin' | 'accepted' | 'call';
+export interface SystemEvent { type: SystemType; actor: string; targets?: string[]; title?: string; call?: CallLog }
 export interface Message {
   id: string;
   conversationId: string;
@@ -437,6 +445,7 @@ export function systemText(e: SystemEvent, name: (id: string) => string, me: str
     case 'left': return `${who} left the group`;
     case 'admin': return `${who} made ${list} an admin`;
     case 'accepted': return `${who} accepted the message request`;
+    case 'call': return callPreview(e, me);
   }
 }
 export function previewText(m: Pick<Message, 'kind' | 'body' | 'senderId' | 'deletedAt' | 'system'> | null | undefined, me: string, name: (id: string) => string, group = false): string {

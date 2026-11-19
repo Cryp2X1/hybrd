@@ -10,6 +10,9 @@ import { ReactionBar, ReactorsSheet } from '../components/Reactions';
 import { CrisisCard } from '../components/MindBits';
 import { Bubble, ConvAvatar, DmReportSheet, ForwardSheet, isSampleConv, MsgMenu, timeLabel, WorkoutSheet, type MenuAction } from '../components/Messages';
 import { useMessages } from '../lib/messagesStore';
+import { CallButtons, CallsList } from '../components/Call';
+import { useCalls } from '../lib/callStore';
+import { CALL_WHO, DND_OPTIONS, dndActive, dndLabel, dndUntilFor } from '../lib/calls';
 import { useSocial } from '../lib/socialStore';
 import { useToast } from '../lib/toast';
 import { prepareSocialImage } from '../lib/socialImage';
@@ -52,7 +55,9 @@ function Inbox({ activeId }: { activeId: string | null }) {
   const { mode, me } = useSocial();
   const [sp, setSp] = useSearchParams();
   const loc = useLocation();
-  const folder: Folder = (loc.pathname === '/messages' && (sp.get('folder') as Folder)) || 'chats';
+  const callsTab = loc.pathname === '/messages' && sp.get('folder') === 'calls';
+  const folder: Folder = (loc.pathname === '/messages' && !callsTab && (sp.get('folder') as Folder)) || 'chats';
+  const calls = useCalls();
   const [q, setQ] = useState('');
   const [res, setRes] = useState<SearchResult | null>(null);
   const [menu, setMenu] = useState<ConvView | null>(null);
@@ -66,7 +71,7 @@ function Inbox({ activeId }: { activeId: string | null }) {
   const reqs = inbox.filter((c) => c.folder === 'requests');
   const reqUnread = reqs.filter((c) => c.unread > 0).length;
   const archived = inbox.filter((c) => c.folder === 'archived').length;
-  const setFolder = (f: Folder) => setSp(f === 'chats' ? {} : { folder: f });
+  const setFolder = (f: Folder | 'calls') => setSp(f === 'chats' ? {} : { folder: f });
   return (
     <div className="dm-inbox" data-testid="dm-inbox">
       <header className="dm-head">
@@ -82,10 +87,12 @@ function Inbox({ activeId }: { activeId: string | null }) {
         <>
           {folder !== 'archived' ? (
             <div className="dm-folders" role="tablist" aria-label="Folders">
-              <button role="tab" aria-selected={folder === 'chats'} className={folder === 'chats' ? 'on' : ''} onClick={() => setFolder('chats')} data-testid="dm-tab-chats">Chats</button>
-              <button role="tab" aria-selected={folder === 'requests'} className={folder === 'requests' ? 'on' : ''} onClick={() => setFolder('requests')} data-testid="dm-tab-requests">Requests{reqs.length > 0 && <span className={`dm-fcount ${reqUnread ? 'hot' : ''}`}>{reqs.length}</span>}</button>
+              <button role="tab" aria-selected={!callsTab && folder === 'chats'} className={!callsTab && folder === 'chats' ? 'on' : ''} onClick={() => setFolder('chats')} data-testid="dm-tab-chats">Chats</button>
+              <button role="tab" aria-selected={!callsTab && folder === 'requests'} className={!callsTab && folder === 'requests' ? 'on' : ''} onClick={() => setFolder('requests')} data-testid="dm-tab-requests">Requests{reqs.length > 0 && <span className={`dm-fcount ${reqUnread ? 'hot' : ''}`}>{reqs.length}</span>}</button>
+              {calls.backend && <button role="tab" aria-selected={callsTab} className={callsTab ? 'on' : ''} onClick={() => setFolder('calls')} data-testid="dm-tab-calls">Calls{calls.missed > 0 && !callsTab && <span className="dm-fcount hot" aria-label={`${calls.missed} missed`}>{calls.missed}</span>}</button>}
             </div>
           ) : <button className="dm-back-folder" onClick={() => setFolder('chats')}><Icon name="back" size={16} /> Archived chats</button>}
+          {callsTab ? <CallsList /> : <>
           {folder === 'requests' && <p className="dm-req-note muted small" data-testid="dm-req-note"><Icon name="lock" size={14} /> Messages from people you’re not friends with. They won’t see that you’ve read them unless you accept. Photos and videos stay blurred until you tap.</p>}
           {!ready && <div className="dm-skel" aria-hidden="true">{[0, 1, 2, 3].map((i) => <div key={i} />)}</div>}
           {ready && !list.length && (folder === 'requests'
@@ -96,6 +103,7 @@ function Inbox({ activeId }: { activeId: string | null }) {
             {list.map((c) => <ConvRow key={c.id} c={c} active={c.id === activeId} meId={me?.id || ''} typing={liveTyping(typing[c.id] || {}).filter((u) => u !== me?.id)} onMenu={() => setMenu(c)} />)}
           </ul>
           {folder === 'chats' && archived > 0 && <button className="dm-archived-link" onClick={() => setFolder('archived')}><Icon name="archive" size={16} /> Archived ({archived})</button>}
+          </>}
           <p className="dm-privacy muted small"><Icon name="lock" size={13} /> {PRIVACY_NOTE}</p>
         </>
       )}
@@ -369,6 +377,7 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
           {conv ? <ConvAvatar c={conv} size={38} /> : <SAvatar p={otherP} size={38} />}
           <span className="dm-chat-tt"><b>{title}{otherP?.sample && <SampleTag />}{conv?.kind === 'group' && conv.others.some((o) => o.profile.sample) && <SampleTag />}</b><span className={`dm-chat-sub ${typingText ? 'typing' : ''}`}>{sub}</span></span>
         </button>
+        {conv && <span className="dm-callbtns"><CallButtons c={conv} /></span>}
         {conv && <button className="icon-btn" aria-label="Chat details" onClick={() => setInfo(true)} data-testid="dm-info"><Icon name="info" size={20} /></button>}
       </header>
       {!online && <div className="dm-offline" role="status"><Icon name="cloud" size={14} /> You’re offline. Messages will send when you’re back online.</div>}
@@ -607,8 +616,10 @@ export function MessageSettings() { return <SocialGate><MessageSettingsInner /><
 function MessageSettingsInner() {
   const { settings, saveSettings } = useMessages();
   const { me } = useSocial();
+  const calls = useCalls();
   const toast = useToast();
   const nav = useNavigate();
+  const dndOn = dndActive(settings.dndUntil);
   const save = async (p: Partial<typeof settings>) => { try { await saveSettings({ ...settings, ...p }); toast('Saved'); } catch (e) { toast(friendlyDmError(e)); } };
   return (
     <div className="page dm-settings" data-testid="dm-settings">
@@ -632,6 +643,42 @@ function MessageSettingsInner() {
           <span><b>Activity status and typing</b><div className="muted small">Show “Active now” and when you’re typing to people you chat with. Turn it off and you won’t see theirs.</div></span><span className={`switch ${settings.activity ? 'on' : ''}`} />
         </button>
       </Card>
+      {calls.backend && <Card>
+        <h3 id="calls">Calls</h3>
+        <div data-testid="dm-calls-settings">
+          <div className="dm-set-l">Who can call you</div>
+          {me?.isMinor && <p className="muted small" data-testid="dm-calls-minor"><Icon name="lock" size={13} /> You’re under 18, so only your friends can call you, and you can only call friends.</p>}
+          <div className="s-reasons" role="radiogroup" aria-label="Who can call you">
+            {CALL_WHO.map((w) => {
+              const off = !!me?.isMinor && w.v === 'everyone';
+              return (
+                <button key={w.v} role="radio" aria-checked={settings.calls === w.v} disabled={off} className={settings.calls === w.v ? 'on' : ''} onClick={() => save({ calls: w.v })} data-testid={`dm-callwho-${w.v}`}>
+                  <span className="s-radio" /><span><b>{w.label}</b><span className="muted small">{off ? 'Not available for under-18 accounts.' : w.sub}</span></span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="muted small">Message requests and blocked accounts can never call you.</p>
+          <div className="dm-set-l" style={{ marginTop: 14 }}>Do not disturb {dndOn && <span className="dm-dnd-on" data-testid="dm-dnd-status">{dndLabel(settings.dndUntil)}</span>}</div>
+          <p className="muted small">Calls won’t ring. Callers just see “No answer” — they aren’t told you turned this on. Missed calls still show in Calls.</p>
+          <div className="dm-dnd" role="radiogroup" aria-label="Do not disturb">
+            {DND_OPTIONS.map((o) => {
+              const on = o.v === 'off' ? !dndOn : false;
+              return <button key={o.v} role="radio" aria-checked={on} className={`chip ${on ? 'on' : ''}`} onClick={() => save({ dndUntil: dndUntilFor(o.v) })} data-testid={`dm-dnd-${o.v}`}>{o.label}</button>;
+            })}
+          </div>
+          {calls.relay.available ? (
+            <button className="toggle" style={{ width: '100%', textAlign: 'left', marginTop: 12 }} onClick={() => calls.setRelay(!calls.relay.on)} aria-pressed={calls.relay.on} data-testid="dm-call-relay">
+              <span><b>Protect my IP address in calls</b><div className="muted small">Send calls through HYBRD’s relay server so the people you call can’t see your network address. Can add a little delay.</div></span><span className={`switch ${calls.relay.on ? 'on' : ''}`} />
+            </button>
+          ) : <p className="muted small" style={{ marginTop: 12 }}><Icon name="info" size={13} /> Calls connect peer to peer, so the people you call can see your network (IP) address, like most calling apps.{calls.backend.kind === 'live' ? ' (A relay option appears here once the server has one set up.)' : ''}</p>}
+          <ul className="dm-safety" style={{ marginTop: 10 }}>
+            <li><Icon name="lock" size={16} /><span>Call audio and video are encrypted in transit by WebRTC (DTLS-SRTP) and go peer to peer. Honest note: HYBRD’s calling hasn’t had an independent security audit.</span></li>
+            <li><Icon name="bell" size={16} /><span>Calls ring only while HYBRD is open (browser tab or installed app). There are no push notifications for calls yet, so you’ll see missed calls next time you open the app.</span></li>
+            <li><Icon name="flag" size={16} /><span>Report someone from the call screen (ⓘ) or chat details.</span></li>
+          </ul>
+        </div>
+      </Card>}
       <Card>
         <h3>Safety</h3>
         <ul className="dm-safety">

@@ -14,6 +14,8 @@ import { activityLabel, fmtTime, hybridScore } from '../lib/calc';
 import { REPORT_REASONS, REPORT_DETAILS_MAX, workoutCard, type PublicProfile, type ReportReason, type WorkoutCard } from '../lib/social';
 import { clockTime, friendlyDmError, linkify, linkRisk, listTime, STATUS_LABEL, systemText, type Seg } from '../lib/messages';
 import type { ConvView, MessageView } from '../lib/messagesApi';
+import { isCallEvent } from '../lib/calls';
+import { CallLogCard } from './Call';
 
 // ---------- avatars ----------
 export function ConvAvatar({ c, size = 52 }: { c: ConvView; size?: number }) {
@@ -80,6 +82,7 @@ function BubbleImpl(p: BubbleProps) {
   const { m } = p;
   const [reveal, setReveal] = useState(false);
   const bind = usePressToReact({ onOpen: (r, id) => p.onMenu(m, r, id), disabled: m.kind === 'system' || !!m.pending });
+  if (m.kind === 'system' && isCallEvent(m.system)) return <CallLogCard call={m.system.call} actor={m.system.actor} me={p.meId} group={p.group} conversationId={m.conversationId} at={m.createdAt} />;
   if (m.kind === 'system') return <div className="dm-sys" data-testid="dm-system">{m.system ? systemText(m.system, p.nameOf, p.meId) : ''}</div>;
   const unsent = !!m.deletedAt;
   const blurred = p.blurMedia && !reveal && (m.kind === 'image' || m.kind === 'video');

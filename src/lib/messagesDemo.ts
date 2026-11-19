@@ -13,6 +13,7 @@ import { isBlocked, areFriends, friendIds, cleanText, REPORT_DETAILS_MAX, type G
 import type { ReactorView } from './socialApi';
 import { UNKNOWN_PROFILE, type ConvView, type DmBackend, type DmEvent, type Draft, type EligibilityView, type MemberView, type MessageView, type NewDmReport, type SearchResult } from './messagesApi';
 import { artUrl } from './socialArt';
+import type { CallHistoryItem, CallLog } from './calls';
 
 export const DM_ME = 'me';
 export interface DmDemoState {
@@ -44,14 +45,14 @@ const H = 3600_000;
 // How long ago each sample person was "active" (relative to now, so the demo never looks stale). Ana hides her activity.
 const SAMPLE_ACTIVE: Record<string, number> = { s1: 60_000, s2: 40 * 60_000, s6: 3 * H, s7: 26 * H, s4: 2 * H, s5: 5 * H };
 const SAMPLE_SETTINGS: Record<string, DmSettings> = {
-  s1: { who: 'everyone', readReceipts: true, activity: true },
-  s2: { who: 'everyone', readReceipts: true, activity: true },
-  s3: { who: 'friends', readReceipts: false, activity: false },
-  s4: { who: 'fof', readReceipts: true, activity: true },
-  s5: { who: 'everyone', readReceipts: true, activity: true },
-  s6: { who: 'everyone', readReceipts: true, activity: true },
-  s7: { who: 'everyone', readReceipts: true, activity: true },
-  s8: { who: 'none', readReceipts: true, activity: false },
+  s1: { who: 'everyone', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s2: { who: 'everyone', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s3: { who: 'friends', readReceipts: false, activity: false, calls: 'friends', dndUntil: null },
+  s4: { who: 'fof', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s5: { who: 'everyone', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s6: { who: 'everyone', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s7: { who: 'everyone', readReceipts: true, activity: true, calls: 'everyone', dndUntil: null },
+  s8: { who: 'none', readReceipts: true, activity: false, calls: 'none', dndUntil: null },
 };
 const REPLIES: Record<string, string[]> = {
   s1: ['Love it! 🙌', 'Same pace as last week? Let’s go.', 'Saturday can’t come soon enough 🏔️', 'Bring water, it’s going to be warm.', 'Haha deal 😆'],
@@ -179,6 +180,47 @@ export class DemoDm implements DmBackend {
     const now = this.now();
     s.messages.push({ id: nid('sy', now), conversationId: c.id, senderId: e.actor, kind: 'system', body: '', system: e, createdAt: now });
     c.lastMessageAt = now;
+  }
+
+  // ---------- calls (demo): the call log lives in the chat thread as a system card ----------
+  /** Add a call card ("Missed voice call", "Video call · 3 min") to a chat. `actor` = who placed the call. */
+  async logCall(conversationId: string, actor: string, call: CallLog) {
+    const s = await this.st();
+    const c = s.convs.find((x) => x.id === conversationId); if (!c) return;
+    if (s.messages.some((m) => m.system?.type === 'call' && m.system.call?.id === call.id)) return;
+    this.sysMsg(s, c, { type: 'call', actor, call });
+    await this.commit();
+    this.emit({ type: 'update', conversationId }); this.emit({ type: 'inbox' });
+  }
+  /** What the call rules need to know about a chat (sample people's call settings are known on this device). */
+  async callContext(conversationId: string) {
+    const s = await this.st(); const w = await this.deps.world();
+    const c = s.convs.find((x) => x.id === conversationId);
+    if (!c) return null;
+    const minors = new Set(Object.values(w.profiles).filter((p) => p.isMinor).map((p) => p.id));
+    const others = c.members.filter((m) => m.userId !== DM_ME && m.state === 'active').map((m) => m.userId);
+    const theirWho = Object.fromEntries(others.map((o) => [o, this.settingsOf(s, o, minors.has(o)).calls]));
+    const dnd = Object.fromEntries(others.map((o) => [o, this.settingsOf(s, o, minors.has(o)).dndUntil]));
+    return { conv: c, view: this.viewConv(s, w, c), graph: w.graph, minors, others, theirWho, dnd, profiles: w.profiles, mySettings: this.settingsOf(s, DM_ME, minors.has(DM_ME)) };
+  }
+  /** Calls tab: every call card in chats I can still see, newest first. */
+  async callHistory(): Promise<CallHistoryItem[]> {
+    const s = await this.st();
+    const out: CallHistoryItem[] = [];
+    for (const c of s.convs) {
+      if (!isParticipant(c, DM_ME)) continue;
+      for (const m of visibleMessages(s.messages, c, DM_ME, this.hiddenSet(s))) {
+        const e = m.system; if (!e || e.type !== 'call' || !e.call) continue;
+        out.push({ id: e.call.id, conversationId: c.id, kind: e.call.kind, status: e.call.status, callerId: e.actor, at: m.createdAt, durationSec: e.call.durationSec || 0, group: c.kind === 'group', title: c.title, peers: c.members.filter((x) => x.userId !== DM_ME && x.state === 'active').map((x) => x.userId) });
+      }
+    }
+    return out.sort((a, b) => b.at - a.at);
+  }
+  /** Remove a call from my Calls tab (the card in the chat goes too, for me only). */
+  async hideCall(callId: string) {
+    const s = await this.st();
+    const m = s.messages.find((x) => x.system?.type === 'call' && x.system.call?.id === callId);
+    if (m && !s.hidden.includes(m.id)) { s.hidden.push(m.id); await this.commit(); this.emit({ type: 'inbox' }); }
   }
 
   // ---------- views ----------

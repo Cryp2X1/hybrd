@@ -1,4 +1,4 @@
-declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; spotifyClientId?: string; stravaClientId?: string; stravaTokenUrl?: string; supportEmail?: string } } }
+declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; spotifyClientId?: string; stravaClientId?: string; stravaTokenUrl?: string; supportEmail?: string; turnUrls?: string; turnUsername?: string; turnCredential?: string; turnFunction?: string } } }
 
 const LS_KEY = 'hybrd:backend';
 

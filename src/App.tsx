@@ -10,6 +10,7 @@ import { Avatar } from './components/Avatar';
 import { useSocial } from './lib/socialStore';
 import { useMessages } from './lib/messagesStore';
 import { DmBanner, MessagesLink } from './components/Messages';
+import { CallLayer } from './components/Call';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Train = lazy(() => import('./pages/Train'));
@@ -187,6 +188,7 @@ export function App() {
         </Suspense>
       </main>
       <DmBanner />
+      <CallLayer />
       <nav className="bottom-nav" aria-label="Main">
         <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
         <NavLink to="/train"><Icon name="train" /><span>Train</span></NavLink>

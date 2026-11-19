@@ -1800,3 +1800,380 @@ create policy "message_media_delete_own" on storage.objects for delete to authen
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in
   ('dm_settings', 'conversations', 'conversation_members', 'messages', 'message_reactions', 'message_hidden', 'message_reports', 'push_subscriptions');
 select id, public, file_size_limit from storage.buckets where id = 'message-media';
+
+
+-- =====================================================================================================================
+-- CALLS (voice + video calls inside Messages)
+-- Safe to re-run. Audio/video never touch this database: they go peer to peer between browsers (WebRTC, encrypted
+-- with DTLS-SRTP), through a TURN relay only when a network needs one. This section stores who called whom and when
+-- (call history + the call card in the chat), decides who is ALLOWED to call (same people who can message you; never
+-- message requests or blocked accounts; under-18s only friends; "Who can call me"; Do not disturb), and authorizes
+-- the private Realtime channel `call:<id>` the browsers use to exchange connection details (signaling).
+-- =====================================================================================================================
+
+-- ---------- settings (added to the Messages settings row) ----------
+alter table public.dm_settings add column if not exists who_can_call text not null default 'everyone';   -- everyone (people you chat with) | friends | none
+alter table public.dm_settings add column if not exists dnd_until timestamptz;                             -- Do not disturb until (calls don't ring; callers just see "No answer")
+alter table public.dm_settings drop constraint if exists dm_settings_call_chk;
+alter table public.dm_settings add constraint dm_settings_call_chk check (who_can_call in ('everyone', 'friends', 'none'));
+
+-- ---------- tables ----------
+create table if not exists public.calls (
+  id               uuid primary key default gen_random_uuid(),
+  conversation_id  uuid not null references public.conversations (id) on delete cascade,
+  caller_id        uuid references public.social_profiles (id) on delete set null,
+  kind             text not null default 'voice',          -- voice | video (how it started; people can switch on cameras later)
+  status           text not null default 'ringing',        -- ringing | active | ended | missed | declined | canceled | busy | failed
+  is_group         boolean not null default false,
+  created_at       timestamptz not null default now(),
+  answered_at      timestamptz,
+  ended_at         timestamptz,
+  end_reason       text,
+  logged           boolean not null default false          -- the call card has been posted into the chat
+);
+alter table public.calls drop constraint if exists calls_kind_chk;
+alter table public.calls add constraint calls_kind_chk check (kind in ('voice', 'video'));
+alter table public.calls drop constraint if exists calls_status_chk;
+alter table public.calls add constraint calls_status_chk check (status in ('ringing', 'active', 'ended', 'missed', 'declined', 'canceled', 'busy', 'unavailable', 'failed'));
+create index if not exists calls_conversation_idx on public.calls (conversation_id, created_at desc);
+create index if not exists calls_live_idx on public.calls (conversation_id) where status in ('ringing', 'active');
+create index if not exists calls_caller_idx on public.calls (caller_id, created_at desc);
+
+create table if not exists public.call_participants (
+  call_id          uuid not null references public.calls (id) on delete cascade,
+  user_id          uuid not null references public.social_profiles (id) on delete cascade,
+  state            text not null default 'ringing',        -- ringing | joined | left | declined | missed | busy
+  quiet            boolean not null default false,         -- Do not disturb was on: never rings, and nobody else can tell (not readable by the app)
+  invited_at       timestamptz not null default now(),
+  joined_at        timestamptz,
+  left_at          timestamptz,
+  last_seen_at     timestamptz not null default now(),     -- heartbeat while ringing / in the call
+  hidden           boolean not null default false,         -- removed from my Calls tab
+  primary key (call_id, user_id)
+);
+alter table public.call_participants drop constraint if exists call_participants_state_chk;
+alter table public.call_participants add constraint call_participants_state_chk check (state in ('ringing', 'joined', 'left', 'declined', 'missed', 'busy', 'unavailable'));
+create index if not exists call_participants_user_idx on public.call_participants (user_id, state);
+
+-- ---------- helpers (SECURITY DEFINER, not callable from the app) ----------
+create or replace function public.call_who(u uuid) returns text
+language sql stable security definer set search_path = '' as $$
+  select case when public.dm_is_minor(u) and w = 'everyone' then 'friends' else w end
+    from (select coalesce((select s.who_can_call from public.dm_settings s where s.user_id = u),
+                          case when public.dm_is_minor(u) then 'friends' else 'everyone' end) as w) x
+$$;
+create or replace function public.call_dnd(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select s.dnd_until > now() from public.dm_settings s where s.user_id = u), false)
+$$;
+-- May `me` ring `other`? 'ok' or an error code. Mirrors pairCallCheck() in src/lib/calls.ts. Blocks are never revealed.
+-- Under-18 safety (stricter than messages): anyone under 18 only calls / is called by friends.
+create or replace function public.call_check(me uuid, other uuid) returns text
+language plpgsql stable security definer set search_path = '' as $$
+declare fr boolean; who text;
+begin
+  if me = other then return 'call_self'; end if;
+  if not public.social_is_member(other) or public.social_is_blocked(me, other) then return 'call_unavailable'; end if;
+  fr := public.social_are_friends(me, other);
+  if not fr and (public.dm_is_minor(me) or public.dm_is_minor(other)) then return 'call_minor'; end if;
+  who := public.call_who(other);
+  if who = 'none' then return 'call_no_one'; end if;
+  if who = 'friends' and not fr then return 'call_friends_only'; end if;
+  return 'ok';
+end $$;
+create or replace function public.call_my_state(c uuid) returns text
+language sql stable security definer set search_path = '' as $$
+  select p.state from public.call_participants p where p.call_id = c and p.user_id = auth.uid()
+$$;
+create or replace function public.call_is_participant(c uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.call_participants p where p.call_id = c and p.user_id = auth.uid())
+$$;
+-- Is `u` in another live call right now?
+create or replace function public.call_busy(u uuid, except_call uuid default null) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.call_participants p join public.calls c on c.id = p.call_id
+                 where p.user_id = u and p.state = 'joined' and c.status in ('ringing', 'active')
+                   and c.id is distinct from except_call and p.last_seen_at > now() - interval '90 seconds')
+$$;
+-- Post the call card into the chat, once.
+create or replace function public.call_log(cid uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare c public.calls; dur integer; ppl integer;
+begin
+  update public.calls set logged = true where id = cid and not logged returning * into c;
+  if not found then return; end if;
+  dur := case when c.answered_at is not null and c.ended_at is not null then greatest(1, round(extract(epoch from (c.ended_at - c.answered_at)))::integer) end;
+  select count(*) into ppl from public.call_participants p where p.call_id = cid and p.joined_at is not null;
+  perform public.dm_system_message(c.conversation_id, jsonb_build_object('type', 'call', 'actor', c.caller_id, 'call',
+    jsonb_strip_nulls(jsonb_build_object('id', c.id, 'kind', c.kind, 'status', c.status, 'durationSec', dur, 'people', case when c.is_group then ppl end))));
+end $$;
+-- Finish a call: final status, everyone still ringing → missed, everyone in it → left, then the chat card.
+create or replace function public.call_finish(cid uuid, st text, reason text default null) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.calls set status = st, ended_at = now(), end_reason = coalesce(reason, end_reason) where id = cid and status in ('ringing', 'active');
+  if not found then return; end if;
+  update public.call_participants set state = 'missed' where call_id = cid and state = 'ringing';
+  update public.call_participants set state = 'left', left_at = now() where call_id = cid and state = 'joined';
+  perform public.call_log(cid);
+end $$;
+-- Tidy my calls that nobody closed (app killed, phone died): ringing > 60 s → missed; no heartbeat for 90 s → ended.
+create or replace function public.call_cleanup() returns void
+language plpgsql security definer set search_path = '' as $$
+declare r record;
+begin
+  for r in select c.id, c.status, c.answered_at from public.calls c join public.call_participants p on p.call_id = c.id and p.user_id = auth.uid()
+           where c.status in ('ringing', 'active') loop
+    if r.status = 'ringing' and exists (select 1 from public.calls c where c.id = r.id and c.created_at < now() - interval '60 seconds') then
+      perform public.call_finish(r.id, 'missed', 'timeout');
+    elsif r.status = 'active' then
+      update public.call_participants set state = 'missed' where call_id = r.id and state = 'ringing' and invited_at < now() - interval '60 seconds';
+      update public.call_participants set state = 'left', left_at = now() where call_id = r.id and state = 'joined' and last_seen_at < now() - interval '90 seconds';
+      if (select count(*) from public.call_participants p where p.call_id = r.id and p.state = 'joined') < 2
+         and not exists (select 1 from public.call_participants p where p.call_id = r.id and p.state = 'ringing') then
+        perform public.call_finish(r.id, 'ended', 'stale');
+      end if;
+    end if;
+  end loop;
+end $$;
+-- Realtime: may the signed-in user use the private channel `call:<id>`? Only people who have joined that live call.
+create or replace function public.call_topic_ok(topic text) returns boolean
+language plpgsql stable security definer set search_path = '' as $$
+declare c uuid;
+begin
+  if topic is null or topic not like 'call:%' then return false; end if;
+  begin c := substr(topic, 6)::uuid; exception when others then return false; end;
+  return exists (select 1 from public.call_participants p join public.calls x on x.id = p.call_id
+                 where p.call_id = c and p.user_id = auth.uid() and p.state = 'joined' and x.status in ('ringing', 'active'));
+end $$;
+
+-- ---------- RPCs ----------
+-- Start (or join) a call in a chat. Returns {id, status: ringing | busy | join, ringing: [user ids being rung]}.
+create or replace function public.call_start(p_conv uuid, p_kind text default 'voice') returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); k text; mystate text; cid uuid; ex public.calls; u uuid; ust text; chk text; st text; ring uuid[] := '{}'; n integer := 0; n_busy integer := 0;
+begin
+  if me is null or not public.social_is_member(me) then raise exception 'call_not_member: sign in first' using errcode = 'P0001'; end if;
+  if exists (select 1 from public.social_bans b where b.user_id = me) then raise exception 'banned' using errcode = 'P0001'; end if;
+  if p_kind not in ('voice', 'video') then raise exception 'call_invalid: kind' using errcode = 'P0001'; end if;
+  mystate := public.dm_member_state(p_conv, me);
+  if mystate = 'request' then raise exception 'call_request: accept the message request before calling' using errcode = 'P0001'; end if;
+  if mystate is distinct from 'active' then raise exception 'call_not_member: you are not in this chat' using errcode = 'P0001'; end if;
+  select c.kind into k from public.conversations c where c.id = p_conv;
+  perform public.call_cleanup();
+  if public.call_busy(me) then raise exception 'call_busy: you are already on a call' using errcode = 'P0001'; end if;
+  -- a call is already going on in this chat (or they called me at the same moment): join it
+  select * into ex from public.calls c where c.conversation_id = p_conv and c.status in ('ringing', 'active') order by c.created_at desc limit 1;
+  if found and ex.created_at > now() - interval '60 seconds' or found and ex.status = 'active' then
+    if public.call_my_state(ex.id) is null then
+      if (select count(*) from public.call_participants p where p.call_id = ex.id and p.state = 'joined') >= 4 then raise exception 'call_full: calls can have up to 4 people' using errcode = 'P0001'; end if;
+      insert into public.call_participants (call_id, user_id, state) values (ex.id, me, 'ringing');
+    end if;
+    perform public.call_answer(ex.id);
+    return jsonb_build_object('id', ex.id, 'status', 'join', 'ringing', '[]'::jsonb);
+  end if;
+  perform public.social_rate_check((select count(*) from public.calls c where c.caller_id = me and c.created_at > now() - interval '1 hour'), 30, 'calls an hour');
+  if k = 'direct' then
+    select m.user_id, m.state into u, ust from public.conversation_members m where m.conversation_id = p_conv and m.user_id <> me limit 1;
+    if u is null then raise exception 'call_empty: there is no one else in this chat' using errcode = 'P0001'; end if;
+    if ust in ('request', 'declined') then raise exception 'call_request_out: you can call once they accept your message request' using errcode = 'P0001'; end if;
+    if ust is distinct from 'active' then raise exception 'call_empty: there is no one else in this chat' using errcode = 'P0001'; end if;
+    chk := public.call_check(me, u);
+    if chk <> 'ok' then raise exception '%: not allowed', chk using errcode = 'P0001'; end if;
+  end if;
+  insert into public.calls (conversation_id, caller_id, kind, is_group) values (p_conv, me, p_kind, k = 'group') returning id into cid;
+  insert into public.call_participants (call_id, user_id, state, joined_at) values (cid, me, 'joined', now());
+  for u in select m.user_id from public.conversation_members m where m.conversation_id = p_conv and m.user_id <> me and m.state = 'active' order by m.joined_at limit 32 loop
+    if k = 'group' and public.call_check(me, u) <> 'ok' then continue; end if;
+    st := case when public.call_busy(u) then 'busy' else 'ringing' end;
+    -- Do not disturb: recorded as ringing so the caller just hears it ring out ("No answer"); it never rings on their side
+    insert into public.call_participants (call_id, user_id, state, quiet) values (cid, u, st, public.call_dnd(u));
+    n := n + 1;
+    if st = 'busy' then n_busy := n_busy + 1; else ring := ring || u; end if;
+  end loop;
+  if n = 0 then raise exception 'call_no_one: no one in this group can take a call from you right now' using errcode = 'P0001'; end if;
+  if n_busy = n then
+    perform public.call_finish(cid, 'busy', 'busy');
+    return jsonb_build_object('id', cid, 'status', 'busy', 'ringing', '[]'::jsonb);
+  end if;
+  return jsonb_build_object('id', cid, 'status', 'ringing', 'ringing', to_jsonb(ring));
+end $$;
+
+create or replace function public.call_answer(p_call uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); c public.calls; u uuid;
+begin
+  select * into c from public.calls x where x.id = p_call;
+  if not found or public.call_my_state(p_call) is null then raise exception 'call_not_found' using errcode = 'P0001'; end if;
+  if c.status not in ('ringing', 'active') then raise exception 'call_ended: this call has ended' using errcode = 'P0001'; end if;
+  if public.dm_member_state(c.conversation_id, me) is distinct from 'active' then raise exception 'call_not_member: you are not in this chat' using errcode = 'P0001'; end if;
+  if exists (select 1 from public.social_bans b where b.user_id = me) then raise exception 'banned' using errcode = 'P0001'; end if;
+  if public.call_my_state(p_call) = 'joined' then
+    update public.call_participants set last_seen_at = now() where call_id = p_call and user_id = me;
+    return;
+  end if;
+  if (select count(*) from public.call_participants p where p.call_id = p_call and p.state = 'joined') >= 4 then raise exception 'call_full: calls can have up to 4 people' using errcode = 'P0001'; end if;
+  for u in select p.user_id from public.call_participants p where p.call_id = p_call and p.state = 'joined' and p.user_id <> me loop
+    if public.social_is_blocked(me, u) then raise exception 'call_unavailable: you can''t join this call' using errcode = 'P0001'; end if;
+    if (public.dm_is_minor(me) or public.dm_is_minor(u)) and not public.social_are_friends(me, u) then raise exception 'call_minor: under-18s can only be in calls with friends' using errcode = 'P0001'; end if;
+  end loop;
+  update public.call_participants set state = 'joined', joined_at = coalesce(joined_at, now()), last_seen_at = now(), quiet = false where call_id = p_call and user_id = me;
+  update public.calls set status = 'active', answered_at = coalesce(answered_at, now()) where id = p_call;
+end $$;
+
+create or replace function public.call_decline(p_call uuid, p_busy boolean default false) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); c public.calls;
+begin
+  select * into c from public.calls x where x.id = p_call;
+  if not found or public.call_my_state(p_call) is distinct from 'ringing' then return; end if;
+  update public.call_participants set state = case when p_busy then 'busy' else 'declined' end, left_at = now() where call_id = p_call and user_id = me;
+  if c.status = 'ringing' and not exists (select 1 from public.call_participants p where p.call_id = p_call and p.state = 'ringing') then
+    -- 1:1: they declined. Group: everybody said no.
+    perform public.call_finish(p_call, case when p_busy and not c.is_group then 'busy' else 'declined' end, 'declined');
+  end if;
+end $$;
+
+create or replace function public.call_leave(p_call uuid, p_reason text default 'hangup') returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); c public.calls; mine text;
+begin
+  select * into c from public.calls x where x.id = p_call;
+  mine := public.call_my_state(p_call);
+  if not found or mine is null or c.status not in ('ringing', 'active') then return; end if;
+  if mine = 'ringing' then perform public.call_decline(p_call); return; end if;
+  update public.call_participants set state = 'left', left_at = now() where call_id = p_call and user_id = me and state = 'joined';
+  if c.answered_at is null then
+    -- nobody picked up: the caller gave up (or it rang out / couldn't connect)
+    if c.caller_id = me then
+      perform public.call_finish(p_call, case p_reason when 'timeout' then 'missed' when 'failed' then 'failed' else 'canceled' end, p_reason);
+    end if;
+  elsif (select count(*) from public.call_participants p where p.call_id = p_call and p.state = 'joined') < 2 then
+    perform public.call_finish(p_call, 'ended', p_reason);
+  end if;
+end $$;
+
+-- Every few seconds while ringing / in a call. Returns the call status; ends it if someone got blocked or a teen
+-- safety rule no longer holds (e.g. unfriended mid-call).
+create or replace function public.call_heartbeat(p_call uuid) returns text
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); s text; u uuid;
+begin
+  if public.call_my_state(p_call) is null then return null; end if;
+  update public.call_participants set last_seen_at = now() where call_id = p_call and user_id = me;
+  if public.call_my_state(p_call) = 'joined' then
+    for u in select p.user_id from public.call_participants p where p.call_id = p_call and p.state = 'joined' and p.user_id <> me loop
+      if public.social_is_blocked(me, u) or ((public.dm_is_minor(me) or public.dm_is_minor(u)) and not public.social_are_friends(me, u)) then
+        perform public.call_finish(p_call, 'ended', 'blocked');
+        exit;
+      end if;
+    end loop;
+  end if;
+  perform public.call_cleanup();
+  select c.status into s from public.calls c where c.id = p_call;
+  return s;
+end $$;
+
+-- Calls ringing for me right now (Do not disturb ones never show up).
+create or replace function public.call_incoming() returns table (call_id uuid, conversation_id uuid, caller_id uuid, kind text, created_at timestamptz, is_group boolean)
+language plpgsql security definer set search_path = '' as $$
+begin
+  perform public.call_cleanup();
+  return query
+    select c.id, c.conversation_id, c.caller_id, c.kind, c.created_at, c.is_group
+      from public.call_participants p join public.calls c on c.id = p.call_id
+     where p.user_id = auth.uid() and p.state = 'ringing' and not p.quiet and c.status in ('ringing', 'active')
+       and p.invited_at > now() - interval '60 seconds' and public.dm_member_state(c.conversation_id, auth.uid()) = 'active'
+       and not public.call_dnd(auth.uid())
+     order by c.created_at desc limit 5;
+end $$;
+
+-- My call history (Calls tab). Status is from my point of view (a group call I didn't pick up is "missed" for me).
+create or replace function public.call_history(p_limit integer default 60) returns table (
+  call_id uuid, conversation_id uuid, kind text, status text, caller_id uuid, created_at timestamptz, answered_at timestamptz, ended_at timestamptz,
+  peers uuid[], is_group boolean, title text)
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  perform public.call_cleanup();
+  return query
+    select c.id, c.conversation_id, c.kind,
+           case when c.caller_id is distinct from me and p.quiet then 'unavailable'
+                when c.caller_id is distinct from me and p.state in ('missed', 'ringing') then (case when c.status = 'canceled' then 'canceled' else 'missed' end)
+                when c.caller_id is distinct from me and p.state = 'declined' then 'declined'
+                when c.caller_id is distinct from me and p.state = 'busy' then 'busy'
+                else c.status end,
+           c.caller_id, c.created_at,
+           case when p.joined_at is not null then c.answered_at end,
+           case when p.joined_at is not null then coalesce(p.left_at, c.ended_at) end,
+           array(select q.user_id from public.call_participants q where q.call_id = c.id and q.user_id <> me and not public.social_is_blocked(me, q.user_id)),
+           c.is_group, case when c.is_group then v.title end
+      from public.call_participants p join public.calls c on c.id = p.call_id join public.conversations v on v.id = c.conversation_id
+     where p.user_id = me and not p.hidden and c.status not in ('ringing', 'active')
+     order by c.created_at desc
+     limit least(greatest(coalesce(p_limit, 60), 1), 200);
+end $$;
+
+create or replace function public.call_hide(p_call uuid) returns void
+language sql security definer set search_path = '' as $$
+  update public.call_participants set hidden = true where call_id = p_call and user_id = auth.uid()
+$$;
+
+-- ---------- RLS ----------
+alter table public.calls             enable row level security;
+alter table public.call_participants enable row level security;
+do $$
+declare r record;
+begin
+  for r in select policyname, tablename from pg_policies where schemaname = 'public' and tablename in ('calls', 'call_participants') loop
+    execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end $$;
+-- read-only for the people in the call; every change goes through the call_* functions above
+create policy "calls_select_participant" on public.calls for select to authenticated using (public.call_is_participant(id));
+create policy "call_participants_select_participant" on public.call_participants for select to authenticated using (public.call_is_participant(call_id));
+
+-- ---------- grants ----------
+revoke all on public.calls, public.call_participants from anon, authenticated;
+grant select on public.calls to authenticated;
+-- `quiet` (Do not disturb), `hidden` and `last_seen_at` stay private: not even readable by the other people in the call
+grant select (call_id, user_id, state, invited_at, joined_at, left_at) on public.call_participants to authenticated;
+grant update (who_can_call, dnd_until) on public.dm_settings to authenticated;
+
+revoke execute on function public.call_start(uuid, text), public.call_answer(uuid), public.call_decline(uuid, boolean), public.call_leave(uuid, text),
+  public.call_heartbeat(uuid), public.call_incoming(), public.call_history(integer), public.call_hide(uuid) from public, anon;
+grant execute on function public.call_start(uuid, text), public.call_answer(uuid), public.call_decline(uuid, boolean), public.call_leave(uuid, text),
+  public.call_heartbeat(uuid), public.call_incoming(), public.call_history(integer), public.call_hide(uuid) to authenticated;
+revoke execute on function public.call_who(uuid), public.call_dnd(uuid), public.call_check(uuid, uuid), public.call_busy(uuid, uuid), public.call_log(uuid),
+  public.call_finish(uuid, text, text), public.call_cleanup() from public, anon, authenticated;
+-- used inside RLS policies / Realtime authorization: callable, but they only answer about the signed-in user
+revoke execute on function public.call_my_state(uuid), public.call_is_participant(uuid), public.call_topic_ok(text) from public, anon;
+grant execute on function public.call_my_state(uuid), public.call_is_participant(uuid), public.call_topic_ok(text) to authenticated;
+
+-- ---------- Realtime ----------
+-- Ringing + call status changes stream to the app (RLS above applies), and the private Broadcast channel
+-- `call:<id>` (offers / answers / ICE candidates between the browsers) is limited to people who joined that call.
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['calls', 'call_participants'] loop
+      if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
+do $$
+begin
+  if to_regclass('realtime.messages') is not null then
+    execute 'drop policy if exists "call_broadcast_read" on realtime.messages';
+    execute 'drop policy if exists "call_broadcast_write" on realtime.messages';
+    execute $p$create policy "call_broadcast_read" on realtime.messages for select to authenticated using (public.call_topic_ok(realtime.topic()))$p$;
+    execute $p$create policy "call_broadcast_write" on realtime.messages for insert to authenticated with check (public.call_topic_ok(realtime.topic()))$p$;
+  end if;
+end $$;
+
+-- Check: both call tables should show rowsecurity = true
+select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in ('calls', 'call_participants');

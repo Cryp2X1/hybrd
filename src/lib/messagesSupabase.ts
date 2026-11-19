@@ -11,6 +11,7 @@ import { cleanText, isReactionType, summarizeReactions, REPORT_DETAILS_MAX, type
 import type { ReactorView } from './socialApi';
 import type { SupabaseSocial } from './socialSupabase';
 import { UNKNOWN_PROFILE, type ConvView, type DmBackend, type DmEvent, type Draft, type EligibilityView, type MemberView, type MessageView, type NewDmReport, type SearchResult } from './messagesApi';
+import { DND_FOREVER } from './calls';
 
 export const DM_BUCKET = 'message-media';
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -75,18 +76,31 @@ export class SupabaseDm implements DmBackend {
 
   // ---------- settings ----------
   async getSettings(): Promise<DmSettings> {
-    const rows = (await this.q(this.sb.from('dm_settings').select('who_can_message, read_receipts, show_activity').eq('user_id', this.myId))) as Row[];
+    // who_can_call / dnd_until come with the Calls SQL (SETUP.md §13); older databases fall back to the Messages columns.
+    let rows: Row[];
+    try { rows = (await this.q(this.sb.from('dm_settings').select('who_can_message, read_receipts, show_activity, who_can_call, dnd_until').eq('user_id', this.myId))) as Row[]; this.callCols = true; }
+    catch { rows = (await this.q(this.sb.from('dm_settings').select('who_can_message, read_receipts, show_activity').eq('user_id', this.myId))) as Row[]; this.callCols = false; }
     const me = (await this.profiles([this.myId])).get(this.myId);
     const r = rows[0];
-    this.mySettings = normalizeDmSettings(r ? { who: r.who_can_message, readReceipts: r.read_receipts, activity: r.show_activity } : null, !!me?.isMinor);
+    this.mySettings = normalizeDmSettings(r ? { who: r.who_can_message, readReceipts: r.read_receipts, activity: r.show_activity, calls: r.who_can_call, dndUntil: dndFromDb(r.dnd_until) } : null, !!me?.isMinor);
     return this.mySettings;
   }
   async saveSettings(s: DmSettings): Promise<DmSettings> {
     const v = normalizeDmSettings(s);
-    await this.q(this.sb.from('dm_settings').upsert({ user_id: this.myId, who_can_message: v.who, read_receipts: v.readReceipts, show_activity: v.activity }, { onConflict: 'user_id' }));
+    const row: Record<string, unknown> = { user_id: this.myId, who_can_message: v.who, read_receipts: v.readReceipts, show_activity: v.activity };
+    if (this.callCols !== false) { row.who_can_call = v.calls; row.dnd_until = dndToDb(v.dndUntil); }
+    try { await this.q(this.sb.from('dm_settings').upsert(row, { onConflict: 'user_id' })); }
+    catch (e) {
+      if (this.callCols === false || !('who_can_call' in row)) throw e;
+      // the Calls SQL isn't installed yet: save the message settings and say so
+      delete row.who_can_call; delete row.dnd_until; this.callCols = false;
+      await this.q(this.sb.from('dm_settings').upsert(row, { onConflict: 'user_id' }));
+    }
     this.mySettings = v; this.emit({ type: 'inbox' });
     return v;
   }
+  /** false = the database doesn't have the call columns yet */
+  callCols: boolean | null = null;
   private async settings() { return this.mySettings || this.getSettings(); }
 
   // ---------- views ----------
@@ -354,4 +368,13 @@ export class SupabaseDm implements DmBackend {
       .subscribe();
     return () => { this.subs.delete(cb); this.sb.removeChannel(ch); };
   }
+}
+
+// Do not disturb "until I turn it off" is stored as a far-future date Postgres can parse.
+const DB_FOREVER = '9999-12-31T00:00:00Z';
+export function dndToDb(v: number | null): string | null { if (!v) return null; return v >= DND_FOREVER ? DB_FOREVER : new Date(v).toISOString(); }
+export function dndFromDb(v: unknown): number | null {
+  if (typeof v !== 'string' || !v) return null;
+  const t = Date.parse(v); if (!Number.isFinite(t)) return null;
+  return new Date(t).getUTCFullYear() >= 9999 ? DND_FOREVER : t;
 }

@@ -328,6 +328,75 @@ Media files of removed messages stay in Storage → `message-media` → `<conver
 **12.5 Test it**
 Use two accounts in two browsers. A opens B's profile → **Message** and sends "hi". B sees it under Messages › **Requests**, and A sees only "Sent". Try a 4th message from A: it's refused. B taps **Accept**, and A now sees "Seen" when B reads. Send a photo, react with a long-press, reply, edit within 15 minutes, then unsend. In B, go to Messages › Privacy › **Friends only**, then try to start a new chat from a third account: it's refused. Report a message and confirm it appears in `public.message_reports`.
 
+## 13. Calls (voice + video in Messages) — created by `schema.sql`
+
+People can voice or video call from any chat (1:1, or group calls of **up to 4 people**). Audio and video go **peer to peer** between the browsers with WebRTC and are encrypted in transit (DTLS-SRTP). They never pass through Supabase. Supabase only stores call history, decides who may call whom, and carries the short "connection setup" messages (signaling). Be honest in your privacy policy: calls are encrypted in transit peer to peer, HYBRD's calling has **not** had an independent security audit, and people in a call can see each other's network (IP) address unless calls go through a TURN relay.
+
+**There are no push notifications for calls (yet).** A call only rings while HYBRD is open (a browser tab or the installed app). Everyone else gets a missed call in the chat and the Calls tab the next time they open the app. The app says this in Messages › Privacy and the Calls tab.
+
+**13.1 What `schema.sql` creates** (safe to re-run; run the whole file again after updating)
+- `dm_settings` gets two columns: `who_can_call` (`everyone` = people you chat with · `friends` · `none`) and `dnd_until` (Do not disturb).
+- Tables `calls` and `call_participants`, with RLS on. They're read-only for the people in the call; all changes go through functions. `quiet` (Do not disturb), `hidden` and `last_seen_at` aren't readable by the app at all.
+- Functions: `call_start`, `call_answer`, `call_decline`, `call_leave`, `call_heartbeat`, `call_incoming`, `call_history` and `call_hide`. These enforce the rules:
+  - Message requests (not accepted) can't call. Blocked accounts can't call, and it's never revealed who blocked whom.
+  - Under-18s can only call, and be called by, friends.
+  - "Who can call me" applies. With Do not disturb on, it just rings out on the caller's side ("No answer") and never rings for you.
+  - One call at a time ("busy"). A group call allows at most 4 people at once.
+  - Limit of 30 calls an hour.
+  - Calls nobody closed are tidied up: a ring older than 60 s becomes missed, and a call with no heartbeat for 90 s ends.
+  - A call card (missed / declined / duration) is posted into the chat once.
+
+**13.2 Turn on Realtime**
+1. **Database → Publications → `supabase_realtime`**: make sure `calls` and `call_participants` are listed (`schema.sql` adds them when the publication exists). This is how a call rings instantly. Without it, the app checks for incoming calls every 12 s while it's open.
+2. **Realtime → Settings**: keep **"Allow public access" off** (same as §12.2). Browsers exchange connection details over private Broadcast channels named `call:<call id>`, and `schema.sql` adds `call_broadcast_read/write` policies so only people who have joined that call can use the channel.
+
+**13.3 STUN (free, already on)**
+The app uses free public STUN servers (`stun.l.google.com:19302`, `stun.cloudflare.com:3478`) to find a direct path. That's enough for most home Wi-Fi. Some networks block direct connections (strict NATs, many mobile carriers, office/school Wi-Fi), and those calls will fail ("Couldn't connect") unless you add a **TURN relay**.
+
+**13.4 TURN relay (recommended before launch)** — pick one. Facts checked Nov 19, 2026; check the provider's site before relying on them:
+- **Cloudflare Realtime TURN**: 1,000 GB/month free (shared with Cloudflare's SFU), then $0.05/GB. Create a TURN key in the Cloudflare dashboard (Realtime → TURN), then set the function secrets `CF_TURN_KEY_ID` and `CF_TURN_API_TOKEN`.
+- **Metered Open Relay**: a free tier with an account (20 GB/month at the time of checking). Set `METERED_DOMAIN` (e.g. `yourapp.metered.live`) and `METERED_API_KEY`.
+- **Self-hosted coturn** (any small VPS; you pay only for the server and bandwidth). In `/etc/turnserver.conf`:
+  ```
+  use-auth-secret
+  static-auth-secret=<long random secret>
+  realm=turn.yourdomain.com
+  listening-port=3478
+  tls-listening-port=5349
+  cert=/etc/letsencrypt/live/turn.yourdomain.com/fullchain.pem
+  pkey=/etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
+  no-cli
+  no-multicast-peers
+  denied-peer-ip=10.0.0.0-10.255.255.255
+  denied-peer-ip=172.16.0.0-172.31.255.255
+  denied-peer-ip=192.168.0.0-192.168.255.255
+  ```
+  Open UDP/TCP 3478, TCP 5349 and the relay UDP range (default 49152–65535). Then set `TURN_URLS="turn:turn.yourdomain.com:3478?transport=udp,turns:turn.yourdomain.com:5349?transport=tcp"` and `TURN_SECRET=<the same secret>` (optional `TURN_TTL`, seconds, default 21600).
+
+Then deploy the credentials function and point the app at it:
+```bash
+supabase secrets set ALLOWED_ORIGINS=https://<you>.github.io CF_TURN_KEY_ID=... CF_TURN_API_TOKEN=...   # or the coturn / Metered secrets
+supabase functions deploy turn-credentials        # keep JWT verification ON (the default)
+```
+In `public/config.js` set `turnFunction: 'supabase'`, or a full `https://…` URL if you host it elsewhere. Signed-in users then get **short-lived** TURN credentials. No TURN secret is ever in the website. Once a relay is set up, Messages › Privacy shows **"Protect my IP address in calls"**, which forces calls through the relay.
+Quick test without the function: `turnUrls`, `turnUsername` and `turnCredential` in `public/config.js` (or `VITE_TURN_URLS`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL` in `.env`). Anything you put there is **public**, so only use it for a short test with credentials you can revoke.
+
+**13.5 Moderation** (SQL editor)
+```sql
+-- recent calls between two people (no audio/video is ever stored)
+select c.id, c.kind, c.status, c.created_at, c.answered_at, c.ended_at, c.end_reason from public.calls c
+  join public.call_participants a on a.call_id = c.id and a.user_id = '<user A>'
+  join public.call_participants b on b.call_id = c.id and b.user_id = '<user B>' order by c.created_at desc;
+```
+Reports made from the call screen land in `public.message_reports` like other chat reports (§12.3). A ban (`social_bans`) also stops calls.
+
+**13.6 Test it**
+Use two accounts on two devices, ideally one on mobile data so you also test the relay. A opens a chat with B and taps the phone icon, and B's app rings (it has to be open). Accept, talk, switch to video, flip the camera, mute, then minimize and browse, then hang up. The chat shows "Voice call · 2 min". Then check these:
+- From a message request, the call buttons are disabled.
+- With B on Do not disturb, A hears it ring out and gets "No answer".
+- With B on Friends only, a non-friend's call is refused.
+- In a group, a 5th person can't join.
+
 ## Local development
 ```bash
 npm install

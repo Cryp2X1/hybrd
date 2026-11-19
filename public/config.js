@@ -4,6 +4,8 @@
 // Never put a Spotify Client SECRET here — HYBRD doesn't use one.
 // stravaClientId: the (public) Client ID from strava.com/settings/api. stravaTokenUrl: the URL of the
 // strava-token function you deployed (SETUP.md §9). The Strava Client SECRET goes ONLY into that function.
+// turnFunction: 'supabase' to get short-lived TURN relay credentials from the turn-credentials Edge Function
+// (SETUP.md §13.4), or a full https:// URL. turnUrls/turnUsername/turnCredential: quick tests ONLY — they're public.
 // supportEmail: where users can ask questions or request data deletion (Strava API Policy §2.4).
 window.HYBRD_CONFIG = {
   supabaseUrl: '',
@@ -12,4 +14,8 @@ window.HYBRD_CONFIG = {
   stravaClientId: '',
   stravaTokenUrl: '',
   supportEmail: '',
+  turnFunction: '',
+  turnUrls: '',
+  turnUsername: '',
+  turnCredential: '',
 };

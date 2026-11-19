@@ -32,7 +32,8 @@ export type Feature =
   | 'profile.bio' // Me › Bio (free-form text)
   | 'ultra.plan' | 'ultra.backyardTimer' | 'ultra.fueling' | 'ultra.prep' | 'ultra.research' // Train › Ultra & Backyard
   | 'social.profile' | 'social.friends' | 'social.invite' | 'social.posts' | 'social.stories' | 'social.reactions' | 'social.saved' | 'social.notifications' | 'social.safety' // Social: Friends & Stories
-  | 'messages.direct' | 'messages.requests' | 'messages.groups' | 'messages.media' | 'messages.reactions' | 'messages.privacy' | 'messages.safety'; // Messages (DMs)
+  | 'messages.direct' | 'messages.requests' | 'messages.groups' | 'messages.media' | 'messages.reactions' | 'messages.privacy' | 'messages.safety' // Messages (DMs)
+  | 'calls.voice' | 'calls.video' | 'calls.group' | 'calls.safety'; // Calls in Messages
 
 export interface FeatureInfo { free: boolean; label: string }
 export const FEATURES: Record<Feature, FeatureInfo> = {
@@ -87,6 +88,10 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'messages.reactions': { free: true, label: 'Reactions, replies, edit & unsend' },
   'messages.privacy': { free: true, label: 'Who can message me, read receipts, activity status' },
   'messages.safety': { free: true, label: 'Block, report & request filtering (always free)' },
+  'calls.voice': { free: true, label: 'Voice calls in Messages' },
+  'calls.video': { free: true, label: 'Video calls in Messages' },
+  'calls.group': { free: true, label: 'Group calls (up to 4 people)' },
+  'calls.safety': { free: true, label: 'Who can call me, Do not disturb, report from a call (always free)' },
 };
 
 export interface Entitlements { premium: boolean; source: 'none' | 'stripe' | 'revenuecat' | 'promo' }

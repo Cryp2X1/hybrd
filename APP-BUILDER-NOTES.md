@@ -593,3 +593,44 @@ Pure helpers live in `src/lib/social.ts`. The UI is `src/components/Reactions.ts
 **Tests:** `tools/test-messages.ts` (unit + demo end to end), `tools/sql/test-messages.sql` (RLS/trigger/RPC checks, run by `tools/test-social-sql.sh` after the schema runs twice) and `tools/shoot-messages.mjs` (screenshots `screenshots/phone-messages-*`, desktop two-pane, no sideways overflow).
 
 **Known limits:** no end-to-end encryption. No voice notes, GIF search or message requests' "hidden requests" folder. Push isn't wired up yet. Search on live covers the latest 50 matching messages through `ilike` (add a trigram index or full-text search at scale). The live chat loads the latest 300 messages. Server-side profanity masking isn't done; the client masks before sending, like posts. A minor and an adult in the same group are only checked when someone is added.
+
+## Calls (voice + video in Messages) — built 19 Nov 2026
+- **What**: there are 📞 and 🎥 buttons in every chat header. Calls can be 1:1 or group calls of up to **4 people** (WebRTC mesh: everyone sends to everyone, so groups stay small; video bitrate drops as the call grows, from 1.2 Mb/s for 1:1 to 420 kb/s with 4 people).
+- **Screens**:
+  - A full-screen incoming call with Accept, Decline, and "Voice only" for video calls, plus a Web Audio ringtone (no sound files).
+  - The outgoing ringing screen. It times out after 40 s and becomes "No answer" / missed.
+  - The in-call screen has mute, camera on/off, flip camera, audio output (only where the browser supports `setSinkId`), voice → video upgrade, a draggable mirrored self view that snaps to corners, a timer, a 3-bar connection quality indicator (RTT / loss / jitter from `getStats`), "Reconnecting…" with an ICE restart, and end call.
+  - Minimizing shows a green call bar while you browse.
+- **Chat and inbox**: each call gets a card in the chat (missed in red / declined / duration, tap to call back). There's a **Calls** tab in Messages with All/Missed filters and a missed badge, and you can remove calls from it.
+- **Safety**: only people you can message can call you:
+  - Message requests and blocked accounts can't call.
+  - Under-18s can only call friends, which is stricter than messages.
+  - "Who can call me" offers People you chat with / Friends only / No one.
+  - Do not disturb (1 h / 8 h / until 8 AM / until off) just rings out on the caller's side, so they never learn it's on.
+  - There's a Report button on the call screen (ⓘ).
+  - A camera/mic explainer shows before the browser asks, with clear per-platform help if access was blocked (and "Use voice only").
+- **Honesty**: the app says calls are encrypted in transit peer to peer by WebRTC (DTLS-SRTP) and that calling hasn't had an independent security audit. It also says people in a call can see your IP unless "Protect my IP address" is on, which only appears once a TURN relay is configured. It never claims end-to-end encryption.
+- **How it works**:
+  - `src/lib/calls.ts` holds the pure rules, state machine, quality, signal validation and errors.
+  - `callEngine.ts` runs one `RTCPeerConnection` per person with perfect negotiation. Every connection always has an audio and a video sender: voice calls send a blank canvas track, so switching to video, flipping or turning the camera off is `replaceTrack` with no renegotiation.
+  - Signaling uses Supabase Realtime Broadcast on the private channel `call:<id>` (`callsSupabase.ts`).
+  - Rings arrive via `postgres_changes` on `call_participants`, with a 12 s poll as a fallback.
+  - `callStore.tsx` is the provider, and `components/Call.tsx` is the UI.
+  - On the server, the `CALLS` section of `supabase/schema.sql` has the tables, RLS, RPCs and Realtime policies.
+  - TURN uses `supabase/functions/turn-credentials` (coturn REST HMAC / Cloudflare / Metered; secrets only as env vars). See SETUP.md §13.
+- **Demo mode** (before Supabase): calls are simulated on the device with the SAMPLE people. Their "video" is an animated avatar labelled "SAMPLE · SIMULATED VIDEO" and nothing is sent. Maya and Leo pick up, Ana declines, and the Calls tab has "… calls you" buttons to try an incoming call.
+- **Tests**:
+  - `tools/test-calls.ts` covers the rules, state machine, cards, quality, ICE, signals, the TURN function, docs guards and the demo end to end.
+  - `tools/test-calls-webrtc.mjs` runs real Chrome peer connections through a local coturn: audio packets, video frames, voice→video, flip, camera off, mesh of 3 and 4, 5th person refused, junk signals ignored.
+  - `tools/sql/test-calls.sql` covers RLS and RPCs.
+  - Screenshots are `screenshots/phone-calls-*.png` and `desktop-calls-*.png` (`tools/shoot-calls.mjs`).
+- **Known limits**:
+  - No push notifications: a call only rings while HYBRD is open.
+  - iOS stops calls when the app is backgrounded or the screen locks.
+  - The mesh is capped at 4.
+  - Some networks need a TURN relay (§13.4).
+  - The audio output picker only works where `setSinkId` exists (not iOS Safari).
+  - No call recording, screen share or CallKit/ConnectionService integration.
+  - Not independently audited.
+  - Next step for scale: an SFU (e.g. Cloudflare Realtime SFU or LiveKit) for bigger groups, plus Web Push / VoIP push for ringing when the app is closed.
+
