@@ -25,7 +25,7 @@ export default function DataPage() {
     try { const n = st.importJson(JSON.parse(await f.text()), mode); toast(`Imported ${n} records`); } catch (e) { toast((e as Error).message); }
   };
   return (
-    <Page title="Your data" kicker={counts} back="/me">
+    <Page title="Your data" kicker={counts} back="/settings">
       <Card>
         <h3 style={{ marginBottom: 8 }}>Export</h3>
         <p className="muted small">Download everything (profile and bio, workouts, GPS routes, food log, water, steps, weight, templates) as one JSON file — a backup you own.</p>

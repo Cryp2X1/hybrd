@@ -21,3 +21,4 @@ echo "== sleep logs"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-sleep.sql 2>&1
 echo "== mind & recovery"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-mind.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== messages"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-messages.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== calls"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-calls.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== shared activities"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-activities.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

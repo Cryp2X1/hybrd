@@ -133,7 +133,7 @@ export default function Home() {
           {showInstall && <Card>
             <div className="card-head"><h3>Install HYBRD</h3><Icon name="download" className="y" /></div>
             <p className="muted small">{isIOS() ? 'On iPhone/iPad: tap Share → Add to Home Screen. The Home Screen app keeps your data safer (Safari can clear site data after 7 days without a visit) and can keep the screen awake during workouts (iOS 18.4+).' : 'Use your browser menu → Install app / Add to Home screen for a full-screen app that works offline.'}</p>
-            <Link className="link" to="/me/help">Phone tips & limits →</Link>
+            <Link className="link" to="/settings/help">Phone tips & limits →</Link>
           </Card>}
         </div>
       </div>

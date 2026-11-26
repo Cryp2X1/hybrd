@@ -8,12 +8,16 @@ import { useStore, uid } from '../lib/store';
 import { distUnit, elevUnit, estKcal, hrKcal, fmtPace, fmtTime, fromDist, isBikeType, paceSec, speedUnit, splitsFromTrack, splitUnitM, strideM, toDist, toElev, toSpeed, wattsKcal } from '../lib/calc';
 import { motionNeedsPermission, motionSupported, requestMotionPermission } from '../lib/pedometer';
 import { DistToggle } from '../components/UnitToggle';
-import { Page, Banner, Segmented, Card, HoldButton, Sheet, Pill } from '../components/ui';
+import { Page, Banner, Segmented, Card, HoldButton, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { isIOS, isStandalone, onWakeLock, unlockAudio, wakeLockSupported } from '../lib/cues';
 import type { BikeKind, GpsRoute, Workout } from '../lib/types';
 import { useToast } from '../lib/toast';
 import RecordMapScreen from './RecordMapScreen';
+import { SaveActivityForm, type SaveFields } from '../components/SaveActivity';
+import { useMedia } from '../lib/gallery';
+import { useActivityPublisher } from '../lib/useShare';
+import { autoTitle } from '../lib/share';
 const MapView = lazy(() => import('../components/MapView').then((m) => ({ default: m.MapView })));
 
 const LABEL: Record<RecType, string> = { run: 'Run', walk: 'Walk', cycle: 'Ride', 'indoor-cycle': 'Indoor Bike' };
@@ -22,7 +26,7 @@ const recLabel = (type: RecType, kind?: BikeKind) => (type === 'indoor-cycle' &&
 export default function Record() {
   const r = useRecorder();
   const { s } = r;
-  const { profile, upsert } = useStore();
+  const { profile, upsert, setProfile } = useStore();
   const u = profile.units;
   const nav = useNavigate();
   const toast = useToast();
@@ -30,7 +34,8 @@ export default function Record() {
   const [showMap, setShowMap] = useState(false);
   const [primary, setPrimary] = useState<'time' | 'dist'>('time');
   const [finishing, setFinishing] = useState(false);
-  const [rpe, setRpe] = useState(5);
+  const [rpe] = useState(5);
+  const [finishedAt, setFinishedAt] = useState(0);
   const [title, setTitle] = useState('');
   const [indoorDist, setIndoorDist] = useState('');
   const [avgSpeed, setAvgSpeed] = useState('');
@@ -41,6 +46,10 @@ export default function Record() {
   const [wake, setWake] = useState(false);
   const indoorBike = s.type === 'indoor-cycle';
   useEffect(() => onWakeLock(setWake), []);
+  // Settings › Recording › Auto-pause is the default for new sessions; the toggle here changes that same setting.
+  useEffect(() => { if (s.status === 'idle' && s.type !== 'indoor-cycle') { const ap = profile.recording?.autoPause ?? true; if (ap !== s.autoPause) r.setup({ autoPause: ap }); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.recording?.autoPause, s.type, s.status]);
+  const toggleAutoPause = () => { const v = !s.autoPause; r.setup({ autoPause: v }); setProfile({ recording: { ...(profile.recording || {}), autoPause: v } }); };
   useEffect(() => {
     const t = sp.get('type') as RecType | null;
     const kind = sp.get('kind') as BikeKind | null;
@@ -84,7 +93,7 @@ export default function Record() {
   const askMotion = () => { if (onFoot) requestMotionPermission().then(r.setMotion); };
   const begin = () => { unlockAudio(); r.start(); askMotion(); };
   const resume = () => { unlockAudio(); r.resume(); askMotion(); };
-  const askFinish = () => { if (s.status === 'recording') r.pause(); setTitle(`${new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'} ${recLabel(s.type, s.bikeKind)}`); setFinishing(true); };
+  const askFinish = () => { if (s.status === 'recording') r.pause(); setFinishedAt(Date.now()); setTitle(autoTitle(s.type, recLabel(s.type, s.bikeKind), new Date(s.startedAt || Date.now()))); setFinishing(true); };
 
   const fillSpeedFromDist = (distStr: string) => {
     setIndoorDist(distStr);
@@ -100,15 +109,29 @@ export default function Record() {
     }
   };
 
-  const save = () => {
+  const media = useMedia();
+  const pub = useActivityPublisher();
+  const save = (fx: SaveFields) => {
     const f = r.finish();
     const dur = Math.round(elapsedMs(f) / 1000);
     const dist = f.indoor ? fromDist(parseFloat(indoorDist) || 0, u) : f.distanceM;
     const id = uid();
     const segs = f.segments.filter((x) => x.length > 1);
     let routeId: string | undefined;
-    if (segs.length) { routeId = `${id}-r`; upsert<GpsRoute>('routes', { id: routeId, workoutId: id, segments: segs }); }
-    const w: Workout = { id, updatedAt: Date.now(), date: new Date(f.startedAt).toISOString(), type: f.type, title: title || recLabel(f.type, f.bikeKind), durationSec: dur, distanceM: dist || undefined, elevGainM: f.indoor ? undefined : Math.round(f.elevGainM), rpe, splits: f.indoor ? undefined : splitsFromTrack(f.segments, splitUnitM(u)), routeId, source: f.indoor ? 'indoor' : 'gps' };
+    let route: GpsRoute | undefined;
+    if (segs.length) { routeId = `${id}-r`; route = { id: routeId, updatedAt: Date.now(), workoutId: id, segments: segs }; upsert<GpsRoute>('routes', route); }
+    const type = (fx.type || f.type) as RecType;
+    const w: Workout = { id, updatedAt: Date.now(), date: new Date(f.startedAt).toISOString(), type, title: fx.title || title || recLabel(f.type, f.bikeKind), durationSec: dur, distanceM: dist || undefined, elevGainM: f.indoor ? undefined : Math.round(f.elevGainM), rpe: fx.rpe, splits: f.indoor ? undefined : splitsFromTrack(f.segments, splitUnitM(u)), routeId, source: f.indoor ? 'indoor' : 'gps' };
+    if (finishedAt && f.startedAt) w.elapsedSec = Math.max(dur, Math.round((finishedAt - f.startedAt) / 1000));
+    if (fx.description) w.description = fx.description;
+    w.visibility = fx.visibility;
+    if (fx.mapPrivacy && segs.length) w.mapPrivacy = fx.mapPrivacy;
+    if (fx.gearId) w.gearId = fx.gearId;
+    if (fx.newPhotos.length) {
+      const ids = fx.newPhotos.map(() => uid());
+      w.photos = ids;
+      media.addPhotos(fx.newPhotos.map((p, i) => ({ ...p, id: ids[i], tag: 'training' as const, caption: w.title }))).catch(() => toast('Couldn’t save the photos'));
+    }
     if (f.type === 'indoor-cycle') {
       w.bikeKind = f.bikeKind || 'indoor';
       const cad = parseFloat(cadenceRpm), res = parseFloat(resistance), aw = parseFloat(avgW), mw = parseFloat(maxW);
@@ -124,21 +147,28 @@ export default function Record() {
     }
     attachHr(w, profile, f.startedAt);
     upsert<Workout>('workouts', w);
+    if (w.visibility !== 'only-me' && pub.canPublish) pub.publish(w, route, null).catch(() => {});
     setFinishing(false); toast('Activity saved');
-    nav(`/train/workout/${id}`);
+    nav(`/train/workout/${id}?saved=1`);
   };
 
   const typeOpts: { v: RecType; label: string }[] = [{ v: 'run', label: 'Run' }, { v: 'walk', label: 'Walk' }, { v: 'cycle', label: 'Ride' }, { v: 'indoor-cycle', label: 'Indoor' }];
 
-  const finishSheet = (
-      <Sheet open={finishing} onClose={() => setFinishing(false)} title="Finish activity">
-      <div className="grid3" style={{ marginBottom: 12 }}>
-        <div className="stat accent"><div className="stat-v">{fmtTime(el)}</div><div className="stat-l">time</div></div>
-        <div className="stat"><div className="stat-v">{s.indoor ? (indoorDist || '—') : toDist(s.distanceM, u).toFixed(2)}</div><div className="stat-l">{distUnit(u)}</div></div>
-        <div className="stat"><div className="stat-v">{indoorBike ? (avgSpeed || '—') : (avgPace ? fmtTime(avgPace) : '—')}</div><div className="stat-l">{indoorBike ? `avg ${speedUnit(u)}` : `avg /${distUnit(u)}`}</div></div>
-      </div>
-      {onFoot && (steps > 0 || s.indoor) && <p className="muted small" style={{ marginTop: 0 }}>{sensor ? `${s.steps.toLocaleString()} steps counted by the motion sensor` : s.indoor ? 'Steps will be estimated from the distance you enter' : `≈ ${steps.toLocaleString()} steps (est. from distance ÷ ${Math.round(stride * 100)} cm step)`}{avgCad ? ` · ${avgCad} spm avg` : ''}. They’re added to today’s step total.</p>}
-      <label className="field"><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+  if (finishing) {
+    const typeChoices = s.indoor || indoorBike ? undefined : (s.type === 'cycle' ? [{ v: 'cycle' as const, label: 'Ride' }] : [{ v: 'run' as const, label: 'Run' }, { v: 'walk' as const, label: 'Walk' }]);
+    return (
+      <Page title="Save activity" kicker={`${recLabel(s.type, s.bikeKind)} · ${fmtTime(el)}`} actions={<button className="btn sm" onClick={() => { setFinishing(false); resume(); }} data-testid="sa-resume"><Icon name="play" size={16} fill />Resume</button>}>
+        <SaveActivityForm id={`rec-${s.startedAt}`} initial={{ title, type: s.type, rpe }} typeOptions={typeChoices} segments={s.indoor ? undefined : s.segments}
+          summary={<>
+            <div className="grid3 sa-stats">
+              <div className="stat accent"><div className="stat-v">{fmtTime(el)}</div><div className="stat-l">moving time</div></div>
+              <div className="stat"><div className="stat-v">{s.indoor ? (indoorDist || '—') : toDist(s.distanceM, u).toFixed(2)}</div><div className="stat-l">{distUnit(u)}</div></div>
+              <div className="stat"><div className="stat-v">{indoorBike ? (avgSpeed || '—') : (avgPace ? fmtTime(avgPace) : '—')}</div><div className="stat-l">{indoorBike ? `avg ${speedUnit(u)}` : `avg /${distUnit(u)}`}</div></div>
+            </div>
+            {onFoot && (steps > 0 || s.indoor) && <p className="muted small" style={{ marginTop: 0 }}>{sensor ? `${s.steps.toLocaleString()} steps counted by the motion sensor` : s.indoor ? 'Steps will be estimated from the distance you enter' : `≈ ${steps.toLocaleString()} steps (est. from distance ÷ ${Math.round(stride * 100)} cm step)`}{avgCad ? ` · ${avgCad} spm avg` : ''}. They’re added to today’s step total.</p>}
+            {s.gaps.length > 0 && <p className="muted small">Tracking paused {s.gaps.length}× for {fmtTime(s.gaps.reduce((a, g) => a + g.sec, 0))} total (screen off / no signal). Those gaps aren’t counted.</p>}
+          </>}
+          extra={<>
       {s.indoor && <label className="field"><span>Distance ({distUnit(u)})</span><input inputMode="decimal" value={indoorDist} onChange={(e) => indoorBike ? fillSpeedFromDist(e.target.value) : setIndoorDist(e.target.value)} placeholder={indoorBike ? 'From the bike console (optional)' : 'From the treadmill display'} /></label>}
       {indoorBike && <>
         <label className="field"><span>Average speed ({speedUnit(u)})</span><input inputMode="decimal" value={avgSpeed} onChange={(e) => fillDistFromSpeed(e.target.value)} placeholder="Optional — fills distance from time" /></label>
@@ -150,22 +180,25 @@ export default function Record() {
         </div>
         <p className="muted small">If you enter average watts, calories use mechanical work ÷ 24% efficiency (an estimate). Otherwise heart rate if a strap was connected, otherwise a MET estimate from the effort you log below.</p>
       </>}
-      <div className="field"><span>Effort (RPE)</span><div className="rpe">{Array.from({ length: 10 }, (_, k) => k + 1).map((n) => <button key={n} className={rpe === n ? 'on' : ''} onClick={() => setRpe(n)}>{n}</button>)}</div></div>
-      {s.gaps.length > 0 && <p className="muted small">Tracking paused {s.gaps.length}× for {fmtTime(s.gaps.reduce((a, g) => a + g.sec, 0))} total (screen off / no signal). Those gaps aren’t counted.</p>}
-      <div className="row wrap"><button className="btn y" onClick={save}>Save activity</button><button className="btn" onClick={() => { setFinishing(false); resume(); }}>Resume</button><button className="btn danger" onClick={() => { if (confirm('Discard this activity?')) { r.discard(); setFinishing(false); } }}>Discard</button></div>
-    </Sheet>
-  );
+          </>}
+          onSave={save}
+          secondary={<div className="row wrap" style={{ justifyContent: 'center', marginTop: 10 }}><button className="btn ghost" onClick={() => { setFinishing(false); resume(); }}>Resume</button><button className="btn ghost danger" data-testid="sa-discard" onClick={() => { if (confirm('Discard this activity? It won’t be saved.')) { r.discard(); setFinishing(false); } }}>Discard</button></div>}
+        />
+      </Page>
+    );
+  }
 
   // ---- Map-first screen for outdoor GPS run / walk / ride (indoor + treadmill keep the classic screen below)
   if (!s.indoor && s.type !== 'indoor-cycle') {
     const mapMore = (
       <div data-testid="rm-more">
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}><b>Distance units</b><DistToggle /></div>
-        {s.status === 'idle' && <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ autoPause: !s.autoPause })}><span><b>Auto-pause</b><div className="muted small">Pauses when you stop for ~10 s (lights, traffic)</div></span><span className={`switch ${s.autoPause ? 'on' : ''}`} /></button>}
+        {s.status === 'idle' && <button className="toggle" style={{ width: '100%' }} onClick={toggleAutoPause}><span><b>Auto-pause</b><div className="muted small">Pauses when you stop for ~10 s (lights, traffic)</div></span><span className={`switch ${s.autoPause ? 'on' : ''}`} /></button>}
         {s.status === 'idle' && <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ indoor: true })}><span><b>Indoor / treadmill</b><div className="muted small">Timer only, enter the distance at the end</div></span><span className="switch" /></button>}
         <div className="card" style={{ margin: '10px 0' }}><div className="card-head"><h3>Heart rate</h3><span className="muted small">Optional · Bluetooth</span></div><HrPanel /></div>
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}><span><b>Music</b><div className="muted small">Spotify / Apple Music shortcuts</div></span><MusicButton /></div>
         {wakeLockSupported() && <p className="muted small">{wake ? 'Screen stays on while you record.' : 'HYBRD keeps the screen on while you record.'}</p>}
+        <p className="muted small" style={{ margin: '6px 0 0' }}>These change the same settings as <Link className="link" to="/settings/recording" data-testid="rm-all-settings">Settings › Recording</Link>. Map privacy: <Link className="link" to="/settings/privacy">Settings › Privacy</Link>.</p>
         {isIOS() && <Banner tone="warn"><b>iPhone: keep the screen on.</b> iOS stops web GPS when the screen locks or you switch apps. {isStandalone() ? 'HYBRD keeps it awake in the Home Screen app (iOS 18.4+).' : 'For this to work reliably, add HYBRD to your Home Screen (iOS 18.4+).'} Use an armband or bike mount.</Banner>}
         {onFoot && <p className="muted small"><b>Steps &amp; cadence:</b> {!motionSupported() ? 'this browser has no motion sensor, so steps are estimated from distance.' : motionNeedsPermission() ? 'counted with the motion sensor while the screen is on — tap Allow motion access if your phone asks after Start.' : 'counted with the motion sensor while the screen is on; estimated from distance if no sensor is found.'}</p>}
         <Banner>We use GPS only while this screen is open and while you record. Routes stay on this device unless you sign in to sync.</Banner>
@@ -200,7 +233,6 @@ export default function Record() {
     return (
       <>
         <RecordMapScreen label={recLabel(s.type, s.bikeKind)} onStart={begin} onResume={resume} onAskFinish={askFinish} expandedExtra={mapExtra} more={mapMore} banners={mapBanners} liveKcal={liveKcal.kcal} />
-        {finishSheet}
       </>
     );
   }
@@ -223,7 +255,7 @@ export default function Record() {
       ) : (
         <Card>
           <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ indoor: !s.indoor })}><span><b>Indoor / treadmill</b><div className="muted small">Timer only, enter the distance at the end</div></span><span className={`switch ${s.indoor ? 'on' : ''}`} /></button>
-          <button className="toggle" style={{ width: '100%' }} onClick={() => r.setup({ autoPause: !s.autoPause })}><span><b>Auto-pause</b><div className="muted small">Pauses when you stop for ~10 s (lights, traffic)</div></span><span className={`switch ${s.autoPause ? 'on' : ''}`} /></button>
+          <button className="toggle" style={{ width: '100%' }} onClick={toggleAutoPause}><span><b>Auto-pause</b><div className="muted small">Pauses when you stop for ~10 s (lights, traffic)</div></span><span className={`switch ${s.autoPause ? 'on' : ''}`} /></button>
         </Card>
       )}
       <Card><div className="card-head"><h3>Heart rate</h3><span className="muted small">Optional · Bluetooth</span></div><HrPanel /></Card>
@@ -304,7 +336,6 @@ export default function Record() {
         <HoldButton onHold={askFinish} label="Hold to finish" />
       </div>
 
-      {finishSheet}
     </div>
   );
 }

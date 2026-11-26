@@ -48,6 +48,12 @@ export interface Profile {
   ultra?: import('./ultra').UltraSaved;
   /** Backyard distance display (mi / km / m / ft). Defaults from `units`; does not change the global mi/km setting. */
   byuDistUnit?: import('./ultra').ByuDistUnit;
+  /** Settings › Privacy & safety: map visibility defaults, privacy zones, default activity visibility. */
+  privacy?: Partial<import('./privacy').PrivacyPrefs>;
+  /** Settings › Recording: defaults for new GPS sessions. */
+  recording?: { autoPause?: boolean; keepAwake?: boolean; splitCues?: boolean };
+  /** Gear you pick from when saving an activity (shoes, bikes). */
+  gear?: { id: string; name: string; kind: 'shoes' | 'bike' | 'other'; retired?: boolean }[];
   updatedAt?: number;
 }
 
@@ -87,6 +93,21 @@ export interface Workout extends Rec {
   extId?: string;
   device?: string; // e.g. "Garmin Forerunner 265" (from the file) or the BLE sensor name
   laps?: Lap[];
+  /** Saved-activity extras (Record › Save, Activity › Edit). */
+  description?: string;
+  /** Who can see it when shared: only me (default for old activities), friends or public. */
+  visibility?: import('./privacy').Visibility;
+  /** Per-activity map privacy. Missing = the profile defaults at the time of sharing. */
+  mapPrivacy?: import('./privacy').MapPrivacy;
+  /** Gallery item ids attached as activity photos (private gallery; GPS metadata already removed). */
+  photos?: string[];
+  gearId?: string;
+  /** Wall-clock time from start to finish, including pauses (durationSec = moving time). */
+  elapsedSec?: number;
+  /** Public share id (row in `shared_activities`) once published; random, not the workout id. */
+  shareId?: string;
+  /** Id of the HYBRD feed post made from this activity. */
+  postId?: string;
 }
 export interface Lap { sec: number; distanceM?: number; avgHr?: number; maxHr?: number }
 

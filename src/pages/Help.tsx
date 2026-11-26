@@ -7,7 +7,7 @@ export default function Help() {
   const loc = useLocation();
   useEffect(() => { if (loc.hash) setTimeout(() => document.getElementById(loc.hash.slice(1))?.scrollIntoView({ block: 'start' }), 50); }, [loc.hash]);
   return (
-    <Page title="Help & tips" kicker="Install · GPS · Devices · iPhone limits · Privacy" back="/me">
+    <Page title="Help & tips" kicker="Install · GPS · Devices · iPhone limits · Privacy" back="/settings">
       <Card>
         <h3 style={{ marginBottom: 8 }}>Install it like an app</h3>
         <ul className="cues">
@@ -19,7 +19,7 @@ export default function Help() {
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Miles or kilometres</h3>
-        <p className="muted small" style={{ margin: 0 }}>Tap the <b>mi | km</b> switch on the Record screen (before or during an activity) or go to <b>Me › Units</b>. Everything updates instantly — distance, pace, speed, splits, elevation (ft / m) and charts. HYBRD stores every value in metric, so switching never changes or loses your data; mid-run splits are rebuilt from the raw GPS points. Weight (lb / kg) has its own switch in Me › Units.</p>
+        <p className="muted small" style={{ margin: 0 }}>Tap the <b>mi | km</b> switch on the Record screen (before or during an activity) or go to <b>Settings › Units &amp; display</b>. Everything updates instantly — distance, pace, speed, splits, elevation (ft / m) and charts. HYBRD stores every value in metric, so switching never changes or loses your data; mid-run splits are rebuilt from the raw GPS points. Weight (lb / kg) has its own switch in Me › Units.</p>
       </Card>
       <Card>
         <h3 style={{ marginBottom: 8 }}>Steps — what a web app can and can’t do</h3>
@@ -34,7 +34,7 @@ export default function Help() {
       <Card>
         <h3 style={{ marginBottom: 8 }} id="music">Music with Spotify — what works and the limits</h3>
         <ul className="cues">
-          <li><b>No account needed:</b> Me › Music player and the <b>Music</b> button (Record, Timers, workout logger) show public workout playlists from Spotify. They play 30-second previews, or full tracks if you’re logged in to Spotify in the same browser.</li>
+          <li><b>No account needed:</b> Settings › Devices › Music player and the <b>Music</b> button (Record, Timers, workout logger) show public workout playlists from Spotify. They play 30-second previews, or full tracks if you’re logged in to Spotify in the same browser.</li>
           <li><b>Connect Spotify</b> to control your own Spotify from HYBRD: see what’s playing, play/pause, skip, choose the device and start your playlists. HYBRD signs in with Spotify’s PKCE flow — no password or secret touches HYBRD, and the tokens stay on this device (Disconnect deletes them).</li>
           <li><b>Spotify Premium is required</b> for play/pause/skip/device control (Spotify’s rule for the playback API). Free accounts can still use the embedded playlists.</li>
           <li><b>On phones</b> the music plays in the <b>Spotify app</b> and HYBRD is the remote (Spotify Connect). If it says no device, open Spotify on the phone, play any song for a second, come back and tap Refresh devices. Keep HYBRD on screen while recording — the phone pauses a web app’s GPS when you switch apps.</li>
@@ -46,12 +46,12 @@ export default function Help() {
       <Card>
         <h3 style={{ marginBottom: 8 }} id="devices">Heart-rate straps, watch files and Strava</h3>
         <ul className="cues">
-          <li><b>Bluetooth heart rate</b> (Me › Devices & sync, or the ♥ button in Record, Timers and the logger): HYBRD talks to any sensor that uses the standard Bluetooth Heart Rate profile — most chest straps and armbands, and watches with “broadcast heart rate” turned on. Live BPM and your zone show during the session; the HR curve, average and max are saved with the workout.</li>
+          <li><b>Bluetooth heart rate</b> (Settings › Devices, or the ♥ button in Record, Timers and the logger): HYBRD talks to any sensor that uses the standard Bluetooth Heart Rate profile — most chest straps and armbands, and watches with “broadcast heart rate” turned on. Live BPM and your zone show during the session; the HR curve, average and max are saved with the workout.</li>
           <li><b>Which browsers:</b> Web Bluetooth works in <b>Chrome, Edge, Opera and Samsung Internet on Android</b>, and Chrome/Edge on Windows, macOS and ChromeOS (on Linux it’s behind a Chrome flag). <b>Safari and every browser on iPhone/iPad don’t support Web Bluetooth</b> (Apple hasn’t implemented it), and Firefox doesn’t either. On iPhone, record with your watch and import the file, or connect Strava. Third-party iOS browsers such as Bluefy add Web Bluetooth, but HYBRD hasn’t been tested there.</li>
           <li><b>If the sensor drops out</b> HYBRD reconnects by itself (it retries for about a minute). If that fails, tap <b>Reconnect</b>. Keep HYBRD on screen — phones can pause web apps in the background. Wet the strap’s electrodes if the reading is “no skin contact”.</li>
-          <li><b>Zones</b> are 50/60/70/80/90 % of max HR. Enter your measured max HR in Me; otherwise HYBRD uses 208 − 0.7 × age (Tanaka 2001).</li>
+          <li><b>Zones</b> are 50/60/70/80/90 % of max HR. Enter your measured max HR in Settings › Units; otherwise HYBRD uses 208 − 0.7 × age (Tanaka 2001).</li>
           <li><b>Calories from heart rate</b> (Keytel 2005) replace the MET estimate for runs, walks, rides, indoor/stationary bike and cardio when at least half the session has HR. Calories from a watch file or Strava are used as-is. Strength sessions stay MET-based: the Keytel equation was developed on steady running and cycling, not lifting.</li>
-          <li><b>Watch files</b> (Me › Devices & sync › Import files): drop one or many .fit, .tcx or .gpx files. You see a preview — route, time, distance, HR, cadence, elevation, laps — before anything is saved. Files are read on your device and never uploaded. The same file, or an activity that starts within 3 minutes with a similar length, is flagged as a duplicate.</li>
+          <li><b>Watch files</b> (Settings › Devices › Import files): drop one or many .fit, .tcx or .gpx files. You see a preview — route, time, distance, HR, cadence, elevation, laps — before anything is saved. Files are read on your device and never uploaded. The same file, or an activity that starts within 3 minutes with a similar length, is flagged as a duplicate.</li>
           <li><b>Strava:</b> Connect with Strava imports your recent activities (7, 30 or 90 days) with a “from Strava” badge. Strava’s API rules: Strava data is <b>shown only to you</b>, kept on this device for <b>at most 7 days</b> (HYBRD refreshes it when you open the app), not synced to your HYBRD account or exports, and never used for AI. Activities you delete on Strava disappear here at the next sync. To keep one forever, export its file on strava.com and import it. <b>Disconnect & delete</b> removes everything and revokes access.</li>
           <li><b>Strava limits:</b> a new Strava API app starts in “Single Player Mode” — only the app owner can connect (1 athlete). The owner can raise it to 10 athletes in Strava’s API settings; more than 10 needs Strava’s review. Strava allows 100 reads per 15 minutes and 1,000 per day for the whole app at first; A HYBRD sync uses 1–4 reads to list activities plus one per new activity (at most 20 per sync), and opening a Strava activity uses one more for its full route and heart rate. Creating the Strava API app needs a Strava subscription.</li>
         </ul>

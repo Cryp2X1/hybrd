@@ -129,7 +129,7 @@ export function HrSummary({ hr, durationSec }: { hr: NonNullable<import('../lib/
         <div key={z.z} className="zone-bar"><span className="mono small" style={{ color: z.color, width: 26 }}>Z{z.z}</span><span className="small" style={{ width: 78 }}>{z.name}</span>
           <div className="pillar-track"><div className="pillar-fill" style={{ width: `${(tz[i] / tot) * 100}%`, background: z.color }} /></div>
           <span className="mono small" style={{ width: 54, textAlign: 'right' }}>{fmtTime(Math.round(tz[i]))}</span></div>))}</div>}
-      <p className="muted small" style={{ margin: '8px 0 0' }}>Zones = % of max HR {max} bpm ({profile.hrMax ? 'set in Me' : '208 − 0.7 × age, Tanaka 2001 — set your real max in Me'}). Time without HR: {fmtTime(Math.max(0, durationSec - Math.round(tot)))}.</p>
+      <p className="muted small" style={{ margin: '8px 0 0' }}>Zones = % of max HR {max} bpm ({profile.hrMax ? 'set in Settings › Units' : '208 − 0.7 × age, Tanaka 2001 — set your real max in Me'}). Time without HR: {fmtTime(Math.max(0, durationSec - Math.round(tot)))}.</p>
     </div>
   );
 }

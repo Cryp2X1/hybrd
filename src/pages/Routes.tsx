@@ -21,7 +21,7 @@ export default function RoutesPage() {
   return (
     <Page title="Route history" kicker={`${ws.length} GPS activities · ${fmtDist(total, profile.units, 1)}`} back wide>
       <Segmented small value={type} onChange={setType} options={[{ v: 'all', label: 'All' }, { v: 'run', label: 'Runs' }, { v: 'walk', label: 'Walks' }, { v: 'cycle', label: 'Rides' }]} />
-      {demoFar && <Banner>These demo routes were drawn somewhere else. Tap <b>◎</b> on the map to jump to where you are, or remove demo data in <Link to="/me/data">Me › Your data</Link>.</Banner>}
+      {demoFar && <Banner>These demo routes were drawn somewhere else. Tap <b>◎</b> on the map to jump to where you are, or remove demo data in <Link to="/settings/data">Settings › Data</Link>.</Banner>}
       <Suspense fallback={<div className="map" style={{ height: routes.length ? 420 : 320 }} />}><MapView routes={routes.map((r) => ({ ...r, highlight: sel ? r.highlight : true }))} height={routes.length ? 420 : 320} onSelect={setSel} /></Suspense>
       {!routes.length && <Card><Empty title="No GPS routes yet" icon="map">The map is centered on you. <Link className="link" to="/record">Record your first run →</Link></Empty></Card>}
       {ws.length > 0 && <Card className="" >

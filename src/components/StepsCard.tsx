@@ -33,7 +33,7 @@ export function StepsCard({ date = todayKey(), compact = false }: { date?: strin
   const clear = () => { for (const r of recs) remove('steps', r.id); toast('Typed steps cleared'); };
   return (
     <Card className="steps-card">
-      <div className="card-head"><h3>Steps{date !== todayKey() ? ` · ${prettyDay(date)}` : ''}</h3><Link to="/me#goals">Goal {goal.toLocaleString()} →</Link></div>
+      <div className="card-head"><h3>Steps{date !== todayKey() ? ` · ${prettyDay(date)}` : ''}</h3><Link to="/settings/goals">Goal {goal.toLocaleString()} →</Link></div>
       <div className="steps-top">
         <ScoreRing score={pct} size={compact ? 118 : 136} numSize={compact ? 26 : 30} display={ds.total.toLocaleString()} label="steps" sub={`${pct}% of goal`} />
         <div className="steps-break">

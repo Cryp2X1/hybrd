@@ -82,7 +82,7 @@ export function SocialGate({ children, needProfile = true }: { children: ReactNo
           <li><Icon name="lock" size={18} />Friends-only or public, report and block, 13+ only</li>
         </ul>
         <div className="row wrap" style={{ marginTop: 14 }}>
-          {mode === 'signin' ? <Link className="btn y" to="/sign-in">Sign in</Link> : <Link className="btn" to="/me/account">How accounts turn on</Link>}
+          {mode === 'signin' ? <Link className="btn y" to="/sign-in">Sign in</Link> : <Link className="btn" to="/settings/account">How accounts turn on</Link>}
           <button className="btn y" onClick={enterDemo} data-testid="enter-demo"><Icon name="play" size={18} />Explore the demo</button>
         </div>
         <p className="muted small" style={{ marginTop: 12 }}>The demo uses clearly labelled sample people (handles start with “sample.”). They aren’t real users, and nothing you post in the demo leaves this device.</p>

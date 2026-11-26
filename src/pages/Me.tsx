@@ -1,50 +1,44 @@
 import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { Page, Card, RowLink } from '../components/ui';
-import { fromW, toW, wUnit, wu, stepGoalOf, strideM, hrMaxOf } from '../lib/calc';
-import { DistToggle, WeightToggle } from '../components/UnitToggle';
-import { HYROX_DIVISIONS } from '../data/programs';
-import { unlockAudio, cue } from '../lib/cues';
-import type { Profile } from '../lib/types';
-import { SpotifySettings, MusicPanel } from '../components/Music';
+import { Icon } from '../components/Icon';
+import { distUnit, wUnit, wu } from '../lib/calc';
 import { ProfilePhotoCard, GalleryPreview } from '../components/Avatar';
 import { BioCard } from '../components/BioCard';
+import { prefsOf } from '../lib/privacy';
+import { visibilityLabel } from '../lib/share';
 
+// Me = your profile (photo, bio, gallery) and shortcuts. Every setting lives in Settings (/settings).
 export default function Me() {
-  const { profile: p, setProfile } = useStore();
+  const { profile: p } = useStore();
   const { configured, user } = useAuth();
   const loc = useLocation();
-  useEffect(() => { if (loc.hash) document.getElementById(loc.hash.slice(1))?.scrollIntoView({ block: 'start' }); }, [loc.hash]);
-  const imp = p.units === 'imperial';
-  const autoStride = Math.round(strideM({ heightCm: p.heightCm }, 'walk') * (imp ? 39.37 : 100));
-  const T = ({ k, label, sub }: { k: 'sound' | 'voice'; label: string; sub: string }) => (
-    <button className="toggle" style={{ width: '100%', textAlign: 'left' }} onClick={() => { unlockAudio(); setProfile({ [k]: !(p[k] ?? k === 'sound') }); if (k === 'sound') setTimeout(() => cue('go'), 50); }}><span><b>{label}</b><div className="muted small">{sub}</div></span><span className={`switch ${(p[k] ?? k === 'sound') ? 'on' : ''}`} /></button>
-  );
+  // Old deep links (/me#units, #goals, #music) now live in Settings.
+  const legacy: Record<string, string> = { '#units': '/settings/units', '#goals': '/settings/goals', '#music': '/settings/devices#music' };
+  useEffect(() => { if (loc.hash && !legacy[loc.hash]) document.getElementById(loc.hash.slice(1))?.scrollIntoView({ block: 'start' }); }, [loc.hash]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pr = prefsOf(p);
+  if (legacy[loc.hash]) return <MeRedirect to={legacy[loc.hash]} />;
   return (
-    <Page title="Me" kicker="Profile · bio · photos · settings" wide>
+    <Page title="Me" kicker="Profile · bio · photos" wide actions={<Link className="btn sm" to="/settings" data-testid="me-settings"><Icon name="gear" size={18} />Settings</Link>}>
       <div className="desk-grid">
         <div>
           <ProfilePhotoCard />
           <BioCard />
           <GalleryPreview />
-          <Card className="units-card">
-            <div className="card-head" id="goals"><h3 id="units">Units & goals</h3><span className="muted small">Applies everywhere, instantly</span></div>
-            <div className="unit-row"><span><b>Distance</b><span className="muted small">{p.units === 'imperial' ? 'Miles · feet · mph · min/mi' : 'Kilometres · metres · km/h · min/km'}</span></span><DistToggle /></div>
-            <div className="unit-row"><span><b>Weight</b><span className="muted small">Lifts, body weight</span></span><WeightToggle /></div>
-            <div className="unit-row"><span><b>Daily step goal</b><span className="muted small">Default 10,000 · research benefits level off around 6,000–10,000 depending on age</span></span>
-              <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Daily step goal" defaultValue={stepGoalOf(p)} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); if (Number.isFinite(v) && v >= 500) setProfile({ stepGoal: Math.min(v, 100000) }); }} onBlur={(e) => { e.target.value = String(stepGoalOf(p)); }} /></div>
-            <div className="unit-row"><span><b>Step length</b><span className="muted small">Walking; used to estimate steps when the motion sensor isn’t available. Blank = auto from height ({autoStride} {imp ? 'in' : 'cm'})</span></span>
-              <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="decimal" aria-label={`Step length in ${imp ? 'inches' : 'centimetres'}`} placeholder={`${autoStride} ${imp ? 'in' : 'cm'}`} value={p.strideCm ? Math.round(p.strideCm / (imp ? 2.54 : 1)) : ''} onChange={(e) => { const v = parseFloat(e.target.value); setProfile({ strideCm: Number.isFinite(v) && v > 0 ? v * (imp ? 2.54 : 1) : undefined }); }} /></div>
-            <div className="unit-row"><span><b>Max heart rate</b><span className="muted small">For HR zones. Blank = estimated from age with 208 − 0.7 × age (Tanaka 2001){p.age ? ` = ${hrMaxOf({ age: p.age })} bpm` : ''}. A measured max is better.</span></span>
-              <input className="input" style={{ width: 110, textAlign: 'right' }} inputMode="numeric" aria-label="Max heart rate" placeholder={`${hrMaxOf({ age: p.age })} bpm`} value={p.hrMax ?? ''} onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ''), 10); setProfile({ hrMax: Number.isFinite(v) && v > 0 ? Math.min(v, 240) : undefined }); }} /></div>
+        </div>
+        <div>
+          <Card className="me-set">
+            <div className="card-head"><h3>Settings</h3><Link className="link small" to="/settings">All settings →</Link></div>
+            <RowLink to="/settings/privacy" icon="shield" title="Privacy & safety" sub={`Activities: ${visibilityLabel(pr.defaultVisibility)} · ${pr.hideEnds ? 'start & end hidden' : 'full routes'}${pr.zones.length ? ` · ${pr.zones.length} zone${pr.zones.length === 1 ? '' : 's'}` : ''}`} />
+            <RowLink to="/settings/units" icon="ruler" title="Units & display" sub={`${distUnit(p.units)} · ${wUnit(wu(p))}`} />
+            <RowLink to="/settings/account" icon="lock" title="Account & security" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
+            <RowLink to="/settings/devices" icon="watch" title="Devices & integrations" sub="Heart-rate strap · watch files · Strava · Spotify" />
           </Card>
           <Card>
             <RowLink to="/me/gallery" icon="image" title="Gallery" sub="Progress photos & training videos · private" />
             <RowLink to="/social" icon="users" title="Friends & Stories" sub="Friends, posts, stories, invite link" />
-            <RowLink to="/me/account" icon="lock" title="Account" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
-            <RowLink to="/me/devices" icon="watch" title="Devices & sync" sub="Heart-rate strap · watch files · Strava" />
             <RowLink to="/mind" icon="mind" title="Mind & Recovery" sub="Readiness, breathing, recovery, private journal" />
             <RowLink to="/mind/help" icon="phone" title="Get help now" sub="988 call or text · 911 · helplines worldwide" />
             <RowLink to="/coach" icon="coach" title="HYBRD Coach" sub="Your personal training & nutrition plan" />
@@ -52,38 +46,15 @@ export default function Me() {
             <RowLink to="/timers" icon="timer" title="Timers" sub="Stopwatch, intervals, EMOM, AMRAP, HYROX" />
             <RowLink to="/routes" icon="map" title="Route history" sub="Every GPS activity on one map" />
             <RowLink to="/fuel/calculator" icon="fuel" title="Calorie targets" sub="TDEE calculator" />
-            <RowLink to="/me/data" icon="download" title="Your data" sub="Export, import, sample data" />
-            <RowLink to="/me/help" icon="info" title="Help & phone tips" sub="Install, GPS, iPhone limits, privacy" />
-            <RowLink to="/fuel?tab=sources" icon="book" title="Sources" sub="Where every number comes from" />
           </Card>
-        </div>
-        <div>
-          <Card>
-            <h3 style={{ marginBottom: 12 }}>Profile</h3>
-            <label className="field"><span>Name</span><input value={p.name} onChange={(e) => setProfile({ name: e.target.value })} /></label>
-            <div className="grid2">
-              <label className="field"><span>Weight ({wUnit(wu(p))})</span><input inputMode="decimal" value={Math.round(toW(p.weightKg, wu(p)) * 10) / 10} onChange={(e) => setProfile({ weightKg: fromW(+e.target.value || 0, wu(p)) })} /></label>
-              <label className="field"><span>Training days / wk</span><select value={p.weeklySessions} onChange={(e) => setProfile({ weeklySessions: +e.target.value })}>{[2, 3, 4, 5, 6, 7].map((n) => <option key={n}>{n}</option>)}</select></label>
-            </div>
-            <label className="field"><span>HYROX division</span><select value={p.hyroxDivision} onChange={(e) => setProfile({ hyroxDivision: e.target.value as Profile['hyroxDivision'] })}>{Object.entries(HYROX_DIVISIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
-            <Link className="link" to="/fuel/calculator">Age, height, activity & goal →</Link>
-          </Card>
-          <Card className="music-card">
-            <div className="card-head" id="music"><h3>Music · Spotify</h3><span className="muted small">Optional</span></div>
-            <SpotifySettings />
-          </Card>
-          <Card>
-            <h3 style={{ marginBottom: 10 }}>Music player</h3>
-            <MusicPanel />
-          </Card>
-          <Card>
-            <h3 style={{ marginBottom: 4 }}>Cues</h3>
-            <T k="sound" label="Sounds & vibration" sub="Beeps for intervals and splits (vibration on Android only)" />
-            <T k="voice" label="Voice cues" sub="Speaks splits and interval names" />
-          </Card>
-          <p className="muted small">HYBRD v1.0 · made for José Manuel Cruz Ortiz & friends.</p>
+          <p className="muted small">HYBRD · made for José Manuel Cruz Ortiz & friends. <Link className="link" to="/settings/about">About</Link></p>
         </div>
       </div>
     </Page>
   );
 }
+function MeRedirect({ to }: { to: string }) {
+  const [pathname, hash] = to.split('#');
+  return <NavigateTo pathname={pathname} hash={hash ? `#${hash}` : ''} />;
+}
+const NavigateTo = ({ pathname, hash }: { pathname: string; hash: string }) => <Navigate to={{ pathname, hash }} replace />;

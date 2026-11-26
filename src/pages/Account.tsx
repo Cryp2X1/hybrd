@@ -22,11 +22,11 @@ export default function Account() {
   const [bu, setBu] = useState(cfg.origin === 'device' ? cfg.url : ''), [bk, setBk] = useState(cfg.origin === 'device' ? cfg.anonKey : '');
 
   if (!a.configured) return (
-    <Page title="Account" kicker="Local mode" back="/me">
+    <Page title="Account" kicker="Local mode" back="/settings">
       <LocalModeNote />
       <Card>
         <h3 style={{ marginBottom: 8 }}>What works right now</h3>
-        <ul className="cues"><li>Everything: training, GPS, timers, food log, Hybrid Score.</li><li>Data lives in this browser on this device (IndexedDB).</li><li>Back up or move it with <Link className="link" to="/me/data">Export / Import</Link>.</li></ul>
+        <ul className="cues"><li>Everything: training, GPS, timers, food log, Hybrid Score.</li><li>Data lives in this browser on this device (IndexedDB).</li><li>Back up or move it with <Link className="link" to="/settings/data">Export / Import</Link>.</li></ul>
         <h3 style={{ margin: '14px 0 8px' }}>When the backend is connected</h3>
         <ul className="cues"><li>Sign up with email + password, log in and out.</li><li>Change your password and email, reset a forgotten password by email.</li><li>Your logs sync between phone and laptop, private to you.</li><li>Anything you logged in Local mode can be moved into your account.</li></ul>
       </Card>
@@ -39,10 +39,10 @@ export default function Account() {
     </Page>
   );
 
-  if (!a.ready) return <Page title="Account" back="/me"><p className="muted">Loading…</p></Page>;
+  if (!a.ready) return <Page title="Account" back="/settings"><p className="muted">Loading…</p></Page>;
 
   if (!a.user) return (
-    <Page title="Account" kicker="Not signed in" back="/me">
+    <Page title="Account" kicker="Not signed in" back="/settings">
       <Banner>Sign in to sync your training and food log across devices. You can keep using HYBRD without an account — your data stays on this device.</Banner>
       <div className="row wrap"><Link className="btn y" to="/sign-in">Sign in</Link><Link className="btn" to="/sign-up">Create account</Link><Link className="btn ghost" to="/forgot">Forgot password</Link></div>
       {cfg.origin === 'device' && <p className="muted small" style={{ marginTop: 14 }}>Backend set on this device only. <button className="link" onClick={() => { setDeviceBackend('', ''); location.reload(); }}>Remove</button></p>}
@@ -50,7 +50,7 @@ export default function Account() {
   );
 
   return (
-    <Page title="Account" kicker={a.user.email || ''} back="/me">
+    <Page title="Account" kicker={a.user.email || ''} back="/settings">
       <Card>
         <div className="row"><div style={{ flex: 1 }}><b>Sync</b><div className="muted small">{st.syncStatus === 'error' ? `Error: ${st.syncError}` : st.syncStatus === 'syncing' ? 'Syncing…' : st.syncStatus === 'offline' ? 'Offline — will sync when you’re back online' : 'Up to date'}</div></div><button className="btn sm" onClick={() => st.syncNow()}>Sync now</button></div>
       </Card>

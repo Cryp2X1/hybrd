@@ -16,7 +16,7 @@ const devIcon = (t: string) => (t === 'Smartphone' || t === 'Tablet' ? 'phone' :
 function ConnectButton({ block }: { block?: boolean }) {
   const sp = useSpotify();
   const [err, setErr] = useState('');
-  if (!sp.clientId) return <Link to="/me#music" className={`btn sm ${block ? 'block' : ''}`}><Icon name="gear" size={16} />Set up Spotify in Me › Music</Link>;
+  if (!sp.clientId) return <Link to="/settings/devices#music" className={`btn sm ${block ? 'block' : ''}`}><Icon name="gear" size={16} />Set up Spotify in Settings › Devices</Link>;
   return (
     <>
       <button className={`btn y ${block ? 'block' : ''} sm sp-connect`} disabled={!!sp.loading.connect} onClick={() => connect().catch((e) => setErr(e.message))}><Icon name="music" size={18} />{sp.loading.connect ? 'Connecting…' : 'Connect Spotify'}</button>
@@ -209,7 +209,7 @@ export function SpotifySettings() {
         <code className="sp-uri" data-testid="sp-redirect">{redirectUri()}</code>
         {onLocalhostName() && <Banner tone="warn">Spotify doesn’t accept “localhost” redirect URIs. Open this page at <b>{window.location.href.replace('//localhost', '//127.0.0.1')}</b> instead and register that address.</Banner>}
       </details>
-      <p className="muted small" style={{ margin: '8px 0 0' }}>Limits while the Spotify app is in development mode: the app owner needs Premium, up to 5 people (added by email in the dashboard), and play/pause/skip need Premium. <Link className="link" to="/me/help#music">Details</Link></p>
+      <p className="muted small" style={{ margin: '8px 0 0' }}>Limits while the Spotify app is in development mode: the app owner needs Premium, up to 5 people (added by email in the dashboard), and play/pause/skip need Premium. <Link className="link" to="/settings/help#music">Details</Link></p>
     </div>
   );
 }

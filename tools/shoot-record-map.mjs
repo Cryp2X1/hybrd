@@ -274,8 +274,8 @@ async function phoneRun() {
   // finish with the hold button (pointer down for 1.1 s)
   const fb = await page.$('.rm-finish'); const bb = await fb.boundingBox();
   await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.down(); await sleep(1200); await page.mouse.up(); await sleep(500);
-  check('finish sheet opens', /Save activity/.test(await page.evaluate(() => document.querySelector('.sheet')?.textContent || '')));
-  await S.clickText('Save activity', '.sheet button'); await sleep(1200);
+  check('Save activity page opens', !!(await page.$('[data-testid="save-activity"]')));
+  await S.click('[data-testid="sa-save"]'); await sleep(1200);
   const saved = await page.evaluate(() => ({ url: location.pathname, txt: document.body.innerText.slice(0, 400) }));
   check('saved → workout detail', /\/train\/workout\//.test(saved.url), saved.url);
   await S.go('/record', 1200);

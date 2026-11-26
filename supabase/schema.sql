@@ -2177,3 +2177,132 @@ end $$;
 
 -- Check: both call tables should show rowsecurity = true
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in ('calls', 'call_participants');
+
+-- =====================================================================================================================
+-- SHARED ACTIVITIES (Record › Save / Share): the public copy of an activity behind a share link /hybrd/a?id=<uuid>.
+-- The app writes ONLY the privacy-trimmed payload here (start/end hidden by a random distance, privacy zones removed,
+-- or no map at all) — the full route stays in the owner's private `workouts` / `gps_routes` rows.
+-- Who can read:  owner · friends (visibility 'friends') · anyone incl. signed-out (visibility 'public', never minors)
+-- Blocked people never see each other's activities. Re-runnable.
+-- =====================================================================================================================
+create table if not exists public.shared_activities (
+  id          uuid primary key,                          -- random share id from the app (not the workout id)
+  user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  workout_id  text not null,
+  visibility  text not null default 'friends',
+  data        jsonb not null,                            -- PublicActivity (src/lib/share.ts), already privacy-trimmed
+  image_path  text,                                      -- activity-images bucket: <user_id>/<id>.png
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table public.shared_activities drop constraint if exists shared_activities_vis_chk;
+alter table public.shared_activities add constraint shared_activities_vis_chk check (visibility in ('friends', 'public'));
+alter table public.shared_activities drop constraint if exists shared_activities_data_chk;
+alter table public.shared_activities add constraint shared_activities_data_chk check (jsonb_typeof(data) = 'object' and coalesce(data->>'v', '') = '1' and octet_length(data::text) <= 524288);
+alter table public.shared_activities drop constraint if exists shared_activities_img_chk;
+alter table public.shared_activities add constraint shared_activities_img_chk check (image_path is null or image_path = user_id::text || '/' || id::text || '.png');
+create unique index if not exists shared_activities_workout_key on public.shared_activities (user_id, workout_id);
+create index if not exists shared_activities_user_idx on public.shared_activities (user_id, created_at desc);
+alter table public.shared_activities enable row level security;
+revoke all on public.shared_activities from anon;
+grant select, insert, update, delete on public.shared_activities to authenticated;
+
+-- Can the current viewer (signed in or not) see an activity by `owner` shared to `vis`?
+create or replace function public.activity_can_view(owner uuid, vis text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select case
+    when owner is null then false
+    when owner = auth.uid() then true
+    when auth.uid() is not null and public.social_is_blocked(auth.uid(), owner) then false
+    when exists (select 1 from public.social_bans b where b.user_id = owner) then false
+    when vis = 'public' then not public.dm_is_minor(owner)
+    when vis = 'friends' then auth.uid() is not null and public.social_are_friends(auth.uid(), owner)
+    else false
+  end
+$$;
+create or replace function public.activity_can_view_object(p_name text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.shared_activities a where a.image_path = p_name and public.activity_can_view(a.user_id, a.visibility))
+$$;
+
+drop policy if exists "shared_activities_select" on public.shared_activities;
+drop policy if exists "shared_activities_insert" on public.shared_activities;
+drop policy if exists "shared_activities_update" on public.shared_activities;
+drop policy if exists "shared_activities_delete" on public.shared_activities;
+create policy "shared_activities_select" on public.shared_activities for select to authenticated using (public.activity_can_view(user_id, visibility));
+create policy "shared_activities_insert" on public.shared_activities for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "shared_activities_update" on public.shared_activities for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "shared_activities_delete" on public.shared_activities for delete to authenticated using (user_id = (select auth.uid()));
+
+-- Server-side rules: a public profile is required (that's where the 13+ age gate lives), under-18s can't share
+-- publicly, banned accounts can't share, owner and creation time can't be changed, max 100 new shares a day.
+create or replace function public.shared_activities_before() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.user_id is distinct from auth.uid() then raise exception 'not_allowed' using errcode = 'P0001'; end if;
+    perform public.social_rate_check((select count(*) from public.shared_activities a where a.user_id = new.user_id and a.created_at > now() - interval '1 day'), 100, 'shared activities per day');
+    new.created_at := now();
+  else
+    new.user_id := old.user_id; new.created_at := old.created_at; new.id := old.id;
+  end if;
+  if not public.social_is_member(new.user_id) then raise exception 'not_member' using errcode = 'P0001'; end if;
+  if exists (select 1 from public.social_bans b where b.user_id = new.user_id) then raise exception 'banned' using errcode = 'P0001'; end if;
+  if new.visibility = 'public' and public.dm_is_minor(new.user_id) then raise exception 'minor_public' using errcode = 'P0001'; end if;
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists shared_activities_before on public.shared_activities;
+create trigger shared_activities_before before insert or update on public.shared_activities for each row execute function public.shared_activities_before();
+
+-- If someone turns 18-or-under rules on (profile becomes minor), their public shares fall back to friends.
+create or replace function public.shared_activities_minor_sync() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.is_minor and not coalesce(old.is_minor, false) then
+    update public.shared_activities set visibility = 'friends' where user_id = new.id and visibility = 'public';
+  end if;
+  return new;
+end $$;
+drop trigger if exists social_profiles_shared_minor on public.social_profiles;
+create trigger social_profiles_shared_minor after update on public.social_profiles for each row execute function public.shared_activities_minor_sync();
+
+-- The share page (/hybrd/a?id=…) reads one activity through this function, also when signed out.
+-- Returns null when the viewer may not see it (private, friends-only, blocked, minor, deleted) — no difference
+-- between "doesn't exist" and "not allowed", so share ids can't be probed.
+create or replace function public.activity_public(p_id uuid) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'id', a.id, 'data', a.data, 'visibility', a.visibility, 'image_path', a.image_path, 'created_at', a.created_at, 'updated_at', a.updated_at,
+    'mine', a.user_id = auth.uid(),
+    'author', case when p.id is null then null else jsonb_build_object('display_name', p.display_name,
+      'username', case when p.privacy = 'public' or a.user_id = auth.uid() or (auth.uid() is not null and public.social_are_friends(auth.uid(), a.user_id)) then p.username end) end)
+  from public.shared_activities a left join public.social_profiles p on p.id = a.user_id
+  where a.id = p_id and public.activity_can_view(a.user_id, a.visibility)
+$$;
+revoke execute on function public.activity_public(uuid) from public;
+grant execute on function public.activity_public(uuid) to anon, authenticated;
+revoke execute on function public.activity_can_view(uuid, text), public.activity_can_view_object(text) from public;
+grant execute on function public.activity_can_view(uuid, text), public.activity_can_view_object(text) to anon, authenticated;
+
+-- ---------- Storage: share images (PNG made in the app from the trimmed route) ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('activity-images', 'activity-images', false, 5242880, array['image/png'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists "activity_images_select" on storage.objects;
+drop policy if exists "activity_images_insert_own" on storage.objects;
+drop policy if exists "activity_images_update_own" on storage.objects;
+drop policy if exists "activity_images_delete_own" on storage.objects;
+create policy "activity_images_select" on storage.objects for select to anon, authenticated
+  using (bucket_id = 'activity-images' and ((storage.foldername(name))[1] = (select auth.uid())::text or public.activity_can_view_object(name)));
+create policy "activity_images_insert_own" on storage.objects for insert to authenticated
+  with check (bucket_id = 'activity-images' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "activity_images_update_own" on storage.objects for update to authenticated
+  using (bucket_id = 'activity-images' and (storage.foldername(name))[1] = (select auth.uid())::text)
+  with check (bucket_id = 'activity-images' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "activity_images_delete_own" on storage.objects for delete to authenticated
+  using (bucket_id = 'activity-images' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Check: shared_activities should show rowsecurity = true, and the bucket public = false
+select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename = 'shared_activities';
+select id, public from storage.buckets where id = 'activity-images';

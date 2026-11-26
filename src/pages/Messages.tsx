@@ -77,7 +77,7 @@ function Inbox({ activeId }: { activeId: string | null }) {
       <header className="dm-head">
         <div><div className="kicker">Social</div><h1>Messages</h1></div>
         <div className="row">
-          <Link className="icon-btn" to="/messages/settings" aria-label="Message privacy settings" data-testid="dm-settings-link"><Icon name="gear" size={20} /></Link>
+          <Link className="icon-btn" to="/settings/messages" aria-label="Message privacy settings" data-testid="dm-settings-link"><Icon name="gear" size={20} /></Link>
           <Link className="icon-btn dm-new" to="/messages/new" aria-label="New message" data-testid="dm-new"><Icon name="edit" size={20} /></Link>
         </div>
       </header>
@@ -623,7 +623,7 @@ function MessageSettingsInner() {
   const save = async (p: Partial<typeof settings>) => { try { await saveSettings({ ...settings, ...p }); toast('Saved'); } catch (e) { toast(friendlyDmError(e)); } };
   return (
     <div className="page dm-settings" data-testid="dm-settings">
-      <header className="page-head"><button className="icon-btn" aria-label="Back" onClick={() => nav('/messages')}><Icon name="back" /></button><div className="page-title"><div className="kicker">Messages</div><h1>Privacy</h1></div></header>
+      <header className="page-head"><button className="icon-btn" aria-label="Back" onClick={() => nav('/settings')}><Icon name="back" /></button><div className="page-title"><div className="kicker">Settings</div><h1>Messages & calls</h1></div></header>
       <Card>
         <h3>Who can message you</h3>
         {me?.isMinor && <p className="muted small" data-testid="dm-minor-note"><Icon name="lock" size={13} /> You’re under 18, so adults you’re not friends with can never message you, whatever you choose here.</p>}

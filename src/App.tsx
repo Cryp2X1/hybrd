@@ -5,6 +5,7 @@ import { useStore } from './lib/store';
 import { useAuth } from './lib/auth';
 import { useRecorder } from './lib/recorder';
 import { setCuePrefs } from './lib/cues';
+import { newSeed } from './lib/privacy';
 import Home from './pages/Home';
 import { Avatar } from './components/Avatar';
 import { useSocial } from './lib/socialStore';
@@ -22,7 +23,6 @@ const Record = lazy(() => import('./pages/Record'));
 const RoutesPage = lazy(() => import('./pages/Routes'));
 const Timers = lazy(() => import('./pages/Timers'));
 const Fuel = lazy(() => import('./pages/Fuel'));
-const Devices = lazy(() => import('./pages/Devices'));
 const ImportPage = lazy(() => import('./pages/Import'));
 const AddFood = lazy(() => import('./pages/AddFood'));
 const RecipeDetail = lazy(() => import('./pages/RecipeDetail'));
@@ -44,9 +44,6 @@ const Progress = lazy(() => import('./pages/Progress'));
 const Burn = lazy(() => import('./pages/Burn'));
 const Me = lazy(() => import('./pages/Me'));
 const Auth = lazy(() => import('./pages/Auth'));
-const Account = lazy(() => import('./pages/Account'));
-const DataPage = lazy(() => import('./pages/DataPage'));
-const Help = lazy(() => import('./pages/Help'));
 const ScorePage = lazy(() => import('./pages/ScorePage'));
 const Coach = lazy(() => import('./pages/Coach'));
 const CoachSetup = lazy(() => import('./pages/CoachSetup'));
@@ -62,8 +59,11 @@ const SocialSetup = lazy(() => import('./pages/Social').then((m) => ({ default: 
 const SocialRules = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialRules })));
 const MessagesPage = lazy(() => import('./pages/Messages'));
 const NewMessage = lazy(() => import('./pages/Messages').then((m) => ({ default: m.NewMessage })));
-const MessageSettings = lazy(() => import('./pages/Messages').then((m) => ({ default: m.MessageSettings })));
 const InvitePage = lazy(() => import('./pages/Social').then((m) => ({ default: m.InvitePage })));
+const SettingsHome = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsHome })));
+const SettingsSection = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsSection })));
+const LegacyRedirect = lazy(() => import('./pages/Settings').then((m) => ({ default: m.LegacyRedirect })));
+const SharedActivity = lazy(() => import('./pages/SharedActivity'));
 
 const NAV = [
   { to: '/', icon: 'home', label: 'Home', end: true },
@@ -82,14 +82,14 @@ const NAV = [
 export function ModeChip() {
   const { configured, user } = useAuth();
   const { syncStatus } = useStore();
-  if (!configured) return <NavLink to="/me/account" className="mode-chip" title="Local mode" aria-label="Local mode"><span className="dot" /><span className="mode-chip-t">Local mode</span></NavLink>;
+  if (!configured) return <NavLink to="/settings/account" className="mode-chip" title="Local mode" aria-label="Local mode"><span className="dot" /><span className="mode-chip-t">Local mode</span></NavLink>;
   if (!user) return <NavLink to="/sign-in" className="mode-chip" title="Sign in to sync" aria-label="Sign in to sync"><span className="dot" /><span className="mode-chip-t">Sign in to sync</span></NavLink>;
   const label = syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'error' ? 'Sync error' : syncStatus === 'offline' ? 'Offline' : 'Synced';
-  return <NavLink to="/me/account" className={`mode-chip ${syncStatus === 'error' ? 'err' : 'on'}`} title={label} aria-label={label}><span className="dot" /><span className="mode-chip-t">{label}</span></NavLink>;
+  return <NavLink to="/settings/account" className={`mode-chip ${syncStatus === 'error' ? 'err' : 'on'}`} title={label} aria-label={label}><span className="dot" /><span className="mode-chip-t">{label}</span></NavLink>;
 }
 
 export function App() {
-  const { ready, profile } = useStore();
+  const { ready, profile, setProfile } = useStore();
   const { session } = useAuth();
   const { s: rec } = useRecorder();
   const { badge } = useSocial();
@@ -102,12 +102,16 @@ export function App() {
   useEffect(() => {
     const q = new URLSearchParams(loc.search);
     const next = q.get('next');
-    if (next && (session || !q.get('code'))) nav(next === 'reset-password' ? '/reset-password' : next === 'account' ? '/me/account' : '/', { replace: true });
+    if (next && (session || !q.get('code'))) nav(next === 'reset-password' ? '/reset-password' : next === 'account' ? '/settings/account' : '/', { replace: true });
   }, [loc.search, session, nav]);
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
+  // Map privacy: every person gets a secret random seed for the start/end and zone offsets (synced privately).
+  useEffect(() => { if (ready && profile.onboarded && !profile.privacy?.seed) setProfile({ privacy: { ...(profile.privacy || {}), seed: newSeed() } }); }, [ready, profile.onboarded, profile.privacy?.seed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!ready) return <div className="onb"><div className="onb-hero"><div className="brand"><span className="brand-mark">H</span>HYBRD</div></div></div>;
   const authPaths = ['/sign-in', '/sign-up', '/forgot', '/reset-password'];
+  // Shared activity links open for anyone — no onboarding, no app chrome — when this browser hasn't used HYBRD.
+  if (loc.pathname === '/a' && !profile.onboarded) return <Suspense fallback={null}><SharedActivity /></Suspense>;
   if (!profile.onboarded && !authPaths.includes(loc.pathname) && !new URLSearchParams(loc.search).get('next')) {
     return <Suspense fallback={null}><Onboarding /></Suspense>;
   }
@@ -118,12 +122,13 @@ export function App() {
       <nav className="side-nav" aria-label="Main">
         <div className="brand"><span className="brand-mark">H</span>HYBRD</div>
         {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end}><Icon name={n.icon} />{n.label}{n.to === '/record' && live && <span className="live-dot" style={{ marginLeft: 'auto' }} />}{n.to === '/social' && badge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-social-badge">{badge}</span>}{n.to === '/messages' && dmBadge > 0 && <span className="s-badge" style={{ marginLeft: 'auto' }} data-testid="side-dm-badge">{dmBadge}</span>}</NavLink>)}
+        <NavLink to="/settings" className="side-set" data-testid="side-settings"><Icon name="gear" />Settings</NavLink>
         <NavLink to="/me" className="side-me" data-testid="side-me"><Avatar size={26} /><span className="side-me-n">{profile.name ? profile.name.split(' ')[0] : 'Me'}</span></NavLink>
         <NavLink to="/train/log" className="side-cta">Log a workout</NavLink>
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><MessagesLink /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><MessagesLink /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/settings" className="top-set" aria-label="Settings" data-testid="top-settings"><Icon name="gear" size={20} /></NavLink><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -160,10 +165,13 @@ export function App() {
             <Route path="/burn" element={<Burn />} />
             <Route path="/me" element={<Me />} />
             <Route path="/me/gallery" element={<Gallery />} />
-            <Route path="/me/account" element={<Account />} />
-            <Route path="/me/data" element={<DataPage />} />
-            <Route path="/me/help" element={<Help />} />
-            <Route path="/me/devices" element={<Devices />} />
+            <Route path="/me/account" element={<LegacyRedirect from="/me/account" />} />
+            <Route path="/me/data" element={<LegacyRedirect from="/me/data" />} />
+            <Route path="/me/help" element={<LegacyRedirect from="/me/help" />} />
+            <Route path="/me/devices" element={<LegacyRedirect from="/me/devices" />} />
+            <Route path="/settings" element={<SettingsHome />} />
+            <Route path="/settings/:section" element={<SettingsSection />} />
+            <Route path="/a" element={<SharedActivity />} />
             <Route path="/me/import" element={<ImportPage />} />
             <Route path="/social" element={<SocialFeed />} />
             <Route path="/social/new" element={<SocialCreate />} />
@@ -177,7 +185,7 @@ export function App() {
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/messages/chat" element={<MessagesPage />} />
             <Route path="/messages/new" element={<NewMessage />} />
-            <Route path="/messages/settings" element={<MessageSettings />} />
+            <Route path="/messages/settings" element={<LegacyRedirect from="/messages/settings" />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/sign-in" element={<Auth mode="sign-in" />} />
             <Route path="/sign-up" element={<Auth mode="sign-up" />} />

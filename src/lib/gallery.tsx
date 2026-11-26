@@ -212,7 +212,7 @@ interface MediaCtx {
   setAvatar(b: Blob): Promise<void>;
   removeAvatar(): Promise<void>;
   items: GalleryItem[];
-  addPhotos(p: (Prepared & { tag: GalleryTag; caption?: string })[]): Promise<number>;
+  addPhotos(p: (Prepared & { tag: GalleryTag; caption?: string; id?: string })[]): Promise<number>;
   updatePhoto(it: GalleryItem, patch: Partial<Pick<GalleryItem, 'caption' | 'tag' | 'date'>>): void;
   deletePhotos(ids: string[]): Promise<void>;
   getBlob(it: GalleryItem, kind: BlobKind): Promise<Blob | undefined>;
@@ -300,7 +300,7 @@ export function MediaProvider({ children }: { children: ReactNode }) {
   const addPhotos: MediaCtx['addPhotos'] = useCallback(async (list) => {
     let n = 0;
     for (const p of list) {
-      const id = uid();
+      const id = p.id || uid();
       await set(bkey(id, 'orig'), p.orig, media); await set(bkey(id, 'disp'), p.disp, media); await set(bkey(id, 'thumb'), p.thumb, media);
       const it: Omit<GalleryItem, 'updatedAt'> = {
         id, date: p.date, dateSource: p.dateSource, tag: p.tag, caption: p.caption?.trim() || undefined, w: p.w, h: p.h, mime: p.mime,

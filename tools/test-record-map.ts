@@ -232,7 +232,7 @@ const mapc = readFileSync(new URL('../src/components/RecordMap.tsx', import.meta
 const vite = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 check('Record: map screen only for outdoor GPS (indoor + treadmill keep the classic screen)', /if \(!s\.indoor && s\.type !== 'indoor-cycle'\)/.test(rec) && /<RecordMapScreen/.test(rec));
-check('Record: map screen reuses the same start/resume/finish + save flow', /onStart=\{begin\} onResume=\{resume\} onAskFinish=\{askFinish\}/.test(rec) && /\{finishSheet\}/.test(rec));
+check('Record: map screen reuses the same start/resume/finish + save flow', /onStart=\{begin\} onResume=\{resume\} onAskFinish=\{askFinish\}/.test(rec) && /if \(finishing\) \{/.test(rec) && /<SaveActivityForm /.test(rec)); // finish → full Save activity screen (was a sheet)
 check('MapLibre is lazy-loaded (not in the Record chunk)', /lazy\(\(\) => import\('\.\.\/components\/RecordMap'\)\)/.test(scr) && /import\('maplibre-gl'\)/.test(mapc) && !/^import (?!type ).* from 'maplibre-gl';/m.test(mapc));
 check('worker URL set explicitly (works under /hybrd/)', /setWorkerUrl/.test(mapc) && /maplibre-gl-worker\.mjs\?url/.test(mapc));
 check('no-WebGL fallback + offline blank style', /TrackSvg/.test(mapc) && /blankStyle\(\)/.test(mapc) && /'online'/.test(mapc));

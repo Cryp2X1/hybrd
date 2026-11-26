@@ -85,9 +85,9 @@ Without this step HYBRD still shows the public **Workout playlists** (Spotify em
    ```js
    window.HYBRD_CONFIG = { supabaseUrl: '…', supabaseAnonKey: '…', spotifyClientId: 'YOUR_CLIENT_ID' };
    ```
-   The Client ID is public, so it is safe in the published `config.js`. To test before publishing, paste it in **Me › Music · Spotify › Spotify app setup** instead. That copy is saved on that device only.
+   The Client ID is public, so it is safe in the published `config.js`. To test before publishing, paste it in **Settings › Devices & integrations › Spotify › Spotify app setup** instead. That copy is saved on that device only.
 5. **Add each friend under User Management:** in Settings → **User Management** → **Add new user**, enter their name and **the email of their Spotify account**. Do this for everyone who will press Connect, up to 5 people including you. If someone isn't on the list, Spotify may let them log in, but every request then fails with a 403 ("not registered"). HYBRD says so on screen.
-6. Publish (step 6). Then open HYBRD → **Me › Music · Spotify** → **Connect Spotify**, approve, and you return to the same screen, connected.
+6. Publish (step 6). Then open HYBRD → **Settings › Devices & integrations › Spotify** → **Connect Spotify**, approve, and you return to the same screen, connected.
 7. Test it. Open Spotify on your phone and play any song for a second. In HYBRD → **Record** → **Music**, you should see the track. Pause, skip, then pick **Play on → your phone** and **Your playlists**. On a computer, try **Play in this browser**. It asks Spotify once more, for the "streaming" permission.
 
 Scopes HYBRD asks for:
@@ -114,7 +114,7 @@ Sources:
 
 ## 9. (Optional) Strava — "Connect with Strava" sync
 
-HYBRD works without this: Bluetooth heart rate and watch-file import (.fit/.tcx/.gpx) need no setup. Until steps 1–4 are done, Me › Devices & sync shows **"Strava setup needed"** and nothing breaks.
+HYBRD works without this: Bluetooth heart rate and watch-file import (.fit/.tcx/.gpx) need no setup. Until steps 1–4 are done, Settings › Devices & integrations shows **"Strava setup needed"** and nothing breaks.
 
 Strava requires the **Client Secret** for the token exchange and for every token refresh, and a static GitHub Pages site can't keep a secret. So HYBRD ships a tiny, stateless **token-exchange function** that holds the secret. It stores nothing. Pick **one** host; both are $0:
 - Supabase Edge Functions: the free plan includes 500,000 invocations a month (supabase.com/pricing).
@@ -163,10 +163,10 @@ stravaClientId: '<Client ID>',
 stravaTokenUrl: 'https://<project-ref>.supabase.co/functions/v1/strava-token',
 supportEmail: '<an address users can write to>', // Strava API Policy §2.4 requires a support contact
 ```
-Rebuild or re-publish. To test without publishing, open Me › Devices & sync › Strava, choose "Enter Client ID & function URL", and enter both on that one device.
+Rebuild or re-publish. To test without publishing, open Settings › Devices & integrations › Strava, choose "Enter Client ID & function URL", and enter both on that one device.
 
 ### 9.4 Test
-1. Go to Me › Devices & sync › Connect with Strava, read the consent screen, and approve on strava.com.
+1. Go to Settings › Devices & integrations › Connect with Strava, read the consent screen, and approve on strava.com.
 2. You land back in HYBRD, and your last 30 days of activities appear in Train › History with a **from Strava** badge.
 3. Open an activity: it shows the full route, the HR chart, laps or splits, and **View on Strava**.
 4. Test **Disconnect & delete**. It revokes access and deletes all Strava data on the device, and HYBRD shows a written confirmation.
@@ -396,6 +396,17 @@ Use two accounts on two devices, ideally one on mobile data so you also test the
 - With B on Do not disturb, A hears it ring out and gets "No answer".
 - With B on Friends only, a non-friend's call is refused.
 - In a group, a 5th person can't join.
+
+## 14. Shared activities (save & share, public links) — created by `schema.sql`
+Nothing extra to set up: re-run the whole `supabase/schema.sql` in the SQL editor (it is safe to run again; existing data is kept). It adds:
+- **Table `shared_activities`** — the *public copy* of an activity that someone chose to share (Friends or Everyone). It holds a random id (used in the link), a JSON summary (title, description, type, key stats, splits, exercise names/set counts) and the route **after** start/end trimming and privacy zones, rounded to ~1 m with no timestamps. The full private route stays in `gps_routes`, readable only by its owner. Limits: `data` ≤ 512 KB and must be format v1; 100 shares per user per day; banned accounts can't share; you must have set up a social profile.
+- **Who can read a share**: the owner; friends when it's Friends or Everyone; and anyone (signed out too) only when it's Everyone — through the `activity_public(id)` function, which shows the author's @handle only if their profile is public (or the viewer is a friend). Blocked people can't see it. Under-18 accounts can't pick Everyone, and if an account becomes under-18 its Everyone shares drop to Friends automatically.
+- **Storage bucket `activity-images`** (private, PNG only, 5 MB) — the share image at `<user id>/<share id>.png`. Readable by the same people who can read the share; only the owner can write or delete.
+- Changing an activity to **Only me**, or deleting it, removes the shared copy and its image, so the link stops working.
+
+How links work: `https://<user>.github.io/hybrd/a?id=<uuid>`. The page loads the share with the anon key, so it works for logged-out visitors when the activity is Everyone. Link previews (Open Graph cards on Facebook/X/iMessage) need server-side HTML, which GitHub Pages can't do, so links show as plain links; the image is shared as a file instead.
+
+Test: `PG_BIN=... bash tools/test-social-sql.sh` (step "== shared activities": 39 checks — RLS, anon reads, minors, bans, blocks, the 100-a-day limit, storage paths).
 
 ## Local development
 ```bash

@@ -40,7 +40,7 @@ export default function ProgramDetail() {
         <p className="muted small" style={{ marginBottom: 0 }}>Not there yet? Start with the {p.discipline} Intermediate program, or scale each session (easier progression, fewer reps, lighter load).</p></Card>}
       {(usesPace || usesFtp) && <TargetsCard show={usesPace && usesFtp ? 'both' : usesFtp ? 'ride' : 'run'} />}
       {p.discipline === 'HYROX' && <Card>
-        <div className="card-head"><h3>Race format · {div.label}</h3><div className="row" style={{ gap: 10 }}><DistToggle /><Link to="/me">Division</Link></div></div>
+        <div className="card-head"><h3>Race format · {div.label}</h3><div className="row" style={{ gap: 10 }}><DistToggle /><Link to="/settings/profile">Division</Link></div></div>
         <div className="seg-list">{HYROX_STATIONS.map((s, i) => <div key={s.exId} className="seg-item"><span className="n">{i + 1}</span><span>{fmtOfficial(1000, profile.units)} run → <b>{s.name}</b> {officialWork(s.work, 'distanceM' in s ? s.distanceM : undefined, profile.units)}</span><span className="t muted small">{localizeOfficial(s.exId === 'sled-push' ? div.sledPush : s.exId === 'sled-pull' ? div.sledPull : s.exId === 'farmers' ? div.farmers : s.exId === 'sb-lunge' ? div.lunges : s.exId === 'wall-ball' ? div.wallBall : '', profile.units, wu(profile))}</span></div>)}</div>
         <p className="muted small" style={{ marginTop: 10 }}>From the HYROX 25/26 Singles rulebook (official distances and loads are metric{profile.units === 'imperial' ? '; imperial values in brackets are conversions' : ''}); sled weights include the sled. Always check the current season’s rulebook before you race.</p>
       </Card>}

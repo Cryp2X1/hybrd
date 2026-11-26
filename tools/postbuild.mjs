@@ -3,7 +3,8 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 // main routes so deep links and home-screen launches return HTTP 200.
 const ROUTES = ['train', 'train/log', 'train/ultra', 'train/ultra/setup', 'record', 'routes', 'timers', 'fuel', 'fuel/add', 'fuel/calculator', 'fuel/weight-loss', 'fuel/weight-loss/setup', 'fuel/fasting', 'fuel/fasting/setup', 'fuel/sleep', 'fuel/sleep/setup', 'mind', 'mind/setup', 'mind/help', 'progress', 'burn', 'score', 'coach', 'coach/start',
   'social', 'social/new', 'social/post', 'social/friends', 'social/notifications', 'social/saved', 'social/profile', 'social/setup', 'social/rules', 'invite', 'messages', 'messages/chat', 'messages/new', 'messages/settings',
-  'me', 'me/gallery', 'me/account', 'me/data', 'me/help', 'me/devices', 'me/import', 'sign-in', 'sign-up', 'forgot', 'reset-password'];
+  'me', 'me/gallery', 'me/account', 'me/data', 'me/help', 'me/devices', 'me/import', 'a',
+  'settings', 'settings/account', 'settings/profile', 'settings/privacy', 'settings/units', 'settings/recording', 'settings/notifications', 'settings/goals', 'settings/devices', 'settings/messages', 'settings/data', 'settings/help', 'settings/about', 'sign-in', 'sign-up', 'forgot', 'reset-password'];
 copyFileSync('dist/index.html', 'dist/404.html');
 for (const r of ROUTES) { mkdirSync(`dist/${r}`, { recursive: true }); copyFileSync('dist/index.html', `dist/${r}/index.html`); }
 writeFileSync('dist/.nojekyll', '');

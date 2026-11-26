@@ -93,7 +93,7 @@ export default function Import() {
   const max = hrMaxOf(profile);
 
   return (
-    <Page title="Import files" kicker="GPX · TCX · FIT — from any watch" back="/me/devices">
+    <Page title="Import files" kicker="GPX · TCX · FIT — from any watch" back="/settings/devices">
       <label className={`drop-zone ${over ? 'over' : ''}`} data-testid="drop-zone">
         <Icon name="upload" size={30} />
         <h3 style={{ margin: '8px 0 4px' }}>{busy ? `Reading ${busy} file${busy > 1 ? 's' : ''}…` : 'Drop files here or tap to choose'}</h3>
@@ -123,7 +123,7 @@ export default function Import() {
         </ul>
         <p className="muted small" style={{ margin: 0 }}>Duplicates are detected by the file itself and by start time (±3 min with a similar duration), including workouts you recorded in HYBRD or synced from Strava.</p>
       </Card>
-      <Link className="link" to="/me/help#devices">Help: devices & imports →</Link>
+      <Link className="link" to="/settings/help#devices">Help: devices & imports →</Link>
     </Page>
   );
 }

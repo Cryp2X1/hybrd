@@ -28,10 +28,10 @@ export default function Auth({ mode }: { mode: Mode }) {
     if ((mode === 'sign-up' || mode === 'reset') && pw !== pw2) { setErr('Passwords don’t match.'); return; }
     setBusy(true);
     try {
-      if (mode === 'sign-in') { await a.signIn(email, pw); nav('/me/account'); }
-      if (mode === 'sign-up') { const r = await a.signUp(email, pw); if (r === 'signed-in') nav('/me/account'); else setOk(`Check ${email} for a confirmation link, then come back and sign in.`); }
+      if (mode === 'sign-in') { await a.signIn(email, pw); nav('/settings/account'); }
+      if (mode === 'sign-up') { const r = await a.signUp(email, pw); if (r === 'signed-in') nav('/settings/account'); else setOk(`Check ${email} for a confirmation link, then come back and sign in.`); }
       if (mode === 'forgot') { await a.sendReset(email); setOk(`If an account exists for ${email}, a reset link is on its way. Open it on this device and in this browser.`); }
-      if (mode === 'reset') { await a.setNewPassword(pw); setOk('Password updated. You’re signed in.'); setTimeout(() => nav('/me/account'), 1200); }
+      if (mode === 'reset') { await a.setNewPassword(pw); setOk('Password updated. You’re signed in.'); setTimeout(() => nav('/settings/account'), 1200); }
     } catch (x) { setErr((x as Error).message); }
     setBusy(false);
   };

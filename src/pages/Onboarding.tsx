@@ -67,7 +67,7 @@ export default function Onboarding() {
           <div className="kicker">Step 1 of {steps}</div><h1 style={{ marginBottom: 18 }}>Units & you</h1>
           <div className="field"><span>Distance units</span>
             <div className="unit-pick" role="radiogroup" aria-label="Distance units">{(['imperial', 'metric'] as Units[]).map((x) => <button key={x} role="radio" aria-checked={u === x} className={u === x ? 'on' : ''} onClick={() => up({ units: x, weightUnit: undefined })}><b>{x === 'imperial' ? 'Miles' : 'Kilometres'}</b><span>{x === 'imperial' ? 'mi · ft · mph · lb' : 'km · m · km/h · kg'}</span></button>)}</div>
-            <div className="muted small" style={{ marginTop: 6 }}>{localeUnits() === u ? 'Picked from your device’s region. ' : ''}Change any time with the mi | km switch on Record or in Me › Units.</div>
+            <div className="muted small" style={{ marginTop: 6 }}>{localeUnits() === u ? 'Picked from your device’s region. ' : ''}Change any time with the mi | km switch on Record or in Settings › Units & display.</div>
           </div>
           <div className="field"><span>Weight units</span><div className="chips">{(['lb', 'kg'] as const).map((x) => <button key={x} className={`chip ${wUnit(wu(p)) === x ? 'on' : ''}`} onClick={() => up({ weightUnit: x })}>{x === 'lb' ? 'Pounds (lb)' : 'Kilograms (kg)'}</button>)}</div></div>
           <label className="field"><span>First name</span><input value={p.name} onChange={(e) => up({ name: e.target.value })} placeholder="José" autoComplete="given-name" /></label>
