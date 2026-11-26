@@ -32,7 +32,7 @@ async function run() {
   const scrollToH3 = (t) => page.evaluate((t) => { const h = [...document.querySelectorAll('h3,h2')].find((e) => e.textContent.includes(t)); if (h) h.scrollIntoView({ block: 'start' }); window.scrollBy(0, -70); }, t);
 
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('HYROX'); await clickText('Continue');

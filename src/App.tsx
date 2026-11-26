@@ -13,6 +13,8 @@ import { useMessages } from './lib/messagesStore';
 import { DmBanner, MessagesLink } from './components/Messages';
 import { CallLayer } from './components/Call';
 import { AccountGate } from './components/Safety';
+import { ConsentGate, LegalGate, LegalLinks } from './components/Legal';
+import { Card } from './components/ui';
 import { useTheme, hasStoredPref, readStoredPref, setStoredPref, parsePref } from './lib/theme';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
@@ -70,6 +72,8 @@ const SettingsHome = lazy(() => import('./pages/Settings').then((m) => ({ defaul
 const SettingsSection = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsSection })));
 const LegacyRedirect = lazy(() => import('./pages/Settings').then((m) => ({ default: m.LegacyRedirect })));
 const SharedActivity = lazy(() => import('./pages/SharedActivity'));
+const LegalHub = lazy(() => import('./pages/Legal').then((m) => ({ default: m.LegalHub })));
+const LegalDocPage = lazy(() => import('./pages/Legal').then((m) => ({ default: m.LegalDocPage })));
 
 // Main navigation order (desktop sidebar): Home, then Social (Friends & Stories), then Messages, then the rest.
 const NAV = [
@@ -126,6 +130,8 @@ export function App() {
   const authPaths = ['/sign-in', '/sign-up', '/forgot', '/reset-password'];
   // Shared activity links open for anyone — no onboarding, no app chrome — when this browser hasn't used HYBRD.
   if (loc.pathname === '/a' && !profile.onboarded) return <Suspense fallback={null}><SharedActivity /></Suspense>;
+  // Legal pages are public URLs (app-store deletion page, MHMDA homepage link) and open from the sign-up checkbox.
+  if (!profile.onboarded && (loc.pathname === '/legal' || loc.pathname.startsWith('/legal/'))) return <Suspense fallback={null}>{loc.pathname === '/legal' ? <LegalHub /> : <Routes><Route path="/legal/:doc" element={<LegalDocPage />} /></Routes>}</Suspense>;
   if (!profile.onboarded && !authPaths.includes(loc.pathname) && !new URLSearchParams(loc.search).get('next')) {
     return <Suspense fallback={null}><Onboarding /></Suspense>;
   }
@@ -139,7 +145,7 @@ export function App() {
         <NavLink to="/settings" className="side-set" data-testid="side-settings"><Icon name="gear" />Settings</NavLink>
         <NavLink to="/me" className="side-me" data-testid="side-me"><Avatar size={26} /><span className="side-me-n">{profile.name ? profile.name.split(' ')[0] : 'Me'}</span></NavLink>
         <NavLink to="/train/log" className="side-cta">Log a workout</NavLink>
-        <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
+        <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div><LegalLinks className="side-legal" /></div>
       </nav>
       <main className="main">
         <div className="desk-bar"><MessagesLink className="desk-dm" size={20} testid="desk-messages"><span>Messages</span></MessagesLink></div>
@@ -155,7 +161,7 @@ export function App() {
             <Route path="/train/exercise/:id" element={<ExerciseDetail />} />
             <Route path="/train/log" element={<Logger />} />
             <Route path="/train/workout/:id" element={<WorkoutDetail />} />
-            <Route path="/record" element={<Record />} />
+            <Route path="/record" element={<ConsentGate kind="location" skip={/[?&](type=indoor-cycle|kind=indoor)\b/.test(loc.search)} title="Record" declined={<Card><h3>GPS recording is off</h3><p className="muted small">You chose not to share precise location, so Record can’t draw routes or measure distance. You can still log any workout without GPS.</p><div className="row gap8 wrap"><NavLink className="btn y" to="/train/log">Log a workout</NavLink><NavLink className="btn" to="/timers">Timers</NavLink></div></Card>}><Record /></ConsentGate>} />
             <Route path="/routes" element={<RoutesPage />} />
             <Route path="/timers" element={<Timers />} />
             <Route path="/fuel" element={<Fuel />} />
@@ -170,7 +176,7 @@ export function App() {
             <Route path="/fuel/fasting/setup" element={<FastingSetup />} />
             <Route path="/fuel/sleep" element={<Sleep />} />
             <Route path="/fuel/sleep/setup" element={<SleepSetup />} />
-            <Route path="/mind" element={<Mind />} />
+            <Route path="/mind" element={<ConsentGate kind="health" title="Mind & Recovery" declined={<Card><h3>Check-ins are off</h3><p className="muted small">You chose not to let HYBRD store mood and mental-wellbeing data, so check-ins, Pulse and journal are off. Crisis resources are always available.</p><div className="row gap8 wrap"><NavLink className="btn y" to="/mind/help">Get help now</NavLink></div></Card>}><Mind /></ConsentGate>} />
             <Route path="/mind/setup" element={<MindSetup />} />
             <Route path="/mind/help" element={<MindHelp />} />
             <Route path="/mind/breathe/:id" element={<MindPlayer kind="breathe" />} />
@@ -187,6 +193,8 @@ export function App() {
             <Route path="/settings" element={<SettingsHome />} />
             <Route path="/settings/:section" element={<SettingsSection />} />
             <Route path="/a" element={<SharedActivity />} />
+            <Route path="/legal" element={<LegalHub />} />
+            <Route path="/legal/:doc" element={<LegalDocPage />} />
             <Route path="/me/import" element={<ImportPage />} />
             <Route path="/social" element={<SocialFeed />} />
             <Route path="/social/new" element={<SocialCreate />} />
@@ -218,6 +226,7 @@ export function App() {
       <DmBanner />
       <CallLayer />
       <AccountGate />
+      <LegalGate />
       <nav className="bottom-nav" aria-label="Main">
         <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
         <NavLink to="/social" className="bn-social" data-testid="nav-social" aria-label={`Social, friends and stories${badge ? `, ${badge} new` : ''}`}><span className="bn-ic"><Icon name="users" />{badge > 0 && <span className="s-badge" data-testid="nav-social-badge">{badge > 9 ? '9+' : badge}</span>}</span><span>Social</span></NavLink>

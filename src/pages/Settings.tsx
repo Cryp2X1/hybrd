@@ -1,6 +1,7 @@
 // Settings: one place for every preference. Grouped like a phone's settings app, searchable, phone list → detail and
 // a two-pane layout on desktop. Old settings pages (/me/account, /me/devices, /me/data, /me/help, /messages/settings)
 // redirect here; the few in-context quick toggles (mi | km on Record, auto-pause) change these same settings.
+import { DataConsentsCard, LegalLinks } from '../components/Legal';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import L from 'leaflet';
@@ -398,6 +399,10 @@ function HelpSettings() {
           <div className="card-head"><h3>Legal & sources</h3></div>
           <Link className="srow plain" to="/fuel?tab=sources"><span className="set-ic dim"><Icon name="book" size={18} /></span><span className="set-t"><b>Sources</b><span>Where every number comes from</span></span><Icon name="chevron" size={16} /></Link>
           <Link className="srow plain" to="/safety/guidelines"><span className="set-ic dim"><Icon name="flag" size={18} /></span><span className="set-t"><b>Community Guidelines</b><span>What’s allowed in Friends & Stories and Messages</span></span><Icon name="chevron" size={16} /></Link>
+          <Link className="srow plain" to="/legal" data-testid="settings-legal"><span className="set-ic dim"><Icon name="flag" size={18} /></span><span className="set-t"><b>Legal & privacy</b><span>Terms, Privacy Policy, health data, disclaimer, DMCA, deletion</span></span><Icon name="chevron" size={18} /></Link>
+          <Link className="srow plain" to="/legal/terms"><span className="set-ic dim"><Icon name="book" size={18} /></span><span className="set-t"><b>Terms of Service</b><span>Your responsibilities, liability limits, arbitration</span></span><Icon name="chevron" size={18} /></Link>
+          <Link className="srow plain" to="/legal/privacy"><span className="set-ic dim"><Icon name="lock" size={18} /></span><span className="set-t"><b>Privacy Policy</b><span>No ads, no selling, your rights</span></span><Icon name="chevron" size={18} /></Link>
+          <Link className="srow plain" to="/legal/health-data"><span className="set-ic dim"><Icon name="heart" size={18} /></span><span className="set-t"><b>Consumer Health Data Privacy Policy</b><span>Washington, Nevada and Connecticut</span></span><Icon name="chevron" size={18} /></Link>
           <Link className="srow plain" to="/mind/help"><span className="set-ic dim"><Icon name="phone" size={18} /></span><span className="set-t"><b>Get help now</b><span>988 call or text · 911 · helplines worldwide</span></span><Icon name="chevron" size={16} /></Link>
           <p className="muted small" style={{ marginBottom: 0 }}>Not medical advice. HYBRD’s numbers are estimates from public research.</p>
         </Card>
@@ -441,6 +446,7 @@ function AboutSettings() {
         <ul className="cues"><li>Maps © OpenStreetMap contributors; record map by OpenFreeMap / OpenMapTiles; satellite imagery EOX Sentinel‑2 cloudless and USGS The National Map.</li><li>Food data: USDA FoodData Central.</li><li>People marked SAMPLE in demos are made up.</li><li>Strava, Spotify, Instagram, Facebook and X are trademarks of their owners; HYBRD isn’t affiliated with them.</li></ul>
       </Card>
       <button className="btn ghost" onClick={() => nav('/settings/help')}>Help & legal</button>
+      <LegalLinks className="about-legal" />
     </SPage>
   );
 }
@@ -448,7 +454,7 @@ function AboutSettings() {
 const BODY: Record<string, () => ReactNode> = {
   account: () => <Account />,
   profile: () => <ProfileSettings />,
-  privacy: () => <PrivacySettings />,
+  privacy: () => <><PrivacySettings /><div className="page" style={{ paddingTop: 0 }}><DataConsentsCard /></div></>,
   safety: () => <SafetySettings />,
   units: () => <UnitsSettings />,
   recording: () => <RecordingSettings />,

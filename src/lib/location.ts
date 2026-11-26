@@ -98,8 +98,9 @@ export function useUserLocation(auto: boolean) {
 }
 
 /** For demo data: the user's area if we can get it quickly, else last known, else time-zone guess. */
-export async function demoCenter(): Promise<[number, number]> {
-  try { const p = await locateOnce(4000); return [p.lat, p.lng]; } catch { /* fall through */ }
+/** `useGps` = the person allowed precise location (Settings › Privacy › Data consents); otherwise last known / time-zone guess. */
+export async function demoCenter(useGps = true): Promise<[number, number]> {
+  if (useGps) { try { const p = await locateOnce(4000); return [p.lat, p.lng]; } catch { /* fall through */ } }
   const p = getLastPos() || tzGuess();
   return [p.lat, p.lng];
 }

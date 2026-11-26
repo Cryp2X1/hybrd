@@ -75,7 +75,7 @@ async function setup(browser, kind) {
   const scrollTo = (sel, block = 'start') => page.evaluate((s, b) => { document.querySelector(s)?.scrollIntoView({ block: b }); }, sel, block);
   const text = () => page.evaluate(() => document.body.innerText);
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José Cruz');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('Running'); await clickText('Continue');

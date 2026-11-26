@@ -7,6 +7,8 @@ import { Icon } from '../components/Icon';
 import { useAuth } from '../lib/auth';
 import { buildSample } from '../lib/sample';
 import { demoCenter } from '../lib/location';
+import { Clickwrap, LegalLinks } from '../components/Legal';
+import { accept, canProceed, CONSENT_TEXT, hasConsent, minAge, setConsent, type ConsentKind } from '../lib/legal';
 
 const DISC: { v: Discipline; label: string }[] = [
   { v: 'calisthenics', label: 'Calisthenics' }, { v: 'strength', label: 'Strength' }, { v: 'running', label: 'Running' }, { v: 'walking', label: 'Walking' },
@@ -22,12 +24,15 @@ export default function Onboarding() {
   const up = (x: Partial<Profile>) => setP((c) => ({ ...c, ...x }));
   const t = computeTargets(p);
   const [busy, setBusy] = useState(false);
+  const [agree, setAgree] = useState(false);
+  const min = minAge();
+  const tooYoung = step === 2 && p.age > 0 && p.age < min;
   const nav = useNavigate();
   const finish = async (sample = false) => {
     if (sample) {
       // Demo routes are drawn around the user's own area (quick location check, else last known / time-zone guess)
       setBusy(true);
-      const c = await demoCenter();
+      const c = await demoCenter(hasConsent(p.legal, 'location'));
       importJson({ app: 'HYBRD', data: buildSample(p.weightKg, c) }, 'merge');
     }
     setProfile({ ...p, onboarded: true });
@@ -53,8 +58,16 @@ export default function Onboarding() {
         <p className="muted small">{configured ? 'Your data stays on this device until you sign in — then it syncs to your account.' : 'Local mode: everything is saved on this device. No account needed.'}</p>
       </div>
       <div className="stack">
-        <button className="btn y big block" onClick={() => setStep(1)}>Get started</button>
+        <Clickwrap checked={agree} onChange={setAgree} />
+        <div className="onb-consents" data-testid="onb-consents">
+          <div className="muted small"><b>Optional</b> · separate from the Terms, change any time in Settings › Privacy</div>
+          {(['location', 'health'] as ConsentKind[]).map((k) => { const on = hasConsent(p.legal, k); return (
+            <label key={k} className={`lg-agree small ${on ? 'on' : ''}`}><input type="checkbox" checked={on} onChange={(e) => up({ legal: setConsent(p.legal, k, e.target.checked) })} data-testid={`consent-${k}`} /><span><b>{CONSENT_TEXT[k].title}.</b> {CONSENT_TEXT[k].allow}. <Link className="link" to={CONSENT_TEXT[k].doc}>{k === 'health' ? 'Consumer Health Data Privacy Policy' : 'Privacy Policy'}</Link></span></label>
+          ); })}
+        </div>
+        <button className="btn y big block" disabled={!canProceed(agree)} onClick={() => { if (!canProceed(agree)) return; up({ legal: accept(p.legal, 'onboarding') }); setStep(1); }} data-testid="get-started">Get started</button>
         {configured && <Link className="btn block" to="/sign-in">I already have an account</Link>}
+        <LegalLinks className="onb-legal" />
       </div>
     </div>
   );
@@ -83,6 +96,7 @@ export default function Onboarding() {
             </div>
           ) : <label className="field"><span>Height (cm)</span><input inputMode="numeric" value={Math.round(p.heightCm)} onChange={(e) => up({ heightCm: +e.target.value || 0 })} /></label>}
           <label className="field"><span>Weight ({wUnit(wu(p))})</span><input inputMode="decimal" value={Math.round(toW(p.weightKg, wu(p)))} onChange={(e) => up({ weightKg: fromW(+e.target.value || 0, wu(p)) })} /></label>
+          {tooYoung && <div className="form-err" role="alert" data-testid="onb-too-young">HYBRD is for people {min} and older (see the <Link className="link" to="/legal/terms">Terms</Link>). Please don’t continue if you’re younger.</div>}
           <p className="muted small">Used only for estimates (calorie targets, calories burned). Stored on this device{configured ? ' and in your account when signed in' : ''}.</p>
         </>}
         {step === 3 && <>
@@ -114,7 +128,7 @@ export default function Onboarding() {
       </div>
       <div className="onb-foot">
         <button className="btn" onClick={() => setStep(step - 1)}>Back</button>
-        {step < steps ? <button className="btn y block" onClick={() => setStep(step + 1)}>Continue</button> : <button className="btn y block" onClick={() => finish(false)}>Start training</button>}
+        {step < steps ? <button className="btn y block" disabled={tooYoung} onClick={() => setStep(step + 1)}>Continue</button> : <button className="btn y block" onClick={() => finish(false)}>Start training</button>}
       </div>
     </div>
   );

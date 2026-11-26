@@ -8,7 +8,8 @@ interface AuthCtx {
   ready: boolean;
   user: User | null;
   session: Session | null;
-  signUp(email: string, password: string): Promise<string>;
+  /** `meta` goes into the user's metadata (e.g. the accepted Terms version and time, as proof of assent). */
+  signUp(email: string, password: string, meta?: Record<string, unknown>): Promise<string>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   sendReset(email: string): Promise<void>;
@@ -53,9 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthCtx = {
     configured, ready, session, user: session?.user ?? null,
-    async signUp(email, password) {
+    async signUp(email, password, meta) {
       const sb = await need();
-      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: appUrl(), ...(meta ? { data: meta } : {}) } });
       friendly(error);
       return data.session ? 'signed-in' : 'confirm-email';
     },

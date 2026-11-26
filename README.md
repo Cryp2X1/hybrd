@@ -33,3 +33,12 @@ Static site (Vite + React + TypeScript), works offline, accounts via Supabase (f
 - Units mi/km and lb/kg, onboarding, JSON export/import, demo data, and an in-app help page (including the iOS limits).
 
 Not medical advice.
+
+### Legal (v1.7)
+- Terms of Service, Privacy Policy (cookies & local storage), Consumer Health Data Privacy Policy (MHMDA), Fitness &
+  Nutrition Disclaimer, DMCA policy, Account & Data Deletion page — `/legal/*`, public, linked from the welcome screen,
+  sign-up, Settings › Help/About and the sidebar. **Drafts; not legal advice — lawyer review before launch.**
+- Clickwrap: unchecked "I agree … and confirm I'm 18 or older" box blocks onboarding and sign-up; accepted version +
+  time stored on the profile, in auth metadata and in `legal_acceptances`; re-accept prompt when a version changes.
+- Separate opt-in consents for mood/mental-wellbeing data (Mind) and precise location (Record); change them in
+  Settings › Privacy › Data consents. Minimum age default 18 (`minAge` in config.js). See SETUP.md §16.

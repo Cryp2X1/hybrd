@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Page, Card, Banner } from '../components/ui';
+import { Clickwrap } from '../components/Legal';
+import { useStore } from '../lib/store';
+import { accept, canProceed, LEGAL_VERSIONS, minAge } from '../lib/legal';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot' | 'reset';
 const TITLES: Record<Mode, string> = { 'sign-in': 'Sign in', 'sign-up': 'Create account', forgot: 'Reset password', reset: 'Choose a new password' };
@@ -21,15 +24,21 @@ export default function Auth({ mode }: { mode: Mode }) {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
+  const [agree, setAgree] = useState(false);
+  const { profile, setProfile } = useStore();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setErr(''); setOk('');
     if ((mode === 'sign-up' || mode === 'reset') && pw.length < 8) { setErr('Use at least 8 characters.'); return; }
     if ((mode === 'sign-up' || mode === 'reset') && pw !== pw2) { setErr('Passwords don’t match.'); return; }
+    if (mode === 'sign-up' && !canProceed(agree)) { setErr('Please agree to the Terms and Privacy Policy to create an account.'); return; }
     setBusy(true);
     try {
       if (mode === 'sign-in') { await a.signIn(email, pw); nav('/settings/account'); }
-      if (mode === 'sign-up') { const r = await a.signUp(email, pw); if (r === 'signed-in') nav('/settings/account'); else setOk(`Check ${email} for a confirmation link, then come back and sign in.`); }
+      if (mode === 'sign-up') {
+        const legal = accept(profile.legal, 'sign-up');
+        setProfile({ legal });
+        const r = await a.signUp(email, pw, { terms_version: LEGAL_VERSIONS.terms, privacy_version: LEGAL_VERSIONS.privacy, terms_accepted_at: legal.acceptedAt, min_age_confirmed: minAge() }); if (r === 'signed-in') nav('/settings/account'); else setOk(`Check ${email} for a confirmation link, then come back and sign in.`); }
       if (mode === 'forgot') { await a.sendReset(email); setOk(`If an account exists for ${email}, a reset link is on its way. Open it on this device and in this browser.`); }
       if (mode === 'reset') { await a.setNewPassword(pw); setOk('Password updated. You’re signed in.'); setTimeout(() => nav('/settings/account'), 1200); }
     } catch (x) { setErr((x as Error).message); }
@@ -45,9 +54,10 @@ export default function Auth({ mode }: { mode: Mode }) {
           {mode !== 'reset' && <label className="field"><span>Email</span><input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!a.configured} /></label>}
           {mode !== 'forgot' && <label className="field"><span>{mode === 'reset' ? 'New password' : 'Password'}</span><input type="password" required autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} value={pw} onChange={(e) => setPw(e.target.value)} disabled={!a.configured} /></label>}
           {(mode === 'sign-up' || mode === 'reset') && <label className="field"><span>Confirm password</span><input type="password" required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} disabled={!a.configured} /></label>}
+          {mode === 'sign-up' && <Clickwrap checked={agree} onChange={setAgree} testid="signup-agree" />}
           {err && <div className="form-err" role="alert">{err}</div>}
           {ok && <div className="form-ok" role="status">{ok}</div>}
-          <button className="btn y block" disabled={busy || !a.configured}>{busy ? 'Please wait…' : TITLES[mode]}</button>
+          <button className="btn y block" disabled={busy || !a.configured || (mode === 'sign-up' && !canProceed(agree))} data-testid="auth-submit">{busy ? 'Please wait…' : TITLES[mode]}</button>
         </form>
         <div className="row wrap" style={{ marginTop: 14, justifyContent: 'space-between' }}>
           {mode === 'sign-in' && <><Link className="link" to="/sign-up">Create an account</Link><Link className="link" to="/forgot">Forgot password?</Link></>}

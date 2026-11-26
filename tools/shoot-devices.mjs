@@ -112,7 +112,7 @@ async function run(kind) {
   const scrollTo = (sel) => page.evaluate((s) => { const el = document.querySelector(s); if (el) { el.scrollIntoView({ block: 'start' }); window.scrollBy(0, -12); } return !!el; }, sel);
 
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started'); for (let i = 0; i < 4; i++) await clickText('Continue');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started'); for (let i = 0; i < 4; i++) await clickText('Continue');
   await clickText('Start training'); await sleep(600);
 
   // ---------- Me: Devices link + Max HR ----------
@@ -285,7 +285,7 @@ async function ios() {
   await page.evaluateOnNewDocument(() => { delete Navigator.prototype.bluetooth; });
   await page.goto(BASE, { waitUntil: 'networkidle0' });
   const ct = async (t) => { await page.evaluate((t) => [...document.querySelectorAll('button')].find((b) => b.textContent.includes(t))?.click(), t); await sleep(400); };
-  await ct('Get started'); for (let i = 0; i < 4; i++) await ct('Continue'); await ct('Start training'); await sleep(600);
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await ct('Get started'); for (let i = 0; i < 4; i++) await ct('Continue'); await ct('Start training'); await sleep(600);
   await page.evaluate(() => { history.pushState({}, '', '/hybrd/me/devices'); dispatchEvent(new PopStateEvent('popstate')); }); await sleep(1000);
   const t = await page.$eval('[data-testid="hr-panel"]', (e) => e.textContent);
   check('ios', /iPhone and iPad browsers/.test(t) && /import/.test(t), 'iOS: explains no Web Bluetooth + alternatives');

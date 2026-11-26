@@ -2817,3 +2817,47 @@ grant execute on function public.account_housekeeping(), public.account_purge_ca
 
 -- Check: the safety tables should show rowsecurity = true
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in ('account_state', 'moderation_actions', 'appeals', 'dm_restricts');
+
+-- ================================================================================================================
+-- LEGAL (v1.7, added 26 Nov 2026 — safe to re-run; SETUP.md §16): proof of assent to the Terms / Privacy Policy and
+-- the separate health / location consents. Append-only log written through legal_record_acceptance(); people can read
+-- their own rows; nobody can edit or delete them through the API (rows go with the account when it is purged).
+-- ================================================================================================================
+create table if not exists public.legal_acceptances (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users (id) on delete cascade,
+  terms_version    text not null,
+  privacy_version  text not null,
+  source           text not null,
+  min_age          integer not null,
+  accepted_at      timestamptz not null,           -- when the box was checked (from the app, never in the future)
+  recorded_at      timestamptz not null default now(),
+  consents         jsonb not null default '{}'::jsonb
+);
+alter table public.legal_acceptances drop constraint if exists legal_acceptances_source_chk;
+alter table public.legal_acceptances add constraint legal_acceptances_source_chk check (source in ('onboarding', 'sign-up', 'reaccept'));
+alter table public.legal_acceptances drop constraint if exists legal_acceptances_len_chk;
+alter table public.legal_acceptances add constraint legal_acceptances_len_chk check (char_length(terms_version) between 1 and 40 and char_length(privacy_version) between 1 and 40 and min_age between 13 and 21);
+create index if not exists legal_acceptances_user_idx on public.legal_acceptances (user_id, recorded_at desc);
+alter table public.legal_acceptances enable row level security;
+drop policy if exists legal_acceptances_select_own on public.legal_acceptances;
+create policy legal_acceptances_select_own on public.legal_acceptances for select to authenticated using (user_id = (select auth.uid()));
+revoke all on public.legal_acceptances from anon, authenticated;
+grant select on public.legal_acceptances to authenticated;
+
+create or replace function public.legal_record_acceptance(p_terms text, p_privacy text, p_source text, p_min_age integer, p_accepted_at timestamptz, p_consents jsonb default '{}'::jsonb)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); new_id uuid;
+begin
+  if me is null then raise exception 'not_signed_in' using errcode = '42501'; end if;
+  if (select count(*) from public.legal_acceptances where user_id = me and recorded_at > now() - interval '1 day') >= 50 then
+    raise exception 'rate_limited: too many acceptance records today' using errcode = 'P0001';
+  end if;
+  insert into public.legal_acceptances (user_id, terms_version, privacy_version, source, min_age, accepted_at, consents)
+  values (me, btrim(p_terms), btrim(p_privacy), p_source, p_min_age, least(coalesce(p_accepted_at, now()), now()),
+          case when jsonb_typeof(p_consents) = 'object' and pg_column_size(p_consents) < 4000 then p_consents else '{}'::jsonb end)
+  returning id into new_id;
+  return new_id;
+end $$;
+revoke all on function public.legal_record_acceptance(text, text, text, integer, timestamptz, jsonb) from public, anon;
+grant execute on function public.legal_record_acceptance(text, text, text, integer, timestamptz, jsonb) to authenticated;

@@ -10,7 +10,7 @@ const check = (name: string, cond: boolean, detail?: unknown) => { n++; if (!con
 const src = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const settings = src('src/pages/Settings.tsx'), app = src('src/App.tsx'), me = src('src/pages/Me.tsx'), rec = src('src/pages/Record.tsx'), post = src('tools/postbuild.mjs');
 const anchorsIn = (code: string) => new Set([...code.matchAll(/\bid="([a-z-]+)"/g)].map((m) => m[1]));
-const anchors = new Set([...anchorsIn(settings), ...anchorsIn(src('src/pages/Devices.tsx')), ...anchorsIn(src('src/pages/Messages.tsx')), ...anchorsIn(src('src/pages/Safety.tsx'))]);
+const anchors = new Set([...anchorsIn(settings), ...anchorsIn(src('src/pages/Devices.tsx')), ...anchorsIn(src('src/pages/Messages.tsx')), ...anchorsIn(src('src/pages/Safety.tsx')), ...anchorsIn(src('src/components/Legal.tsx'))]);
 
 const allSrc = (readdirSync(new URL('../src', import.meta.url), { recursive: true }) as string[]).filter((f) => /\.tsx?$/.test(f)).map((f) => src(`src/${f}`)).join('\n');
 // ---------- index ----------

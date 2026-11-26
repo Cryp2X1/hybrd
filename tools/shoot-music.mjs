@@ -103,7 +103,7 @@ async function session(browser, kind, mock, { clientIdInConfig = false } = {}) {
   const text = (sel) => page.evaluate((s) => document.querySelector(s)?.textContent || '', sel);
   const has = (t) => page.evaluate((t) => document.body.textContent.includes(t), t);
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started'); for (let i = 0; i < 4; i++) await clickText('Continue');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started'); for (let i = 0; i < 4; i++) await clickText('Continue');
   await clickText('Start training'); await sleep(600);
   return { ctx, page, clickText, go, text, has, phone };
 }

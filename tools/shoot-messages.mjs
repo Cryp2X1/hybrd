@@ -31,6 +31,19 @@ async function run(browser, kind) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
   await page.emulateTimezone('America/New_York');
+  if (kind === 'teen') {
+    // v1.7: the default minimum age is 18, so the under-18 messaging protections are tested with minAge set to 13
+    // (the config an owner would use to allow teens).
+    const { readFileSync } = await import('node:fs');
+    await page.setRequestInterception(true);
+    page.on('request', (r) => {
+      if (/\/config\.js(\?|$)/.test(r.url())) {
+        let body = ''; try { body = readFileSync((process.env.DIST || '/tmp/dist-theme') + '/config.js', 'utf8'); } catch { body = 'window.HYBRD_CONFIG = {};'; }
+        return r.respond({ status: 200, contentType: 'application/javascript', body: body + '\nwindow.HYBRD_CONFIG = Object.assign(window.HYBRD_CONFIG || {}, { minAge: 13 });\n' });
+      }
+      r.continue();
+    });
+  }
   await page.setViewport(phone ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { width: 1440, height: 900, deviceScaleFactor: 1 });
   if (phone) await page.setUserAgent('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36');
   page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${kind}] console.error: ${m.text()} @ ${page.url()}`); });
@@ -86,7 +99,7 @@ async function run(browser, kind) {
 
   // ----- onboarding with sample training data (so there are workouts to share) -----
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José Cruz');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('HYROX'); await clickText('Running');

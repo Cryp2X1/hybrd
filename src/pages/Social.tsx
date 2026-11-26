@@ -1,5 +1,6 @@
 // Friends & Stories pages: feed (+ stories ring), create post / story, post + comments, friends (list, requests, find,
 // invite, blocked), notifications, saved, public profiles, profile setup, community rules and the /invite landing.
+import { minAge } from '../lib/legal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Page, Card, Empty, Sheet, Segmented } from '../components/ui';
@@ -589,6 +590,7 @@ function SetupInner() {
     if (avail === false) return setErr('That handle is taken. Try another.');
     if (gate === 'unknown') return setErr('Add your date of birth.');
     if (gate === 'under13') { setProfile({ dob }); return setErr('Friends & Stories is for ages 13 and up.'); }
+    if (gate === 'teen' && minAge() > 13) { setProfile({ dob }); return setErr(`HYBRD is for people ${minAge()} and older (see the Terms).`); }
     if (!agree) return setErr('Please agree to the community rules.');
     setBusy(true);
     try {
@@ -619,7 +621,7 @@ function SetupInner() {
         </label>
         <div className={`small s-hint ${hv.ok ? (avail === false ? 'bad' : 'ok') : 'bad'}`}>{!hv.ok ? hv.error : avail === false ? 'Taken' : avail ? 'Available' : hv.handle === me?.username ? 'Your current handle' : '3–20 letters, numbers, _ or .'}</div>
         <label className="field"><span>Date of birth <span className="muted">(private)</span></span><input type="date" value={dob} max={todayKey()} onChange={(e) => setDob(e.target.value)} disabled={!!me && !!profile.dob && mode === 'live'} data-testid="setup-dob" /></label>
-        <div className="small s-hint">{gate === 'under13' ? <span className="bad">Friends & Stories is for ages 13 and up.</span> : teen ? 'Under 18: your profile and posts are friends-only.' : 'Never shown to anyone. Used only to check you’re 13 or older.'}</div>
+        <div className="small s-hint">{gate === 'under13' ? <span className="bad">Friends & Stories is for ages 13 and up.</span> : teen && minAge() > 13 ? <span className="bad" data-testid="setup-min-age">HYBRD is for people {minAge()} and older.</span> : teen ? 'Under 18: your profile and posts are friends-only.' : 'Never shown to anyone. Used only to check you’re 13 or older.'}</div>
         <label className="field"><span>Public bio <span className="muted">(optional)</span></span><textarea value={bio} maxLength={PUBLIC_BIO_MAX} onChange={(e) => setBio(e.target.value)} placeholder="e.g. Training for my first HYROX" /></label>
         <div className="muted small" style={{ marginTop: -8, marginBottom: 12, textAlign: 'right' }}>{[...bio].length}/{PUBLIC_BIO_MAX}</div>
         <div className="field"><span>Who can see your profile and posts</span>

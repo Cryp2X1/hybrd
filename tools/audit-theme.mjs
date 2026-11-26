@@ -8,7 +8,7 @@ const OUT = process.argv[2] || '/tmp/sweep';
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const problems = [], notes = [];
-const ROUTES = ['/', '/score', '/coach', '/train', '/train/log', '/train/ultra', '/record', '/routes', '/timers', '/fuel', '/fuel/add', '/fuel/calculator', '/fuel/weight-loss', '/fuel/weight-loss/setup', '/fuel/fasting', '/fuel/sleep', '/mind', '/mind/help', '/burn', '/progress', '/me', '/me/gallery', '/me/import', '/social', '/social/friends', '/social/new', '/social/notifications', '/social/profile', '/messages', '/settings', '/settings/account', '/settings/profile', '/settings/privacy', '/settings/units', '/settings/recording', '/settings/notifications', '/settings/goals', '/settings/devices', '/settings/messages', '/settings/appearance', '/settings/data', '/settings/help', '/settings/about', '/settings/safety', '/safety/guidelines', '/safety/reporting', '/safety/time-off', '/safety/delete', '/moderation', '/a?id=8d3c1a52-2f4e-4c36-9a77-0b1e5c2d9f10', '/sign-in'];
+const ROUTES = ['/', '/score', '/coach', '/train', '/train/log', '/train/ultra', '/record', '/routes', '/timers', '/fuel', '/fuel/add', '/fuel/calculator', '/fuel/weight-loss', '/fuel/weight-loss/setup', '/fuel/fasting', '/fuel/sleep', '/mind', '/mind/help', '/burn', '/progress', '/me', '/me/gallery', '/me/import', '/social', '/social/friends', '/social/new', '/social/notifications', '/social/profile', '/messages', '/settings', '/settings/account', '/settings/profile', '/settings/privacy', '/settings/units', '/settings/recording', '/settings/notifications', '/settings/goals', '/settings/devices', '/settings/messages', '/settings/appearance', '/settings/data', '/settings/help', '/settings/about', '/settings/safety', '/safety/guidelines', '/safety/reporting', '/safety/time-off', '/safety/delete', '/moderation', '/a?id=8d3c1a52-2f4e-4c36-9a77-0b1e5c2d9f10', '/sign-in', '/sign-up', '/legal', '/legal/terms', '/legal/privacy', '/legal/health-data', '/legal/disclaimer', '/legal/dmca', '/legal/delete-account'];
 const only = process.env.ROUTES ? process.env.ROUTES.split(',') : null;
 
 const AUDIT = () => {
@@ -60,7 +60,7 @@ async function session(browser, kind, theme) {
   const setVal = async (sel, v) => { await page.evaluate((s, v) => { const i = document.querySelector(s); const proto = i.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(i, v); i.dispatchEvent(new Event('input', { bubbles: true })); }, sel, v); await sleep(200); };
   const go = async (path, wait = 1100) => { await page.evaluate((p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }, '/hybrd' + path); await sleep(wait); };
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José Cruz');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('Running'); await clickText('Continue');

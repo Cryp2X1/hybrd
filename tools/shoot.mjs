@@ -44,7 +44,7 @@ async function run(kind) {
 
   await page.goto(BASE, { waitUntil: 'networkidle0' });
   await shot('01-onboarding-welcome');
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José');
   await shot('02-onboarding-about');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
@@ -191,7 +191,7 @@ async function run(kind) {
     await pg.goto(BASE, { waitUntil: 'networkidle0' });
     if (lastpos) await pg.evaluate((p) => localStorage.setItem('hybrd:lastpos', JSON.stringify(p)), lastpos);
     const ct = (t) => pg.evaluate((t) => { const el = [...document.querySelectorAll('button, a')].find((e) => e.textContent.trim().includes(t)); el?.click(); return !!el; }, t);
-    await ct('Get started'); await sleep(300);
+    await pg.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await ct('Get started'); await sleep(300);
     for (let i = 0; i < 4; i++) { await ct('Continue'); await sleep(250); }
     await ct('Start training'); await sleep(800);
     const nav = async (p, w = 2500) => { await pg.evaluate((p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }, '/hybrd' + p); await sleep(w); };

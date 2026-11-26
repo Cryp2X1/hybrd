@@ -475,6 +475,36 @@ Without this function, accounts stay hidden after 30 days but aren't actually pu
 - Demo / Local mode: every safety screen works on the device with simulated decisions and a demo queue of SAMPLE reports;
   nothing is sent anywhere.
 
+## 16. Legal: Terms, Privacy, health-data consent, re-accept (v1.7) — `schema.sql` LEGAL section
+
+The app ships with Terms of Service, a Privacy Policy (with cookies & local storage), a Consumer Health Data Privacy
+Policy (Washington MHMDA / Nevada / Connecticut), a Fitness & Nutrition Disclaimer, a DMCA policy and an Account & Data
+Deletion page, at `/legal`, `/legal/terms`, `/legal/privacy`, `/legal/health-data`, `/legal/disclaimer`, `/legal/dmca`,
+`/legal/delete-account`. They open without an account (public URLs). Source: `src/legal/*.md`.
+**Draft — not legal advice. Have a lawyer review before launch or before charging money.**
+
+1. **Owner details are filled in** (Nov 26, 2026): José Manuel Cruz Ortiz, an individual doing business as HYBRD;
+   all notices by email to hybrdbeast@gmail.com (no postal address yet); Ohio law; venue and small claims in Delaware
+   County, Ohio, USA; US only; backups kept up to 30 days; minimum age 18. The final text is in `src/legal/*.md`, and
+   the same values are in `LEGAL_DEFAULTS` (`src/lib/legal.ts`) and `public/config.js` (used by the hub's contact link).
+   To change a detail, edit the documents (and those two places), bump `LEGAL_VERSIONS`, and run `tools/test-legal.ts`.
+   Changing `minAge` also needs the age in `terms.md` §2 changed to match (the test checks this).
+2. **Run `schema.sql`** — adds `legal_acceptances` (proof of assent: versions, timestamp, source, age confirmation,
+   consents; users can read only their own; written only via the `legal_record_acceptance` RPC, rate-limited).
+3. **Register a DMCA agent** at https://www.copyright.gov/dmca-directory/ ($6, renew every 3 years) *before* relying on
+   the DMCA page; put the same details in config.js.
+4. **Google Play** → Data safety → "Delete account URL": `https://cryp2x1.github.io/hybrd/legal/delete-account`.
+   Apple 5.1.1(v): in-app deletion already exists (Settings › Account).
+5. **MHMDA**: the Consumer Health Data policy must be linked from the homepage — it is on the welcome screen, the sign-up
+   form, the legal hub and Settings. If you launch a marketing site, link it there too.
+6. **Changing a document**: edit `src/legal/<doc>.md`, bump its date in `src/lib/legal.ts` (`LEGAL_VERSIONS`) and add
+   a line to `LEGAL_CHANGES`. Everyone gets the "We've updated our Terms" prompt on next open.
+   Preview it without changing versions: `sessionStorage.setItem('hybrd:legal-preview','1')` then reload.
+7. **Export** for a lawyer: `node --experimental-strip-types --import ./tools/ts-resolve.mjs tools/export-legal.ts`
+   → `/workspace/hybrd-legal/`.
+
+Tests: `tools/test-legal.ts`, `tools/sql/test-legal.sql` (in `test-social-sql.sh`), `tools/shoot-legal.mjs`.
+
 ## Local development
 ```bash
 npm install

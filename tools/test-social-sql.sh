@@ -23,3 +23,4 @@ echo "== messages"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-messages.sql 2>&
 echo "== calls"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-calls.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== shared activities"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-activities.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== safety"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-safety.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== legal"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-legal.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

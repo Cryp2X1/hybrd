@@ -111,7 +111,7 @@ async function run(kind, browser) {
   const tiles = () => page.$$eval('[data-testid="g-tile"]', (e) => e.length);
 
   await page.goto(BASE, { waitUntil: 'networkidle0' });
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José Cruz');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('HYROX'); await clickText('Running');

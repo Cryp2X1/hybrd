@@ -12,7 +12,7 @@ async function onboard(page) {
     const ok = await page.evaluate((t, s) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim().includes(t)); if (el) { el.click(); return true; } return false; }, txt, sel);
     if (!ok) throw new Error(`no element with text ${txt}`); await sleep(350);
   };
-  await clickText('Get started');
+  await page.evaluate((() => ['agree-terms', 'consent-location', 'consent-health'].forEach((t) => { const el = document.querySelector(`[data-testid="${t}"]`); if (el && !el.checked) el.click(); }))); await clickText('Get started');
   await page.type('input[autocomplete="given-name"]', 'José');
   await clickText('Continue'); await clickText('Continue'); await clickText('Continue');
   await clickText('HYROX'); await clickText('Running');

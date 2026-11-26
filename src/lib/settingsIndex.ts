@@ -14,7 +14,7 @@ export const SECTIONS: SettingsSection[] = [
   { id: 'messages', title: 'Messages & calls', icon: 'chat', sub: 'Who can message or call you, read receipts, Do not disturb', group: 'connections' },
   { id: 'appearance', title: 'Appearance', icon: 'sun', sub: 'Light, Dark or follow your device', group: 'app' },
   { id: 'data', title: 'Data & storage', icon: 'data', sub: 'Export, import, sample data, delete everything', group: 'app' },
-  { id: 'help', title: 'Help & legal', icon: 'help', sub: 'Phone tips, sources, community rules, crisis lines', group: 'app' },
+  { id: 'help', title: 'Help & legal', icon: 'help', sub: 'Terms, Privacy Policy, sources, community rules, crisis lines', group: 'app' },
   { id: 'about', title: 'About HYBRD', icon: 'info', sub: 'Version, credits, map data', group: 'app' },
 ];
 export const GROUPS: { id: SettingsSection['group']; label: string }[] = [
@@ -45,6 +45,7 @@ export const ITEMS: SettingsItem[] = [
   { label: 'Who can see my activities', section: 'privacy', anchor: 'activities', keywords: 'visibility only me friends everyone public default' },
   { label: 'Share heart rate & calories', section: 'privacy', anchor: 'activities', keywords: 'health data hr kcal' },
   { label: 'Public profile & posts', section: 'privacy', anchor: 'social', keywords: 'friends stories feed private account handle' },
+  { label: 'Data consents (health & location)', section: 'privacy', anchor: 'consents', keywords: 'consent withdraw mood mental health gps precise location my health my data opt in' },
   // safety
   { label: 'Account status', section: 'safety', anchor: 'status', keywords: 'moderation removed suspended restricted appeal violation guidelines' },
   { label: 'Appeal a decision', section: 'safety', anchor: 'status', keywords: 'appeal moderation removed suspended' },
@@ -97,6 +98,10 @@ export const ITEMS: SettingsItem[] = [
   { label: 'Sources', section: 'help', keywords: 'research citations' },
   { label: 'Community rules', section: 'help', keywords: 'guidelines report' },
   { label: 'Crisis lines (988)', section: 'help', keywords: 'help now suicide 911' },
+  { label: 'Terms of Service', section: 'help', keywords: 'terms conditions tos legal agreement arbitration liability' },
+  { label: 'Privacy Policy', section: 'help', keywords: 'privacy policy data cookies local storage ccpa gdpr rights' },
+  { label: 'Consumer Health Data Privacy Policy', section: 'help', keywords: 'health data mhmda washington nevada connecticut' },
+  { label: 'Disclaimer, DMCA and deletion policy', section: 'help', keywords: 'medical disclaimer copyright dmca delete account data deletion legal' },
   { label: 'Version', section: 'about', keywords: 'about build credits licence openstreetmap' },
 ];
 export const sectionById = (id: string) => SECTIONS.find((s) => s.id === id);

@@ -4,6 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import type { RoutePoint } from '../lib/types';
 import { useUserLocation, zoneName } from '../lib/location';
 import { isIOS } from '../lib/cues';
+import { useStore } from '../lib/store';
+import { hasConsent } from '../lib/legal';
 
 export interface MapRoute { id: string; segments: RoutePoint[][]; highlight?: boolean }
 
@@ -21,7 +23,9 @@ export function MapView({ routes, height = 320, follow, live, onSelect, locateOn
   const centeredOnUser = useRef(false);
   const hasPoints = routes.some((r) => r.segments.some((s) => s.length > 0));
   // Ask for location when there is nothing else to show (or the caller asks for it)
-  const loc = useUserLocation(locateOnOpen ?? (!hasPoints && !live));
+  const { profile } = useStore();
+  // Auto-locating on open needs the precise-location consent; the "Locate me" button is an explicit user action.
+  const loc = useUserLocation((locateOnOpen ?? (!hasPoints && !live)) && hasConsent(profile?.legal, 'location'));
   const [hint, setHint] = useState(false);
 
   useEffect(() => {

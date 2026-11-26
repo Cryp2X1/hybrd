@@ -51,6 +51,8 @@ export interface Profile {
   /** Settings › Privacy & safety: map visibility defaults, privacy zones, default activity visibility. */
   privacy?: Partial<import('./privacy').PrivacyPrefs>;
   /** Settings › Recording: defaults for new GPS sessions. */
+  /** Legal: accepted Terms / Privacy versions (clickwrap) and the separate health / location consents. See lib/legal.ts. */
+  legal?: import('./legal').LegalRecord;
   /** Appearance: Light / Dark / System. Mirrors localStorage 'hybrd:theme' so it follows you across devices. */
   theme?: 'light' | 'dark' | 'system';
   recording?: { autoPause?: boolean; keepAwake?: boolean; splitCues?: boolean };

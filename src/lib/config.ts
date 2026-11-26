@@ -1,4 +1,7 @@
-declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; spotifyClientId?: string; stravaClientId?: string; stravaTokenUrl?: string; supportEmail?: string; turnUrls?: string; turnUsername?: string; turnCredential?: string; turnFunction?: string } } }
+declare global { interface Window { HYBRD_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; spotifyClientId?: string; stravaClientId?: string; stravaTokenUrl?: string; supportEmail?: string; turnUrls?: string; turnUsername?: string; turnCredential?: string; turnFunction?: string;
+  /** Legal pages (src/legal/*.md placeholders). Fill these before launch; empty values show a visible placeholder. */
+  legalName?: string; contactEmail?: string; legalLastUpdated?: string; mailingAddress?: string; governingState?: string; venueCounty?: string; legalEffectiveDate?: string;
+  dmcaAgentName?: string; dmcaAgentAddress?: string; dmcaAgentEmail?: string; dmcaAgentPhone?: string; backupRetentionDays?: string; euStatus?: string; minAge?: number } } }
 
 const LS_KEY = 'hybrd:backend';
 
