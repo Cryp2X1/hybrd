@@ -56,6 +56,9 @@ export function friendlyError(e: unknown): string {
   if (/rate_limit: max (\d+) (.+)/.test(m)) { const [, n, w] = /rate_limit: max (\d+) (.+)/.exec(m)!; return `Slow down: the limit is ${n} ${w.replace(/\s*\(.*$/, '')}. Try again later.`; }
   if (/username_taken|social_profiles_username_key|duplicate key/.test(m)) return 'That handle is taken. Try another.';
   if (/username_format/.test(m)) return 'Handles use 3–20 letters, numbers, underscores or single dots.';
+  if (/acct_suspended/.test(m)) return 'Your account is suspended. See Settings › Safety › Account status.';
+  if (/acct_paused/.test(m)) return 'Your account is taking time off. Resume it in Settings › Account first.';
+  if (/report_duplicate/.test(m)) return 'You already reported this. We’ll review it.';
   if (/under_13/.test(m)) return 'Friends & Stories is for ages 13 and up.';
   if (/banned/.test(m)) return 'This account can’t use Friends & Stories.';
   if (/not_allowed/.test(m)) return 'You can’t add this person.';

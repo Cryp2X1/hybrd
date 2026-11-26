@@ -7,6 +7,8 @@
 import { callPreview, defaultCallWho, normalizeCallWho, type CallLog, type CallWho } from './calls';
 import { areFriends, cleanText, friendIds, isBlocked, maskProfanity, rateCheck, summarizeReactions, REACTION_TYPES, type Graph, type Limit, type PublicProfile, type ReactionSummary, type ReactionType, type WorkoutCard } from './social';
 import { crisisInText } from './mind';
+import { UNSEND_WINDOW_MS, UNSEND_WINDOW_LABEL } from './safety';
+export { UNSEND_WINDOW_MS };
 
 export { crisisInText };
 
@@ -227,7 +229,9 @@ export function checkMessageMedia(f: { type: string; size: number; duration?: nu
 // ---------- edit / unsend / delete for me ----------
 export const canEdit = (m: Pick<Message, 'senderId' | 'kind' | 'createdAt' | 'deletedAt'>, me: string, now = Date.now()) =>
   m.senderId === me && !m.deletedAt && m.kind !== 'system' && m.kind !== 'workout' && now - m.createdAt <= EDIT_WINDOW_MS;
-export const canUnsend = (m: Pick<Message, 'senderId' | 'kind' | 'deletedAt'>, me: string) => m.senderId === me && !m.deletedAt && m.kind !== 'system';
+/** "Unsend for everyone" works for 24 hours; after that "Delete for me" is still available. */
+export const canUnsend = (m: Pick<Message, 'senderId' | 'kind' | 'deletedAt'> & { createdAt?: number }, me: string, now = Date.now()) =>
+  m.senderId === me && !m.deletedAt && m.kind !== 'system' && (m.createdAt === undefined || now - m.createdAt <= UNSEND_WINDOW_MS);
 export function applyEdit<M extends Message>(m: M, body: string, me: string, now = Date.now()): M {
   if (m.senderId !== me) throw new DmError('dm_not_sender', 'You can only edit your own messages.');
   if (m.deletedAt) throw new DmError('dm_deleted', 'This message was unsent.');
@@ -241,6 +245,7 @@ export function applyEdit<M extends Message>(m: M, body: string, me: string, now
 export function applyUnsend<M extends Message>(m: M, me: string, now = Date.now()): M {
   if (m.senderId !== me) throw new DmError('dm_not_sender', 'You can only unsend your own messages.');
   if (m.deletedAt) return m;
+  if (now - m.createdAt > UNSEND_WINDOW_MS) throw new DmError('dm_unsend_window', `Messages can only be unsent for everyone within ${UNSEND_WINDOW_LABEL}. You can still delete it for you.`);
   return { ...m, body: '', media: undefined, workout: undefined, deletedAt: now };
 }
 
@@ -271,12 +276,13 @@ export function unreadCount(conv: Pick<Conversation, 'id' | 'members'>, me: stri
   return msgs.filter((x) => x.conversationId === conv.id && x.senderId !== me && x.kind !== 'system' && !x.deletedAt && x.createdAt > from && !hidden.has(x.id)).length;
 }
 export type Folder = 'chats' | 'requests' | 'archived';
-export function folderOf(conv: Pick<Conversation, 'members' | 'lastMessageAt' | 'createdBy'>, me: string): Folder | null {
+/** `restricted`: a 1:1 chat with someone I restricted always sits in Requests (quietly: see inboxBadge). */
+export function folderOf(conv: Pick<Conversation, 'members' | 'lastMessageAt' | 'createdBy'>, me: string, restricted = false): Folder | null {
   const m = memberOf(conv, me);
   if (!m || m.state === 'declined' || m.state === 'left' || m.state === 'removed') return null;
   if (!conv.lastMessageAt) return null; // empty chats stay hidden until the first message
   if (m.clearedAt && m.clearedAt >= conv.lastMessageAt) return null; // deleted for me and nothing new since
-  if (m.state === 'request') return 'requests';
+  if (m.state === 'request' || restricted) return 'requests';
   return m.archived ? 'archived' : 'chats';
 }
 export function sortInbox<C extends Pick<Conversation, 'members' | 'lastMessageAt'>>(convs: C[], me: string): C[] {
@@ -288,8 +294,9 @@ export function sortInbox<C extends Pick<Conversation, 'members' | 'lastMessageA
   });
 }
 /** Header badge: chats with unread messages (muted and archived don't count) + unread message requests. */
-export function inboxBadge(items: { folder: Folder | null; unread: number; muted: boolean }[]): number {
-  return items.filter((i) => i.unread > 0 && ((i.folder === 'chats' && !i.muted) || i.folder === 'requests')).length;
+/** Chats with people I restricted never count (they arrive silently). */
+export function inboxBadge(items: { folder: Folder | null; unread: number; muted: boolean; restricted?: boolean }[]): number {
+  return items.filter((i) => i.unread > 0 && !i.restricted && ((i.folder === 'chats' && !i.muted) || i.folder === 'requests')).length;
 }
 
 // ---------- status: sent / delivered / seen ----------
@@ -549,7 +556,7 @@ export function notificationFor(c: {
 }
 
 // ---------- reports ----------
-export type DmReportTarget = 'message' | 'conversation';
+export type DmReportTarget = 'message' | 'conversation' | 'call';
 export const isReactionKind = (s: string): s is ReactionType => (REACTION_TYPES as readonly string[]).includes(s);
 
 /** Map backend error codes to something a person can act on. */
@@ -562,6 +569,11 @@ export function friendlyDmError(e: unknown): string {
   if (/dm_friends_only/.test(m)) return 'Only their friends can message them.';
   if (/dm_fof_only/.test(m)) return 'Only friends and friends of friends can message them.';
   if (/dm_edit_window/.test(m)) return 'Messages can only be edited for 15 minutes.';
+  if (/dm_unsend_window/.test(m)) return `Messages can only be unsent for everyone within ${UNSEND_WINDOW_LABEL}. You can still delete it for you.`;
+  if (/acct_suspended/.test(m)) return 'Your account is suspended. See Settings › Safety › Account status.';
+  if (/acct_msg_restricted/.test(m)) return 'Your messaging is restricted for now. See Settings › Safety › Account status.';
+  if (/acct_paused/.test(m)) return 'Your account is on a break. Resume it in Settings › Account to message people.';
+  if (/deletion_pending/.test(m)) return 'Your account is scheduled for deletion. Reopen it to message people.';
   if (/dm_not_sender/.test(m)) return 'You can only change your own messages.';
   if (/dm_group_full/.test(m)) return `Groups can have up to ${GROUP_MAX} people.`;
   if (/dm_not_admin/.test(m)) return 'Only group admins can do that.';

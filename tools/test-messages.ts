@@ -106,7 +106,7 @@ throws('edit: after window throws dm_edit_window', () => applyEdit(mine, 'x', 'a
 throws('edit: only the sender', () => applyEdit(mine, 'x', 'b', now), /dm_not_sender/);
 check('edit: profanity masked, empty refused', applyEdit(mine, 'oh shit', 'a', now).body === 'oh s***' && (() => { try { applyEdit(mine, '  ', 'a', now); return false; } catch { return true; } })());
 check('edit: workout cards can’t be edited', !canEdit({ ...mine, kind: 'workout' }, 'a', now));
-check('unsend: only the sender; wipes body + media', canUnsend(mine, 'a') && !canUnsend(mine, 'b') && (() => { const u = applyUnsend({ ...mine, media: { url: 'x', w: 1, h: 1, mime: 'image/webp' } }, 'a', now); return u.body === '' && !u.media && u.deletedAt === now; })());
+check('unsend: only the sender; wipes body + media', canUnsend(mine, 'a', now) && !canUnsend(mine, 'b', now) && (() => { const u = applyUnsend({ ...mine, media: { url: 'x', w: 1, h: 1, mime: 'image/webp' } }, 'a', now); return u.body === '' && !u.media && u.deletedAt === now; })());
 throws('unsend: someone else’s message throws', () => applyUnsend(mine, 'b', now), /dm_not_sender/);
 check('unsent: no editing afterwards', !canEdit({ ...mine, deletedAt: now }, 'a', now));
 

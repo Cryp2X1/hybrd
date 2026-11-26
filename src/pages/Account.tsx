@@ -6,6 +6,7 @@ import { Page, Card, Banner } from '../components/ui';
 import { LocalModeNote } from './Auth';
 import { getBackendConfig, setDeviceBackend, appUrl } from '../lib/config';
 import { useToast } from '../lib/toast';
+import { AccountSafetyCards } from './Safety';
 
 function Form({ title, children, onSubmit, cta }: { title: string; children: React.ReactNode; onSubmit: () => Promise<string>; cta: string }) {
   const [err, setErr] = useState(''), [ok, setOk] = useState(''), [busy, setBusy] = useState(false);
@@ -36,6 +37,7 @@ export default function Account() {
         <label className="field"><span>Anon public key</span><input value={bk} onChange={(e) => setBk(e.target.value)} placeholder="eyJ…" /></label>
         <button className="btn y" onClick={() => { setDeviceBackend(bu, bk); location.reload(); }}>Save & reload</button>
       </details>
+      <AccountSafetyCards />
     </Page>
   );
 
@@ -46,6 +48,7 @@ export default function Account() {
       <Banner>Sign in to sync your training and food log across devices. You can keep using HYBRD without an account — your data stays on this device.</Banner>
       <div className="row wrap"><Link className="btn y" to="/sign-in">Sign in</Link><Link className="btn" to="/sign-up">Create account</Link><Link className="btn ghost" to="/forgot">Forgot password</Link></div>
       {cfg.origin === 'device' && <p className="muted small" style={{ marginTop: 14 }}>Backend set on this device only. <button className="link" onClick={() => { setDeviceBackend('', ''); location.reload(); }}>Remove</button></p>}
+      <AccountSafetyCards />
     </Page>
   );
 
@@ -66,6 +69,7 @@ export default function Account() {
       </Form>
       <div className="row wrap"><button className="btn" onClick={() => a.signOut()}>Sign out</button><Link className="btn ghost" to="/forgot">Send a reset email</Link></div>
       <p className="muted small" style={{ marginTop: 14 }}>App address used for email links: {appUrl()}</p>
+      <AccountSafetyCards />
     </Page>
   );
 }

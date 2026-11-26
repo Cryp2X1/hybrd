@@ -28,6 +28,8 @@ export interface DmDemoState {
   active: Record<string, number>;
   times: Record<'msg' | 'chat' | 'req' | 'group' | 'report' | 'react', number[]>;
   blobs: Record<string, Blob>;
+  /** people I restricted */
+  restricted?: string[];
 }
 export interface DmDemoDeps {
   load(): Promise<DmDemoState | undefined>;
@@ -238,15 +240,16 @@ export class DemoDm implements DmBackend {
     const direct = c.kind === 'direct' ? c.members.find((x) => x.userId !== DM_ME) : undefined;
     const blockedByMe = !!direct && w.graph.blocks.some(([a, b]) => a === DM_ME && b === direct.userId);
     const blockedEither = !!direct && isBlocked(w.graph, DM_ME, direct.userId);
+    const restricted = !!direct && (s.restricted || []).includes(direct.userId);
     const last = visible.length ? this.viewMsg(s, w, c, visible[visible.length - 1], visible) : null;
     const presence = direct && canSeePresence(myS, this.settingsOf(s, direct.userId), blockedEither) && direct.state === 'active' ? presenceText(this.lastActive(s, direct.userId), this.now()) : null;
     return {
       id: c.id, kind: c.kind, customTitle: c.title, title: convTitle(c, DM_ME, w.profiles), createdBy: c.createdBy, createdAt: c.createdAt, lastMessageAt: c.lastMessageAt,
-      me, members, others, folder: folderOf(c, DM_ME), unread: unreadCount(c, DM_ME, visible, this.hiddenSet(s)), last,
+      me, members, others, folder: folderOf(c, DM_ME, restricted), unread: unreadCount(c, DM_ME, visible, this.hiddenSet(s)), last,
       muted: isMuted(me, this.now()), pinned: !!me.pinnedAt, archived: !!me.archived,
       request: me.state === 'request' ? 'incoming' : outgoingRequest(c, DM_ME) ? 'outgoing' : null,
       requestRemaining: requestRemaining(c, DM_ME, s.messages), blocked: blockedByMe ? 'byMe' : blockedEither ? 'unavailable' : null,
-      presence, isAdmin: me.role === 'admin' && me.state === 'active',
+      presence, isAdmin: me.role === 'admin' && me.state === 'active', restricted,
     };
   }
   private viewMsg(s: DmDemoState, w: { graph: Graph; profiles: Record<string, PublicProfile> }, c: Conversation, m: Message, all?: Message[]): MessageView {
@@ -488,7 +491,9 @@ export class DemoDm implements DmBackend {
     if (r.targetType === 'message') {
       const m = s.messages.find((x) => x.id === r.targetId && x.conversationId === c.id);
       if (!m) throw new DmError('dm_not_found', 'That message is no longer available.');
-      snapshot = { body: m.body, kind: m.kind, media: m.media?.url, sender: m.senderId, created_at: m.createdAt }; targetUserId = m.senderId;
+      const extra = (r.messageIds || []).filter((id) => id !== m.id).map((id) => s.messages.find((x) => x.id === id && x.conversationId === c.id)).filter((x): x is Message => !!x).slice(0, 9);
+      const snap = (x: Message) => ({ id: x.id, body: x.body, kind: x.kind, media: x.media?.url, sender: x.senderId, created_at: x.createdAt });
+      snapshot = { ...snap(m), messages: [m, ...extra].map(snap) }; targetUserId = m.senderId;
     } else {
       snapshot = { recent: s.messages.filter((x) => x.conversationId === c.id && x.kind !== 'system').slice(-20).map((x) => ({ sender: x.senderId, body: x.body, kind: x.kind, created_at: x.createdAt })) };
       targetUserId = c.kind === 'direct' ? c.members.find((m) => m.userId !== DM_ME)?.userId : undefined;
@@ -505,6 +510,12 @@ export class DemoDm implements DmBackend {
     await this.commit(); this.emit({ type: 'inbox' });
   }
   async unblock(userId: string) { await this.deps.act({ type: 'unblock', other: userId }); this.emit({ type: 'inbox' }); }
+  async restrict(userId: string) {
+    if (userId === DM_ME) throw new DmError('dm_self', 'You can’t restrict yourself.');
+    const s = await this.st(); s.restricted = [...new Set([...(s.restricted || []), userId])]; await this.commit(); this.emit({ type: 'inbox' });
+  }
+  async unrestrict(userId: string) { const s = await this.st(); s.restricted = (s.restricted || []).filter((x) => x !== userId); await this.commit(); this.emit({ type: 'inbox' }); }
+  async restrictedIds() { return [...((await this.st()).restricted || [])]; }
   setTyping() { /* sample people don't watch you type */ }
   async heartbeat() { /* demo: nothing to send */ }
 

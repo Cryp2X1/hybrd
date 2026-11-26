@@ -5,13 +5,14 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Empty, Sheet } from './ui';
+import { SafetyReportSheet, type ReportMsg } from './Safety';
 import { SAvatar, SampleTag, WorkoutCardView } from './Social';
 import { ReactionSummaryBtn, usePressToReact } from './Reactions';
 import { useMessages } from '../lib/messagesStore';
 import { useStore } from '../lib/store';
 import { useToast } from '../lib/toast';
 import { activityLabel, fmtTime, hybridScore } from '../lib/calc';
-import { REPORT_REASONS, REPORT_DETAILS_MAX, workoutCard, type PublicProfile, type ReportReason, type WorkoutCard } from '../lib/social';
+import { workoutCard, type PublicProfile, type WorkoutCard } from '../lib/social';
 import { clockTime, friendlyDmError, linkify, linkRisk, listTime, STATUS_LABEL, systemText, type Seg } from '../lib/messages';
 import type { ConvView, MessageView } from '../lib/messagesApi';
 import { isCallEvent } from '../lib/calls';
@@ -156,43 +157,21 @@ export function MsgMenu({ anchor, actions, onClose }: { anchor: DOMRect; actions
 }
 
 // ---------- report ----------
-export function DmReportSheet({ target, onClose, onBlocked }: { target: { type: 'message' | 'conversation'; id: string; conversationId: string; who?: PublicProfile; groupTitle?: string; preview?: string }; onClose: () => void; onBlocked?: () => void }) {
+export function DmReportSheet({ target, onClose, onBlocked }: { target: { type: 'message' | 'conversation' | 'call'; id: string; conversationId: string; who?: PublicProfile; groupTitle?: string; preview?: string; messages?: ReportMsg[] }; onClose: () => void; onBlocked?: () => void }) {
   const { backend, refresh } = useMessages();
-  const toast = useToast();
-  const [reason, setReason] = useState<ReportReason | null>(null);
-  const [details, setDetails] = useState('');
-  const [block, setBlock] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const what = target.type === 'message' ? 'message' : target.groupTitle ? 'group chat' : 'conversation';
-  const send = async () => {
-    if (!backend || !reason) return;
-    setBusy(true);
-    try {
-      await backend.report({ targetType: target.type, targetId: target.id, conversationId: target.conversationId, reason, details: details.trim() || undefined });
-      if (block && target.who) { await backend.block(target.who.id); onBlocked?.(); }
-      await refresh();
-      toast(block && target.who ? `Report sent and @${target.who.username} blocked` : 'Thanks. Your report was sent to the HYBRD team.');
-      onClose();
-    } catch (e) { toast(friendlyDmError(e)); } finally { setBusy(false); }
-  };
+  const what = target.type === 'message' ? 'message' : target.type === 'call' ? 'call' : target.groupTitle ? 'group chat' : 'conversation';
   return (
-    <Sheet open onClose={onClose} title={`Report ${what}`}>
-      <div data-testid="dm-report-sheet">
-        {target.preview && <blockquote className="dm-report-q">{target.preview}</blockquote>}
-        <p className="muted small">Why are you reporting this {what}? {target.who ? `@${target.who.username} won’t know who reported it. ` : ''}The HYBRD team sees the reported {target.type === 'message' ? 'message' : 'recent messages'} so they can review it.</p>
-        <div className="s-reasons" role="radiogroup" aria-label="Reason">
-          {REPORT_REASONS.map((r) => (
-            <button key={r.v} role="radio" aria-checked={reason === r.v} className={reason === r.v ? 'on' : ''} onClick={() => setReason(r.v)} data-testid={`dm-reason-${r.v}`}>
-              <span className="s-radio" /><span><b>{r.label}</b><span className="muted small">{r.sub}</span></span>
-            </button>
-          ))}
-        </div>
-        <label className="field" style={{ marginTop: 12 }}><span>Details (optional)</span><textarea value={details} maxLength={REPORT_DETAILS_MAX} onChange={(e) => setDetails(e.target.value)} placeholder="Anything that helps the review" /></label>
-        {target.who && <button className="toggle" style={{ width: '100%', textAlign: 'left' }} onClick={() => setBlock((b) => !b)} aria-pressed={block}><span><b>Also block @{target.who.username}</b><div className="muted small">They can’t message you or see you anywhere on HYBRD.</div></span><span className={`switch ${block ? 'on' : ''}`} /></button>}
-        <button className="btn y block" style={{ marginTop: 12 }} disabled={!reason || busy} onClick={send} data-testid="dm-send-report">{busy ? 'Sending…' : 'Send report'}</button>
-        <p className="muted small" style={{ marginTop: 10 }}>If someone is in immediate danger, call 911 or your local emergency services. <Link className="link" to="/social/rules">Community rules</Link></p>
-      </div>
-    </Sheet>
+    <SafetyReportSheet
+      targetType={target.type} targetId={target.id} what={what} handle={target.who?.username} preview={target.preview} messages={target.messages}
+      submit={async (r) => {
+        if (!backend) throw new Error('Not connected');
+        await backend.report({ targetType: target.type, targetId: target.id, conversationId: target.conversationId, reason: r.reason, details: r.details, messageIds: r.messageIds });
+        await refresh();
+      }}
+      block={target.who ? async () => { await backend!.block(target.who!.id); await refresh(); } : undefined}
+      onClose={onClose} onBlocked={onBlocked}
+      testids={{ sheet: 'dm-report-sheet', send: 'dm-send-report', reason: (v) => `dm-reason-${v}` }}
+    />
   );
 }
 

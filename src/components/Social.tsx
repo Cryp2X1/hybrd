@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Card, Sheet } from './ui';
+import { RemovedNotice, SafetyReportSheet } from './Safety';
+import { useSafety } from '../lib/safetyStore';
 import { useSocial } from '../lib/socialStore';
 import { useMessages } from '../lib/messagesStore';
 import { useStore } from '../lib/store';
@@ -11,8 +13,8 @@ import { useToast } from '../lib/toast';
 import { appUrl } from '../lib/config';
 import { fmtTime, KM_PER_MI } from '../lib/calc';
 import {
-  compact, emptyReactionCounts, postUrl, REPORT_REASONS, groupStories, storyTimeLeft, timeAgo, REPORT_DETAILS_MAX, REACTION_META, REACTION_TYPES,
-  type PublicProfile, type ReactionType, type ReportReason, type ReportTarget, type WorkoutCard,
+  compact, emptyReactionCounts, postUrl, groupStories, storyTimeLeft, timeAgo, REACTION_META, REACTION_TYPES,
+  type PublicProfile, type ReactionType, type ReportTarget, type WorkoutCard,
 } from '../lib/social';
 import { friendlyError, type PostView, type StoryView } from '../lib/socialApi';
 import { ReactionBar, ReactionSummaryBtn, ReactorsSheet, usePressToReact } from './Reactions';
@@ -143,12 +145,14 @@ const audIcon = (a: string) => <span className="s-aud" title={a === 'public' ? '
 
 export function PostCard({ post, onChange, onRemoved, detail }: { post: PostView; onChange?: (p: PostView) => void; onRemoved?: (id: string) => void; detail?: boolean }) {
   const { backend, mode } = useSocial();
+  const { removed } = useSafety();
   const toast = useToast();
   const nav = useNavigate();
   const [p, setP] = useState(post);
+  const rm = post.mine ? removed.get(post.id) : undefined;
   const [menu, setMenu] = useState(false);
   const [share, setShare] = useState(false);
-  const [report, setReport] = useState<{ type: ReportTarget; id: string; who: PublicProfile } | null>(null);
+  const [report, setReport] = useState<{ type: ReportTarget; id: string; who: PublicProfile; preview?: string } | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(post.text);
   const [bar, setBar] = useState<{ anchor: DOMRect; pointerId: number | null } | null>(null);
@@ -179,12 +183,13 @@ export function PostCard({ post, onChange, onRemoved, detail }: { post: PostView
     try { await fn(); toast(ok); if (remove) onRemoved?.(p.id); } catch (e) { toast(friendlyError(e)); }
   };
   return (
-    <article className="card s-post" data-testid="post-card">
+    <article className={`card s-post ${rm ? 'sf-is-removed' : ''}`} data-testid="post-card">
       <header className="s-post-h">
         <Link to={`/social/profile?u=${encodeURIComponent(p.author.username)}`}><SAvatar p={p.author} size={42} /></Link>
         <Who p={p.author} sub={<>{timeAgo(p.createdAt)}{p.editedAt ? ' · edited' : ''} {audIcon(p.audience)}</>} />
         <button className="icon-btn" aria-label="Post options" onClick={() => setMenu(true)} data-testid="post-menu"><Icon name="more" stroke={3.2} /></button>
       </header>
+      {rm && <RemovedNotice d={rm} />}
       {p.original !== undefined && <div className="s-reshared muted small"><Icon name="repost" size={14} />Shared a post</div>}
       {editing ? (
         <div className="s-edit">
@@ -236,7 +241,8 @@ export function PostCard({ post, onChange, onRemoved, detail }: { post: PostView
             <button className="bad" onClick={() => { if (confirm('Delete this post? This can’t be undone.')) run(() => backend!.deletePost(p.id), 'Post deleted', true); else setMenu(false); }}><Icon name="trash" />Delete post</button>
           </> : <>
             <button onClick={() => run(() => backend!.hidePost(p.id), 'Post hidden from your feed', true)}><Icon name="eyeoff" />Hide this post</button>
-            <button onClick={() => { setMenu(false); setReport({ type: 'post', id: p.id, who: p.author }); }} data-testid="report-post"><Icon name="flag" />Report post</button>
+            <button onClick={() => { setMenu(false); setReport({ type: 'post', id: p.id, who: p.author, preview: p.text.slice(0, 140) || undefined }); }} data-testid="report-post"><Icon name="flag" />Report post</button>
+            {p.media.length > 0 && <button onClick={() => { setMenu(false); setReport({ type: 'media', id: p.id, who: p.author }); }} data-testid="report-media"><Icon name="image" />Report photo or video</button>}
             <button className="bad" onClick={() => { if (confirm(`Block @${p.author.username}? You won’t see each other anywhere on HYBRD, and you’ll stop being friends.`)) run(() => backend!.act({ type: 'block', other: p.author.id }), `Blocked @${p.author.username}`, true); else setMenu(false); }}><Icon name="ban" />Block @{p.author.username}</button>
           </>}
         </div>
@@ -266,41 +272,16 @@ export function ShareSheet({ open, onClose, post, demo }: { open: boolean; onClo
   );
 }
 
-export function ReportSheet({ target, onClose, onBlocked }: { target: { type: ReportTarget; id: string; who: PublicProfile }; onClose: () => void; onBlocked?: () => void }) {
-  const { backend, refresh } = useSocial();
-  const toast = useToast();
-  const [reason, setReason] = useState<ReportReason | null>(null);
-  const [details, setDetails] = useState('');
-  const [block, setBlock] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const what = target.type === 'user' ? 'account' : target.type;
-  const send = async () => {
-    if (!backend || !reason) return;
-    setBusy(true);
-    try {
-      await backend.report({ targetType: target.type, targetId: target.id, reason, details: details.trim() || undefined });
-      if (block) { await backend.act({ type: 'block', other: target.who.id }); await refresh(); onBlocked?.(); }
-      toast(block ? `Report sent and @${target.who.username} blocked` : 'Thanks. Your report was sent to the HYBRD team.');
-      onClose();
-    } catch (e) { toast(friendlyError(e)); } finally { setBusy(false); }
-  };
+export function ReportSheet({ target, onClose, onBlocked }: { target: { type: ReportTarget; id: string; who: PublicProfile; preview?: string }; onClose: () => void; onBlocked?: () => void }) {
+  const { backend, refresh, me } = useSocial();
+  const self = me?.id === target.who.id;
   return (
-    <Sheet open onClose={onClose} title={`Report ${what}`}>
-      <div data-testid="report-sheet">
-        <p className="muted small">Why are you reporting this {what}? @{target.who.username} won’t know who reported it.</p>
-        <div className="s-reasons" role="radiogroup">
-          {REPORT_REASONS.map((r) => (
-            <button key={r.v} role="radio" aria-checked={reason === r.v} className={reason === r.v ? 'on' : ''} onClick={() => setReason(r.v)}>
-              <span className="s-radio" /><span><b>{r.label}</b><span className="muted small">{r.sub}</span></span>
-            </button>
-          ))}
-        </div>
-        <label className="field" style={{ marginTop: 12 }}><span>Details (optional)</span><textarea value={details} maxLength={REPORT_DETAILS_MAX} onChange={(e) => setDetails(e.target.value)} placeholder="Anything that helps the review" /></label>
-        <button className="toggle" style={{ width: '100%', textAlign: 'left' }} onClick={() => setBlock((b) => !b)}><span><b>Also block @{target.who.username}</b><div className="muted small">You won’t see each other anywhere on HYBRD.</div></span><span className={`switch ${block ? 'on' : ''}`} /></button>
-        <button className="btn y block" style={{ marginTop: 12 }} disabled={!reason || busy} onClick={send} data-testid="send-report">{busy ? 'Sending…' : 'Send report'}</button>
-        <p className="muted small" style={{ marginTop: 10 }}>If someone is in immediate danger, contact local emergency services. <Link className="link" to="/social/rules">Community rules</Link></p>
-      </div>
-    </Sheet>
+    <SafetyReportSheet
+      targetType={target.type} targetId={target.id} handle={target.who.username} preview={target.preview}
+      submit={async (r) => { if (!backend) throw new Error('Not connected'); await backend.report({ targetType: target.type, targetId: target.id, reason: r.reason, details: r.details }); }}
+      block={self ? undefined : async () => { await backend!.act({ type: 'block', other: target.who.id }); await refresh(); }}
+      onClose={onClose} onBlocked={onBlocked}
+    />
   );
 }
 

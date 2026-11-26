@@ -12,6 +12,7 @@ import { useSocial } from './lib/socialStore';
 import { useMessages } from './lib/messagesStore';
 import { DmBanner, MessagesLink } from './components/Messages';
 import { CallLayer } from './components/Call';
+import { AccountGate } from './components/Safety';
 import { useTheme, hasStoredPref, readStoredPref, setStoredPref, parsePref } from './lib/theme';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
@@ -57,7 +58,11 @@ const SocialNotifications = lazy(() => import('./pages/Social').then((m) => ({ d
 const SocialSaved = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialSaved })));
 const SocialProfile = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialProfile })));
 const SocialSetup = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialSetup })));
-const SocialRules = lazy(() => import('./pages/Social').then((m) => ({ default: m.SocialRules })));
+const GuidelinesPage = lazy(() => import('./pages/Safety').then((m) => ({ default: m.GuidelinesPage })));
+const ReportingPage = lazy(() => import('./pages/Safety').then((m) => ({ default: m.ReportingPage })));
+const TimeOffPage = lazy(() => import('./pages/Safety').then((m) => ({ default: m.TimeOffPage })));
+const DeleteAccountPage = lazy(() => import('./pages/Safety').then((m) => ({ default: m.DeleteAccountPage })));
+const ModerationPage = lazy(() => import('./pages/Safety').then((m) => ({ default: m.ModerationPage })));
 const MessagesPage = lazy(() => import('./pages/Messages'));
 const NewMessage = lazy(() => import('./pages/Messages').then((m) => ({ default: m.NewMessage })));
 const InvitePage = lazy(() => import('./pages/Social').then((m) => ({ default: m.InvitePage })));
@@ -191,7 +196,12 @@ export function App() {
             <Route path="/social/saved" element={<SocialSaved />} />
             <Route path="/social/profile" element={<SocialProfile />} />
             <Route path="/social/setup" element={<SocialSetup />} />
-            <Route path="/social/rules" element={<SocialRules />} />
+            <Route path="/social/rules" element={<GuidelinesPage />} />
+            <Route path="/safety/guidelines" element={<GuidelinesPage />} />
+            <Route path="/safety/reporting" element={<ReportingPage />} />
+            <Route path="/safety/time-off" element={<TimeOffPage />} />
+            <Route path="/safety/delete" element={<DeleteAccountPage />} />
+            <Route path="/moderation" element={<ModerationPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/messages/chat" element={<MessagesPage />} />
             <Route path="/messages/new" element={<NewMessage />} />
@@ -207,6 +217,7 @@ export function App() {
       </main>
       <DmBanner />
       <CallLayer />
+      <AccountGate />
       <nav className="bottom-nav" aria-label="Main">
         <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
         <NavLink to="/social" className="bn-social" data-testid="nav-social" aria-label={`Social, friends and stories${badge ? `, ${badge} new` : ''}`}><span className="bn-ic"><Icon name="users" />{badge > 0 && <span className="s-badge" data-testid="nav-social-badge">{badge > 9 ? '9+' : badge}</span>}</span><span>Social</span></NavLink>

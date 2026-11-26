@@ -10,6 +10,9 @@ import { fetchSharedActivity, sharedImageUrl, type SharedRow } from '../lib/acti
 import { isShareId, keyStats } from '../lib/share';
 import { distUnit, fmtTime, toDist } from '../lib/calc';
 import type { Units } from '../lib/types';
+import { useSocial } from '../lib/socialStore';
+import { useSafety } from '../lib/safetyStore';
+import { RemovedNotice, SafetyReportSheet } from '../components/Safety';
 const MapView = lazy(() => import('../components/MapView').then((m) => ({ default: m.MapView })));
 
 const guessUnits = (): Units => (/^en-(US|LR)|my-MM/.test(navigator.language) ? 'imperial' : 'metric');
@@ -22,6 +25,9 @@ export default function SharedActivity() {
   const [row, setRow] = useState<SharedRow | null | undefined>(undefined);
   const [img, setImg] = useState<string | null>(null);
   const [err, setErr] = useState('');
+  const [report, setReport] = useState(false);
+  const social = useSocial();
+  const { removed } = useSafety();
   const units: Units = profile.onboarded ? profile.units : guessUnits();
   useEffect(() => {
     if (!configured || !authReady) return;
@@ -80,6 +86,11 @@ export default function SharedActivity() {
         {a.splits && a.splits.length > 1 && <div className="pub-splits"><h3>Splits</h3>{a.splits.slice(0, 50).map((s, i) => <div key={i} className="food-row"><span className="mono muted" style={{ width: 70 }}>{s.distanceM ? `${toDist(s.distanceM, units) < 0.95 ? toDist(s.distanceM, units).toFixed(2) : i + 1} ${distUnit(units)}` : i + 1}</span><span className="fr-main" /><span className="fr-k">{fmtTime(s.sec)}</span></div>)}</div>}
         {a.lifts && a.lifts.length > 0 && <div className="pub-splits"><h3>Exercises</h3>{a.lifts.map((l, i) => <div key={i} className="food-row"><span className="fr-main">{l.name}</span><span className="fr-k">{l.sets} sets</span></div>)}</div>}
         {img && <details className="pub-img"><summary>Share image</summary><img src={img} alt={`${a.title} share image`} /></details>}
+        {row.mine && removed.get(row.id) && <RemovedNotice d={removed.get(row.id)!} what="shared activity" />}
+        {row.mine && <p className="muted small">To stop sharing or delete this shared copy, open the workout and set Who can see it to Only me.</p>}
+        {!row.mine && user && social.backend?.kind === 'live' && <button className="btn ghost sm" onClick={() => setReport(true)} data-testid="activity-report"><Icon name="flag" size={15} /> Report activity</button>}
+        {report && <SafetyReportSheet targetType="activity" targetId={row.id} handle={row.author?.username || undefined}
+          submit={async (r) => { await social.backend!.report({ targetType: 'activity', targetId: row.id, reason: r.reason, details: r.details }); }} onClose={() => setReport(false)} />}
         <div className="pub-foot"><span className="muted small">{row.visibility === 'public' ? 'Shared with everyone' : 'Shared with friends'} on HYBRD · Train · Track · Fuel</span><Link className="btn y sm" to="/">{user ? 'Open HYBRD' : 'Try HYBRD'}</Link></div>
       </div>
     </div>

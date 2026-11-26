@@ -19,6 +19,7 @@ import {
   suggestHandle, timeAgo, validateDisplayName, validateHandle, validatePost, workoutCard, canDeleteComment, compact,
   REACTION_TYPES, type Audience, type Privacy, type PublicProfile, type ReactionType, type Relation, type WorkoutCard,
 } from '../lib/social';
+import { SafetyBanner, useCanInteract, useRestricted } from '../components/Safety';
 import { friendlyError, type CommentView, type PostView, type StoryView, type NotifView } from '../lib/socialApi';
 import { ReactionBar, ReactionSummaryBtn, ReactLabel, ReactorsSheet, usePressToReact } from '../components/Reactions';
 import { prepareSocialImage, type PreparedImg } from '../lib/socialImage';
@@ -30,6 +31,7 @@ function Shell({ title, kicker = 'Friends & Stories', back, children, tabs = tru
   return (
     <Page title={title} kicker={kicker} back={back} wide>
       <DemoBanner />
+      <SafetyBanner />
       <SocialGate needProfile={needProfile}>
         {tabs && me && <SocialTabs />}
         {children}
@@ -79,7 +81,7 @@ function FeedInner() {
         <InviteCard />
         <Card><div className="card-head"><h3>Your circle</h3><Link to="/social/friends">Friends →</Link></div>
           <div className="s-counts"><div><b>{compact(graph?.friends.length || 0)}</b><span>Friends</span></div><div><b>{compact(me?.postCount || 0)}</b><span>Posts</span></div><div><b>{compact(graph?.outgoing.length || 0)}</b><span>Sent</span></div></div>
-          <Link className="link small" to="/social/rules">Community rules</Link>
+          <Link className="link small" to="/safety/guidelines">Community Guidelines</Link>
         </Card>
       </aside>
       {viewer && <StoryViewer stories={stories} startAuthor={viewer} onClose={() => setViewer(null)} onDeleted={load} />}
@@ -112,6 +114,7 @@ export function SocialCreate() {
 }
 function CreateInner() {
   const { backend, me, refresh } = useSocial();
+  const can = useCanInteract();
   const { data, profile } = useStore();
   const toast = useToast();
   const nav = useNavigate();
@@ -198,7 +201,7 @@ function CreateInner() {
         {locked && <p className="muted small">{me?.isMinor ? 'Under 18: posts are shared with friends only.' : 'Your profile is friends-only, so everything you share goes to friends.'}</p>}
         <p className="muted small">Photos are re-saved without location or camera data. {kind === 'story' ? 'Stories disappear after 24 hours.' : ''}</p>
         {err && <div className="s-err" role="alert">{err}</div>}
-        <button className="btn y block big" disabled={busy} onClick={submit} data-testid="publish">{busy ? 'Sharing…' : kind === 'story' ? 'Share story' : reshare ? 'Share to feed' : 'Post'}</button>
+        <button className="btn y block big" disabled={busy || !can.ok} onClick={submit} data-testid="publish">{busy ? 'Sharing…' : kind === 'story' ? 'Share story' : reshare ? 'Share to feed' : 'Post'}</button>
       </Card>
       <Sheet open={pickW} onClose={() => setPickW(false)} title="Attach a workout">
         <WorkoutPicker workouts={data.workouts} onPick={(w) => { setWorkout(workoutCard(w, activityLabel(w), score)); setPickW(false); }} />
@@ -299,6 +302,7 @@ function PostInner() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<CommentView | null>(null);
+  const can = useCanInteract();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const load = useCallback(async () => {
     if (!backend) return;
@@ -335,12 +339,12 @@ function PostInner() {
         ))}
         <div className="s-reply">
           <SAvatar p={me} size={34} />
-          <textarea ref={inputRef} className="input" value={text} maxLength={COMMENT_MAX} onChange={(e) => setText(e.target.value)} placeholder="Add a comment…" aria-label="Add a comment" rows={1} data-testid="comment-input"
+          <textarea ref={inputRef} className="input" value={text} maxLength={COMMENT_MAX} onChange={(e) => setText(e.target.value)} placeholder={can.ok ? 'Add a comment…' : can.why} disabled={!can.ok} aria-label="Add a comment" rows={1} data-testid="comment-input"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
-          <button className="icon-btn y" aria-label="Send comment" disabled={busy || !text.trim()} onClick={send} data-testid="comment-send"><Icon name="send" size={18} /></button>
+          <button className="icon-btn y" aria-label="Send comment" disabled={busy || !text.trim() || !can.ok} onClick={send} data-testid="comment-send"><Icon name="send" size={18} /></button>
         </div>
       </Card>
-      {report && <ReportSheet target={{ type: 'comment', id: report.id, who: report.author }} onClose={() => setReport(null)} onBlocked={load} />}
+      {report && <ReportSheet target={{ type: 'comment', id: report.id, who: report.author, preview: report.text.slice(0, 140) }} onClose={() => setReport(null)} onBlocked={load} />}
     </div>
   );
 }
@@ -360,6 +364,7 @@ function FriendsInner() {
   const [rels, setRels] = useState<Record<string, Relation>>({});
   const [menu, setMenu] = useState<PublicProfile | null>(null);
   const [report, setReport] = useState<PublicProfile | null>(null);
+  const restrict = useRestricted();
   const toast = useToast();
   useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'find' && backend) backend.suggestions().then(setSugg); }, [tab, backend, graph]);
@@ -421,6 +426,7 @@ function FriendsInner() {
           <Link to={`/social/profile?u=${encodeURIComponent(menu.username)}`}><Icon name="me" />View profile</Link>
           <Link to={`/messages/chat?to=${encodeURIComponent(menu.username)}`}><Icon name="chat" />Message</Link>
           <button onClick={() => { if (confirm(`Unfriend ${menu.displayName}? They won’t be notified.`)) act({ type: 'unfriend', other: menu.id }, 'Unfriended'); }} data-testid="unfriend"><Icon name="minus" />Unfriend</button>
+          <button onClick={() => { const m = menu; setMenu(null); restrict.toggle(m); }} data-testid="friend-restrict"><Icon name="eyeoff" />{restrict.isRestricted(menu.id) ? 'Unrestrict' : 'Restrict'}</button>
           <button onClick={() => { setReport(menu); setMenu(null); }}><Icon name="flag" />Report</button>
           <button className="bad" onClick={() => { if (confirm(`Block @${menu.username}? You won’t see each other anywhere on HYBRD.`)) act({ type: 'block', other: menu.id }, `Blocked @${menu.username}`); }}><Icon name="ban" />Block</button>
         </div>}
@@ -491,6 +497,7 @@ function ProfileInner() {
   const [posts, setPosts] = useState<PostView[]>([]);
   const [menu, setMenu] = useState(false);
   const [report, setReport] = useState(false);
+  const restrict = useRestricted();
   const toast = useToast();
   const load = useCallback(async () => {
     if (!backend) return;
@@ -530,6 +537,7 @@ function ProfileInner() {
       <Sheet open={menu} onClose={() => setMenu(false)} title={`@${p.username}`}>
         <div className="s-menu">
           <button onClick={async () => { const u = `${appUrl()}social/profile?u=${encodeURIComponent(p.username)}`; try { await navigator.clipboard.writeText(u); toast('Profile link copied'); } catch { toast(u); } setMenu(false); }}><Icon name="link" />Copy profile link</button>
+          {rel !== 'blocked' && rel !== 'blocked_by' && <button onClick={() => { setMenu(false); restrict.toggle(p); }} data-testid="profile-restrict"><Icon name="eyeoff" /><span>{restrict.isRestricted(p.id) ? `Unrestrict @${p.username}` : `Restrict @${p.username}`}<span className="muted small sf-menu-sub">{restrict.isRestricted(p.id) ? 'Their messages go back to your chats' : 'Softer than blocking: they aren’t told'}</span></span></button>}
           <button onClick={() => { setMenu(false); setReport(true); }} data-testid="report-user"><Icon name="flag" />Report @{p.username}</button>
           {rel !== 'blocked' && <button className="bad" onClick={async () => { setMenu(false); if (!confirm(`Block @${p.username}? You won’t see each other anywhere on HYBRD.`)) return; try { await backend!.act({ type: 'block', other: p.id }); toast(`Blocked @${p.username}`); load(); } catch (e) { toast(friendlyError(e)); } }}><Icon name="ban" />Block</button>}
         </div>
@@ -629,26 +637,7 @@ function SetupInner() {
   );
 }
 
-// ======================================================================= Rules
-export function SocialRules() {
-  return (
-    <Page title="Community rules" kicker="Friends & Stories" back wide>
-      <div className="s-narrow s-rules">
-        <Card>
-          <p>HYBRD is a place to train, share progress and push each other. These rules apply to profiles, posts, stories and comments.</p>
-          <h3>1. Respect people</h3><p>No harassment, bullying, threats, or hate based on who someone is. Disagree about training, not about people.</p>
-          <h3>2. Keep it safe</h3><p>No nudity or sexual content. Progress photos are fine when they’re clothed the way you’d be at a gym or a race. Nothing involving minors that is sexual or exploitative, ever.</p>
-          <h3>3. No dangerous health content</h3><p>Don’t promote self-harm, eating disorders, purging, extreme fasting, steroids or other unsafe drugs, or medical claims that could hurt someone. HYBRD isn’t medical advice, and neither are posts.</p>
-          <h3>4. Be real</h3><p>Don’t impersonate people, fake results, spam, or sell scams. Ads and repeated self-promotion aren’t allowed.</p>
-          <h3>5. Protect privacy</h3><p>Don’t post other people’s photos or personal details without their permission. Photos are re-saved without location data, but think before showing your home or routine routes publicly.</p>
-          <h3>6. Age</h3><p>You must be 13 or older. Accounts aged 13 to 17 are friends-only.</p>
-          <h3>What happens when rules are broken</h3><p>Anyone can report a post, story, comment or account. The HYBRD team reviews reports and may remove content or ban accounts. You can always block someone: you won’t see each other anywhere, and the friendship ends.</p>
-          <p className="muted small">If someone is in immediate danger, contact local emergency services.</p>
-        </Card>
-      </div>
-    </Page>
-  );
-}
+// Community rules: /social/rules now shows the Community Guidelines (pages/Safety.tsx).
 
 // ======================================================================= Invite landing (/invite?u=handle)
 export function InvitePage() {

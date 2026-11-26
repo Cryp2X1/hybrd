@@ -218,11 +218,13 @@ async function run(browser, kind) {
     await top();
     await click('[data-testid="post-menu"]');
     await click('[data-testid="report-post"]');
-    await clickText('Spam or scam', '.s-reasons button');
+    await click('[data-testid="reason-spam"]');
     check(!!(await page.$('[data-testid="report-sheet"]')), 'Report sheet open with reasons');
     await shot('phone-social-report');
     await click('[data-testid="send-report"]');
     await sleep(500);
+    check(!!(await page.$('[data-testid="report-done"]')), 'Report confirmation shown');
+    await click('[data-testid="report-done-close"]');
 
     // ----- friends + requests -----
     await go('/social/friends');

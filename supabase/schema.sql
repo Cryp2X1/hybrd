@@ -206,6 +206,101 @@ create table if not exists public.social_bans (
   created_at  timestamptz not null default now()
 );
 
+-- ---------- safety core (v1.6) — self-pause / deletion state, moderator decisions, appeals ----------
+-- Defined here because the visibility helpers below use them; RLS, RPCs and the moderation queue are in the
+-- SAFETY section at the end of this file (SETUP.md §15).
+-- Moderators: set profiles.is_moderator = true for an account in the SQL editor (the app can never set it).
+alter table public.profiles add column if not exists is_moderator boolean not null default false;
+create table if not exists public.account_state (
+  user_id                uuid primary key references auth.users (id) on delete cascade,
+  paused_at              timestamptz,             -- "I need time off": hidden from everyone while paused
+  pause_until            timestamptz,             -- null = until I come back; otherwise resumes by itself at this time
+  deletion_requested_at  timestamptz,             -- "Delete account": deactivated now, purged after purge_after
+  purge_after            timestamptz,
+  deletion_reason        text,
+  updated_at             timestamptz not null default now()
+);
+alter table public.account_state drop constraint if exists account_state_reason_len;
+alter table public.account_state add constraint account_state_reason_len check (deletion_reason is null or char_length(deletion_reason) <= 200);
+alter table public.account_state drop constraint if exists account_state_purge_chk;
+alter table public.account_state add constraint account_state_purge_chk check ((deletion_requested_at is null) = (purge_after is null));
+create index if not exists account_state_purge_idx on public.account_state (purge_after) where purge_after is not null;
+
+-- Audit log of every moderator action. Rows with action remove_content / restrict_messaging / suspend are the
+-- "decisions" a person sees in Settings › Safety › Account status (without the moderator, the report or internal notes).
+create table if not exists public.moderation_actions (
+  id               uuid primary key default gen_random_uuid(),
+  moderator_id     uuid references auth.users (id) on delete set null,
+  target_user_id   uuid references auth.users (id) on delete set null,
+  action           text not null,
+  content_type     text,
+  content_id       uuid,
+  content_preview  text,
+  guideline        text,
+  note             text,                        -- shown to the person
+  internal_note    text,                        -- moderators only
+  report_store     text,
+  report_id        uuid,
+  appeal_id        uuid,
+  decision_id      uuid,                        -- for restore / appeal rows: the decision they act on
+  ends_at          timestamptz,
+  reversed_at      timestamptz,
+  created_at       timestamptz not null default now()
+);
+alter table public.moderation_actions drop constraint if exists moderation_actions_action_chk;
+alter table public.moderation_actions add constraint moderation_actions_action_chk check (action in
+  ('dismiss', 'review', 'remove_content', 'restore_content', 'restrict_messaging', 'suspend', 'appeal_reviewing', 'appeal_upheld', 'appeal_reversed'));
+alter table public.moderation_actions drop constraint if exists moderation_actions_content_chk;
+alter table public.moderation_actions add constraint moderation_actions_content_chk check (content_type is null or content_type in ('post', 'story', 'comment', 'activity', 'message'));
+alter table public.moderation_actions drop constraint if exists moderation_actions_guideline_chk;
+alter table public.moderation_actions add constraint moderation_actions_guideline_chk check (guideline is null or guideline in
+  ('respect', 'hate', 'sexual', 'minors', 'self_harm', 'violence', 'spam', 'authentic', 'privacy'));
+alter table public.moderation_actions drop constraint if exists moderation_actions_note_len;
+alter table public.moderation_actions add constraint moderation_actions_note_len check ((note is null or char_length(note) <= 500) and (internal_note is null or char_length(internal_note) <= 1000));
+create index if not exists moderation_actions_target_idx on public.moderation_actions (target_user_id, created_at desc);
+create index if not exists moderation_actions_active_idx on public.moderation_actions (target_user_id, action) where reversed_at is null;
+
+create table if not exists public.appeals (
+  id             uuid primary key default gen_random_uuid(),
+  decision_id    uuid not null references public.moderation_actions (id) on delete cascade,
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  body           text not null,
+  status         text not null default 'submitted',
+  created_at     timestamptz not null default now(),
+  decided_at     timestamptz,
+  decided_by     uuid references auth.users (id) on delete set null,
+  decision_note  text
+);
+create unique index if not exists appeals_one_per_decision on public.appeals (decision_id);   -- once per decision
+alter table public.appeals drop constraint if exists appeals_status_chk;
+alter table public.appeals add constraint appeals_status_chk check (status in ('submitted', 'under_review', 'upheld', 'reversed'));
+alter table public.appeals drop constraint if exists appeals_body_len;
+alter table public.appeals add constraint appeals_body_len check (char_length(btrim(body)) between 10 and 1000);
+create index if not exists appeals_status_idx on public.appeals (status, created_at);
+
+-- Is `u` hidden from everyone else right now? (paused, deletion pending, or suspended by a moderator)
+create or replace function public.acct_suspended(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.moderation_actions a where a.target_user_id = u and a.action = 'suspend' and a.reversed_at is null and a.ends_at > now())
+$$;
+create or replace function public.acct_msg_restricted(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.moderation_actions a where a.target_user_id = u and a.action = 'restrict_messaging' and a.reversed_at is null and a.ends_at > now())
+$$;
+create or replace function public.acct_paused(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.account_state s where s.user_id = u
+                 and (s.deletion_requested_at is not null or (s.paused_at is not null and (s.pause_until is null or s.pause_until > now()))))
+$$;
+create or replace function public.acct_hidden(u uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select u is not null and (public.acct_paused(u) or public.acct_suspended(u))
+$$;
+create or replace function public.is_moderator() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select p.is_moderator from public.profiles p where p.id = auth.uid()), false)
+$$;
+
 -- ---------- friends ----------
 create table if not exists public.friend_requests (
   id            uuid primary key default gen_random_uuid(),
@@ -265,6 +360,8 @@ create index if not exists posts_author_created_idx on public.posts (author_id, 
 create index if not exists posts_created_idx on public.posts (created_at desc);
 create index if not exists posts_public_created_idx on public.posts (created_at desc) where audience = 'public';
 create index if not exists posts_reshare_idx on public.posts (reshare_of) where reshare_of is not null;
+-- Moderator removal (v1.6): hidden from everyone except the author, who sees a "removed" notice with an Appeal link.
+alter table public.posts add column if not exists removed_at timestamptz;
 
 create table if not exists public.post_media (
   id          uuid primary key default gen_random_uuid(),
@@ -303,6 +400,7 @@ alter table public.stories drop constraint if exists stories_content_chk;
 alter table public.stories add constraint stories_content_chk check (media_path is not null or char_length(coalesce(body, '')) > 0);
 create index if not exists stories_author_expires_idx on public.stories (author_id, expires_at);
 create index if not exists stories_expires_idx on public.stories (expires_at);
+alter table public.stories add column if not exists removed_at timestamptz;
 
 -- ---------- reactions ----------
 create table if not exists public.likes (
@@ -343,6 +441,7 @@ alter table public.comments drop constraint if exists comments_body_len;
 alter table public.comments add constraint comments_body_len check (char_length(btrim(body)) between 1 and 500);
 create index if not exists comments_post_idx on public.comments (post_id, created_at);
 create index if not exists comments_author_idx on public.comments (author_id, created_at desc);
+alter table public.comments add column if not exists removed_at timestamptz;
 
 create table if not exists public.saves (
   user_id     uuid not null default auth.uid() references public.social_profiles (id) on delete cascade,
@@ -375,15 +474,23 @@ create table if not exists public.reports (
   moderator_note  text
 );
 alter table public.reports drop constraint if exists reports_target_chk;
-alter table public.reports add constraint reports_target_chk check (target_type in ('post', 'comment', 'user', 'story'));
+alter table public.reports add constraint reports_target_chk check (target_type in ('post', 'comment', 'user', 'story', 'activity', 'media'));
 alter table public.reports drop constraint if exists reports_reason_chk;
-alter table public.reports add constraint reports_reason_chk check (reason in ('spam', 'harassment', 'hate', 'nudity', 'violence', 'self_harm', 'misinformation', 'underage', 'impersonation', 'other'));
+alter table public.reports add constraint reports_reason_chk check (reason in ('spam', 'harassment', 'hate', 'sexual', 'minor', 'self_harm', 'impersonation', 'scam', 'violence', 'other',
+  'nudity', 'misinformation', 'underage'));  -- last three: reasons used before v1.6 (kept so old rows stay valid)
+-- Triage: 0 = urgent (minors, self-harm), 1 = high (violence, sexual content, harassment), 2 = normal. Set by the trigger.
+alter table public.reports add column if not exists priority smallint not null default 2;
 alter table public.reports drop constraint if exists reports_status_chk;
 alter table public.reports add constraint reports_status_chk check (status in ('open', 'reviewing', 'actioned', 'dismissed'));
 alter table public.reports drop constraint if exists reports_details_len;
 alter table public.reports add constraint reports_details_len check (details is null or char_length(details) <= 500);
 create index if not exists reports_status_created_idx on public.reports (status, created_at);
 create index if not exists reports_reporter_idx on public.reports (reporter_id, created_at desc);
+create index if not exists reports_queue_idx on public.reports (status, priority, created_at);
+create or replace function public.report_priority(r text) returns smallint
+language sql immutable as $$
+  select (case when r in ('minor', 'underage', 'self_harm') then 0 when r in ('violence', 'sexual', 'nudity', 'harassment') then 1 else 2 end)::smallint
+$$;
 
 create table if not exists public.notifications (
   id          uuid primary key default gen_random_uuid(),
@@ -424,6 +531,7 @@ language sql stable security definer set search_path = '' as $$
     when author = auth.uid() then true
     when not public.social_is_member(auth.uid()) then false
     when public.social_is_blocked(auth.uid(), author) then false
+    when public.acct_hidden(author) then false   -- paused, deletion pending or suspended: hidden from everyone
     when public.social_are_friends(auth.uid(), author) then true
     when aud = 'public' then exists (select 1 from public.social_profiles p where p.id = author and p.privacy = 'public' and not p.is_minor)
     else false
@@ -431,7 +539,7 @@ language sql stable security definer set search_path = '' as $$
 $$;
 create or replace function public.social_can_view_post(pid uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select coalesce((select public.social_can_view(p.author_id, p.audience) from public.posts p where p.id = pid), false)
+  select coalesce((select public.social_can_view(p.author_id, p.audience) and (p.removed_at is null or p.author_id = auth.uid()) from public.posts p where p.id = pid), false)
 $$;
 create or replace function public.social_post_author(pid uuid) returns uuid
 language sql stable security definer set search_path = '' as $$
@@ -465,11 +573,11 @@ begin
   if owner = auth.uid() then return true; end if;
   if not public.social_is_member(auth.uid()) or public.social_is_blocked(auth.uid(), owner) then return false; end if;
   if array_length(parts, 1) = 2 and parts[2] like 'avatar%' then
-    return exists (select 1 from public.social_profiles p where p.id = owner and p.avatar_path = p_name);
+    return exists (select 1 from public.social_profiles p where p.id = owner and p.avatar_path = p_name) and not public.acct_hidden(owner);
   elsif parts[2] = 'posts' then
     return exists (select 1 from public.post_media m where m.path = p_name and m.author_id = owner and public.social_can_view_post(m.post_id));
   elsif parts[2] = 'stories' then
-    return exists (select 1 from public.stories s where s.media_path = p_name and s.author_id = owner and s.expires_at > now() and public.social_can_view(s.author_id, s.audience));
+    return exists (select 1 from public.stories s where s.media_path = p_name and s.author_id = owner and s.expires_at > now() and s.removed_at is null and public.social_can_view(s.author_id, s.audience));
   end if;
   return false;
 end $$;
@@ -747,13 +855,20 @@ create or replace function public.reports_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
   new.reporter_id := auth.uid(); new.status := 'open'; new.created_at := now(); new.reviewed_at := null; new.moderator_note := null;
+  new.priority := public.report_priority(new.reason);
+  perform public.social_rate_check((select count(*) from public.reports where reporter_id = new.reporter_id and created_at > now() - interval '1 hour'), 10, 'reports an hour');
   perform public.social_rate_check((select count(*) from public.reports where reporter_id = new.reporter_id and created_at > now() - interval '1 day'), 30, 'reports per day');
-  if new.target_type = 'post' then
+  if exists (select 1 from public.reports r where r.reporter_id = new.reporter_id and r.target_type = new.target_type and r.target_id = new.target_id and r.created_at > now() - interval '1 day') then
+    raise exception 'report_duplicate: you already reported this' using errcode = 'P0001';
+  end if;
+  if new.target_type in ('post', 'media') then
     select author_id, jsonb_build_object('body', body, 'audience', audience) into new.target_user_id, new.snapshot from public.posts where id = new.target_id;
   elsif new.target_type = 'comment' then
     select author_id, jsonb_build_object('body', body, 'post_id', post_id) into new.target_user_id, new.snapshot from public.comments where id = new.target_id;
   elsif new.target_type = 'story' then
     select author_id, jsonb_build_object('body', body, 'media_path', media_path) into new.target_user_id, new.snapshot from public.stories where id = new.target_id;
+  elsif new.target_type = 'activity' then
+    select user_id, jsonb_build_object('title', data->>'title', 'type', data->>'type', 'visibility', visibility, 'image_path', image_path) into new.target_user_id, new.snapshot from public.shared_activities where id = new.target_id;
   else
     select id, jsonb_build_object('username', username, 'display_name', display_name, 'public_bio', public_bio) into new.target_user_id, new.snapshot from public.social_profiles where id = new.target_id;
   end if;
@@ -905,7 +1020,7 @@ end $$;
 
 -- public profiles: members see each other unless blocked (either way). Create via social_create_profile().
 create policy "social_profiles_select" on public.social_profiles for select to authenticated
-  using (id = (select auth.uid()) or (public.social_is_member((select auth.uid())) and not public.social_is_blocked((select auth.uid()), id)));
+  using (id = (select auth.uid()) or (public.social_is_member((select auth.uid())) and not public.social_is_blocked((select auth.uid()), id) and not public.acct_hidden(id)));
 create policy "social_profiles_update_own" on public.social_profiles for update to authenticated
   using (id = (select auth.uid())) with check (id = (select auth.uid()));
 create policy "social_profiles_delete_own" on public.social_profiles for delete to authenticated using (id = (select auth.uid()));
@@ -920,7 +1035,7 @@ create policy "friendships_select_own" on public.friendships for select to authe
 create policy "blocks_select_own" on public.blocks for select to authenticated using (blocker_id = (select auth.uid()));
 
 create policy "posts_select_visible" on public.posts for select to authenticated
-  using (public.social_can_view(author_id, audience)
+  using (public.social_can_view(author_id, audience) and (removed_at is null or author_id = (select auth.uid()))
          and not exists (select 1 from public.hidden_posts h where h.post_id = id and h.user_id = (select auth.uid())));
 create policy "posts_insert_own" on public.posts for insert to authenticated
   with check (author_id = (select auth.uid()) and public.social_is_member((select auth.uid()))
@@ -936,7 +1051,7 @@ create policy "post_media_insert_own" on public.post_media for insert to authent
 create policy "post_media_delete_own" on public.post_media for delete to authenticated using (author_id = (select auth.uid()));
 
 create policy "stories_select_visible" on public.stories for select to authenticated
-  using (author_id = (select auth.uid()) or (expires_at > now() and public.social_can_view(author_id, audience)));
+  using (author_id = (select auth.uid()) or (expires_at > now() and removed_at is null and public.social_can_view(author_id, audience)));
 create policy "stories_insert_own" on public.stories for insert to authenticated
   with check (author_id = (select auth.uid()) and public.social_is_member((select auth.uid()))
               and (media_path is null or media_path like (select auth.uid())::text || '/stories/%'));
@@ -964,7 +1079,7 @@ create policy "reactions_update_own" on public.reactions for update to authentic
 create policy "reactions_delete_own" on public.reactions for delete to authenticated using (user_id = (select auth.uid()));
 
 create policy "comments_select_visible" on public.comments for select to authenticated
-  using (public.social_can_view_post(post_id) and (author_id = (select auth.uid()) or not public.social_is_blocked((select auth.uid()), author_id)));
+  using (public.social_can_view_post(post_id) and (author_id = (select auth.uid()) or (removed_at is null and not public.social_is_blocked((select auth.uid()), author_id) and not public.acct_hidden(author_id))));
 create policy "comments_insert_own" on public.comments for insert to authenticated
   with check (author_id = (select auth.uid()) and public.social_can_view_post(post_id)
               and not public.social_is_blocked((select auth.uid()), public.social_post_author(post_id)));
@@ -1127,6 +1242,18 @@ alter table public.messages drop constraint if exists messages_body_len;
 alter table public.messages add constraint messages_body_len check (char_length(body) <= 2000);
 create index if not exists messages_conv_created_idx on public.messages (conversation_id, created_at desc);
 create index if not exists messages_sender_created_idx on public.messages (sender_id, created_at desc);
+alter table public.messages add column if not exists removed_at timestamptz;   -- moderator removal (v1.6): only the sender still sees it, with a notice
+
+-- Restrict (v1.6): a softer step than blocking. Their new messages land in your Requests without a notification, and
+-- they can't see when you've read their messages or when you're active. They aren't told.
+create table if not exists public.dm_restricts (
+  user_id        uuid not null default auth.uid() references public.social_profiles (id) on delete cascade,
+  restricted_id  uuid not null references public.social_profiles (id) on delete cascade,
+  created_at     timestamptz not null default now(),
+  primary key (user_id, restricted_id)
+);
+alter table public.dm_restricts drop constraint if exists dm_restricts_not_self;
+alter table public.dm_restricts add constraint dm_restricts_not_self check (user_id <> restricted_id);
 
 create table if not exists public.message_reactions (
   message_id  uuid not null references public.messages (id) on delete cascade,
@@ -1163,9 +1290,12 @@ create table if not exists public.message_reports (
   moderator_note   text
 );
 alter table public.message_reports drop constraint if exists message_reports_target_chk;
-alter table public.message_reports add constraint message_reports_target_chk check (target_type in ('message', 'conversation'));
+alter table public.message_reports add constraint message_reports_target_chk check (target_type in ('message', 'conversation', 'call'));
+alter table public.message_reports add column if not exists message_ids uuid[];     -- several reported messages (v1.6), snapshotted below
+alter table public.message_reports add column if not exists priority smallint not null default 2;
 alter table public.message_reports drop constraint if exists message_reports_reason_chk;
-alter table public.message_reports add constraint message_reports_reason_chk check (reason in ('spam', 'harassment', 'hate', 'nudity', 'violence', 'self_harm', 'misinformation', 'underage', 'impersonation', 'other'));
+alter table public.message_reports add constraint message_reports_reason_chk check (reason in ('spam', 'harassment', 'hate', 'sexual', 'minor', 'self_harm', 'impersonation', 'scam', 'violence', 'other',
+  'nudity', 'misinformation', 'underage'));
 alter table public.message_reports drop constraint if exists message_reports_status_chk;
 alter table public.message_reports add constraint message_reports_status_chk check (status in ('open', 'reviewing', 'actioned', 'dismissed'));
 alter table public.message_reports drop constraint if exists message_reports_details_len;
@@ -1221,6 +1351,11 @@ create or replace function public.dm_activity(u uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select coalesce((select s.show_activity from public.dm_settings s where s.user_id = u), true)
 $$;
+-- Has `a` restricted `b`?
+create or replace function public.dm_is_restricted(a uuid, b uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.dm_restricts r where r.user_id = a and r.restricted_id = b)
+$$;
 create or replace function public.dm_is_minor(u uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select coalesce((select p.is_minor from public.social_profiles p where p.id = u), false)
@@ -1244,7 +1379,9 @@ language plpgsql stable security definer set search_path = '' as $$
 declare fr boolean; who text;
 begin
   if me = other then return 'dm_self'; end if;
-  if not public.social_is_member(other) or public.social_is_blocked(me, other) then return 'dm_unavailable'; end if;
+  if not public.social_is_member(other) or public.social_is_blocked(me, other) or public.acct_hidden(other) then return 'dm_unavailable'; end if;
+  if public.acct_hidden(me) then return 'acct_paused'; end if;
+  if public.acct_msg_restricted(me) then return 'acct_msg_restricted'; end if;
   fr := public.social_are_friends(me, other);
   if not fr and public.dm_is_minor(me) <> public.dm_is_minor(other) then return 'dm_minor'; end if;
   who := public.dm_who(other);
@@ -1286,7 +1423,7 @@ begin
   if auth.uid() is null or parts is null or array_length(parts, 1) < 3 then return false; end if;
   begin c := parts[1]::uuid; owner := parts[2]::uuid; exception when others then return false; end;
   if owner = auth.uid() and public.dm_is_participant(c) then return true; end if;
-  return exists (select 1 from public.messages x where x.conversation_id = c and x.sender_id = owner and x.deleted_at is null
+  return exists (select 1 from public.messages x where x.conversation_id = c and x.sender_id = owner and x.deleted_at is null and x.removed_at is null
                  and (x.media->>'path' = p_name or x.media->>'poster_path' = p_name) and public.dm_can_read(c, x.created_at));
 end $$;
 create or replace function public.dm_topic_ok(topic text) returns boolean
@@ -1303,7 +1440,7 @@ create or replace function public.messages_before_insert() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare k text; other uuid; ostate text; n bigint;
 begin
-  new.sender_id := auth.uid(); new.created_at := now(); new.edited_at := null; new.deleted_at := null;
+  new.sender_id := auth.uid(); new.created_at := now(); new.edited_at := null; new.deleted_at := null; new.removed_at := null;
   if new.kind = 'system' then
     if coalesce(current_setting('hybrd.dm_system', true), '') <> '1' then raise exception 'dm_system: not allowed' using errcode = 'P0001'; end if;
     return new;
@@ -1312,9 +1449,13 @@ begin
     raise exception 'dm_not_member: you are not in this chat' using errcode = 'P0001';
   end if;
   if exists (select 1 from public.social_bans b where b.user_id = new.sender_id) then raise exception 'banned' using errcode = 'P0001'; end if;
+  if public.acct_suspended(new.sender_id) then raise exception 'acct_suspended: your account is suspended' using errcode = 'P0001'; end if;
+  if public.acct_paused(new.sender_id) then raise exception 'acct_paused: resume your account to send messages' using errcode = 'P0001'; end if;
+  if public.acct_msg_restricted(new.sender_id) then raise exception 'acct_msg_restricted: sending messages is restricted on your account for now' using errcode = 'P0001'; end if;
   select c.kind into k from public.conversations c where c.id = new.conversation_id;
   if k = 'direct' then
     select m.user_id, m.state into other, ostate from public.conversation_members m where m.conversation_id = new.conversation_id and m.user_id <> new.sender_id limit 1;
+    if other is not null and public.acct_hidden(other) then raise exception 'dm_unavailable: you can''t message this account right now' using errcode = 'P0001'; end if;
     if other is not null and public.social_is_blocked(new.sender_id, other) then raise exception 'dm_blocked: you can''t message this account' using errcode = 'P0001'; end if;
     if other is not null and public.dm_minor_block(new.sender_id, other) then raise exception 'dm_minor: under-18s and adults can only chat while they are friends' using errcode = 'P0001'; end if;
     if ostate in ('request', 'declined') then
@@ -1360,7 +1501,9 @@ begin
   if old.deleted_at is not null then raise exception 'dm_deleted: this message was unsent' using errcode = 'P0001'; end if;
   new.conversation_id := old.conversation_id; new.sender_id := old.sender_id; new.kind := old.kind; new.created_at := old.created_at;
   new.reply_to := old.reply_to; new.forwarded := old.forwarded; new.meta := old.meta;
+  if coalesce(current_setting('hybrd.mod', true), '') <> '1' then new.removed_at := old.removed_at; end if;
   if new.deleted_at is not null then
+    if now() - old.created_at > interval '24 hours' then raise exception 'dm_unsend_window: messages can be unsent for 24 hours. Use Delete for me instead.' using errcode = 'P0001'; end if;
     new.deleted_at := now(); new.body := ''; new.media := null; new.workout := null; new.edited_at := old.edited_at;
     return new;
   end if;
@@ -1429,8 +1572,22 @@ language plpgsql security definer set search_path = '' as $$
 begin
   new.reporter_id := auth.uid(); new.status := 'open'; new.created_at := now(); new.reviewed_at := null; new.moderator_note := null;
   if not public.dm_is_participant(new.conversation_id) then raise exception 'dm_not_member: you are not in this chat' using errcode = 'P0001'; end if;
+  new.priority := public.report_priority(new.reason);
+  perform public.social_rate_check((select count(*) from public.message_reports r where r.reporter_id = new.reporter_id and r.created_at > now() - interval '1 hour'), 10, 'reports an hour');
   perform public.social_rate_check((select count(*) from public.message_reports r where r.reporter_id = new.reporter_id and r.created_at > now() - interval '1 day'), 30, 'reports per day');
-  if new.target_type = 'message' then
+  if exists (select 1 from public.message_reports r where r.reporter_id = new.reporter_id and r.target_type = new.target_type
+             and coalesce(r.message_id, r.conversation_id) = coalesce(new.message_id, new.conversation_id) and r.created_at > now() - interval '1 day') then
+    raise exception 'report_duplicate: you already reported this' using errcode = 'P0001';
+  end if;
+  if new.target_type = 'message' and coalesce(array_length(new.message_ids, 1), 0) > 0 then
+    -- several messages from the chat (up to 10), all attached as they are right now
+    if array_length(new.message_ids, 1) > 10 then raise exception 'report_too_many: report up to 10 messages at once' using errcode = 'P0001'; end if;
+    new.message_id := coalesce(new.message_id, new.message_ids[1]);
+    select x.sender_id into new.target_user_id from public.messages x where x.id = new.message_id and x.conversation_id = new.conversation_id;
+    select jsonb_build_object('messages', coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'sender_id', x.sender_id, 'body', x.body, 'kind', x.kind, 'media', x.media, 'workout', x.workout, 'created_at', x.created_at, 'edited_at', x.edited_at) order by x.created_at), '[]'::jsonb))
+      into new.snapshot from public.messages x where x.id = any(new.message_ids) and x.conversation_id = new.conversation_id and public.dm_can_read(x.conversation_id, x.created_at);
+    if new.target_user_id is null or jsonb_array_length(new.snapshot->'messages') = 0 then raise exception 'dm_not_found: message not found' using errcode = 'P0001'; end if;
+  elsif new.target_type = 'message' then
     select x.sender_id, jsonb_build_object('body', x.body, 'kind', x.kind, 'media', x.media, 'workout', x.workout, 'created_at', x.created_at, 'edited_at', x.edited_at)
       into new.target_user_id, new.snapshot from public.messages x where x.id = new.message_id and x.conversation_id = new.conversation_id;
     if new.snapshot is null then raise exception 'dm_not_found: message not found' using errcode = 'P0001'; end if;
@@ -1489,6 +1646,8 @@ declare me uuid := auth.uid(); k text; cid uuid; v text;
 begin
   if me is null or not public.social_is_member(me) then raise exception 'not_member' using errcode = 'P0001'; end if;
   if p_other = me then raise exception 'dm_self: that''s you' using errcode = 'P0001'; end if;
+  if public.acct_hidden(me) then raise exception 'acct_paused: resume your account to message people' using errcode = 'P0001'; end if;
+  if public.acct_hidden(p_other) then raise exception 'dm_unavailable: you can''t message this account right now' using errcode = 'P0001'; end if;
   k := least(me, p_other)::text || ':' || greatest(me, p_other)::text;
   select c.id into cid from public.conversations c where c.direct_key = k;
   if cid is not null then
@@ -1638,7 +1797,7 @@ language sql stable security definer set search_path = '' as $$
          case when m.state = 'declined' and m.user_id <> auth.uid() then 'request' else m.state end,
          m.joined_at,
          case when m.user_id = auth.uid() then m.last_read_at
-              when m.state = 'active' and public.dm_receipts(auth.uid()) and public.dm_receipts(m.user_id) then m.last_read_at end,
+              when m.state = 'active' and public.dm_receipts(auth.uid()) and public.dm_receipts(m.user_id) and not public.dm_is_restricted(m.user_id, auth.uid()) then m.last_read_at end,
          case when m.user_id = auth.uid() or m.state = 'active' then m.last_delivered_at end
   from public.conversation_members m
   where m.conversation_id = p_conv and public.dm_is_participant(p_conv) and m.state in ('active', 'request', 'declined')
@@ -1652,13 +1811,14 @@ create or replace function public.dm_inbox() returns table (
 language sql stable security definer set search_path = '' as $$
   select c.id, c.kind, c.title, c.created_by, c.created_at, c.last_message_at,
          me.role, me.state, me.last_read_at, me.muted_until, me.archived, me.pinned_at, me.cleared_at,
-         (select count(*) from public.messages x where x.conversation_id = c.id and x.sender_id is distinct from me.user_id and x.kind <> 'system' and x.deleted_at is null
+         (select count(*) from public.messages x where x.conversation_id = c.id and x.sender_id is distinct from me.user_id and x.kind <> 'system' and x.deleted_at is null and x.removed_at is null
             and x.created_at > greatest(coalesce(me.last_read_at, '-infinity'), coalesce(me.cleared_at, '-infinity'))
             and not exists (select 1 from public.message_hidden h where h.message_id = x.id and h.user_id = me.user_id)),
          (select count(*) from public.messages x where x.conversation_id = c.id and x.sender_id = me.user_id and x.kind <> 'system'),
          (select coalesce(jsonb_agg(to_jsonb(dm) order by dm.joined_at), '[]'::jsonb) from public.dm_members(c.id) dm),
          (select to_jsonb(l) from (select x.id, x.sender_id, x.kind, x.body, x.media, x.workout, x.meta, x.created_at, x.edited_at, x.deleted_at
             from public.messages x where x.conversation_id = c.id and x.created_at > coalesce(me.cleared_at, '-infinity')
+              and (x.removed_at is null or x.sender_id = me.user_id)
               and not exists (select 1 from public.message_hidden h where h.message_id = x.id and h.user_id = me.user_id)
             order by x.created_at desc limit 1) l)
   from public.conversation_members me join public.conversations c on c.id = me.conversation_id
@@ -1671,6 +1831,7 @@ create or replace function public.dm_presence(p_users uuid[]) returns table (use
 language sql stable security definer set search_path = '' as $$
   select s.user_id, s.last_active_at from public.dm_settings s
   where s.user_id = any(p_users) and s.show_activity and public.dm_activity(auth.uid()) and not public.social_is_blocked(auth.uid(), s.user_id)
+    and not public.dm_is_restricted(s.user_id, auth.uid()) and not public.acct_hidden(s.user_id)
     and exists (select 1 from public.conversation_members a join public.conversation_members b on a.conversation_id = b.conversation_id
                 where a.user_id = auth.uid() and b.user_id = s.user_id and a.state = 'active' and b.state = 'active')
 $$;
@@ -1705,7 +1866,8 @@ create policy "conversation_members_select_own" on public.conversation_members f
 create policy "conversation_members_update_own" on public.conversation_members for update to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
-create policy "messages_select_member" on public.messages for select to authenticated using (public.dm_can_read(conversation_id, created_at));
+create policy "messages_select_member" on public.messages for select to authenticated
+  using (public.dm_can_read(conversation_id, created_at) and (removed_at is null or sender_id = (select auth.uid())));
 create policy "messages_insert_member" on public.messages for insert to authenticated
   with check (sender_id = (select auth.uid()) and kind <> 'system' and public.dm_member_state(conversation_id, (select auth.uid())) = 'active');
 create policy "messages_update_sender" on public.messages for update to authenticated
@@ -1873,7 +2035,8 @@ language plpgsql stable security definer set search_path = '' as $$
 declare fr boolean; who text;
 begin
   if me = other then return 'call_self'; end if;
-  if not public.social_is_member(other) or public.social_is_blocked(me, other) then return 'call_unavailable'; end if;
+  if not public.social_is_member(other) or public.social_is_blocked(me, other) or public.acct_hidden(other) or public.dm_is_restricted(other, me) then return 'call_unavailable'; end if;
+  if public.acct_hidden(me) or public.acct_msg_restricted(me) then return 'call_restricted'; end if;
   fr := public.social_are_friends(me, other);
   if not fr and (public.dm_is_minor(me) or public.dm_is_minor(other)) then return 'call_minor'; end if;
   who := public.call_who(other);
@@ -2203,6 +2366,7 @@ alter table public.shared_activities drop constraint if exists shared_activities
 alter table public.shared_activities add constraint shared_activities_img_chk check (image_path is null or image_path = user_id::text || '/' || id::text || '.png');
 create unique index if not exists shared_activities_workout_key on public.shared_activities (user_id, workout_id);
 create index if not exists shared_activities_user_idx on public.shared_activities (user_id, created_at desc);
+alter table public.shared_activities add column if not exists removed_at timestamptz;   -- moderator removal (v1.6)
 alter table public.shared_activities enable row level security;
 revoke all on public.shared_activities from anon;
 grant select, insert, update, delete on public.shared_activities to authenticated;
@@ -2215,6 +2379,7 @@ language sql stable security definer set search_path = '' as $$
     when owner = auth.uid() then true
     when auth.uid() is not null and public.social_is_blocked(auth.uid(), owner) then false
     when exists (select 1 from public.social_bans b where b.user_id = owner) then false
+    when public.acct_hidden(owner) then false
     when vis = 'public' then not public.dm_is_minor(owner)
     when vis = 'friends' then auth.uid() is not null and public.social_are_friends(auth.uid(), owner)
     else false
@@ -2222,14 +2387,15 @@ language sql stable security definer set search_path = '' as $$
 $$;
 create or replace function public.activity_can_view_object(p_name text) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists (select 1 from public.shared_activities a where a.image_path = p_name and public.activity_can_view(a.user_id, a.visibility))
+  select exists (select 1 from public.shared_activities a where a.image_path = p_name and a.removed_at is null and public.activity_can_view(a.user_id, a.visibility))
 $$;
 
 drop policy if exists "shared_activities_select" on public.shared_activities;
 drop policy if exists "shared_activities_insert" on public.shared_activities;
 drop policy if exists "shared_activities_update" on public.shared_activities;
 drop policy if exists "shared_activities_delete" on public.shared_activities;
-create policy "shared_activities_select" on public.shared_activities for select to authenticated using (public.activity_can_view(user_id, visibility));
+create policy "shared_activities_select" on public.shared_activities for select to authenticated
+  using (public.activity_can_view(user_id, visibility) and (removed_at is null or user_id = (select auth.uid())));
 create policy "shared_activities_insert" on public.shared_activities for insert to authenticated with check (user_id = (select auth.uid()));
 create policy "shared_activities_update" on public.shared_activities for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy "shared_activities_delete" on public.shared_activities for delete to authenticated using (user_id = (select auth.uid()));
@@ -2242,9 +2408,13 @@ begin
   if tg_op = 'INSERT' then
     if new.user_id is distinct from auth.uid() then raise exception 'not_allowed' using errcode = 'P0001'; end if;
     perform public.social_rate_check((select count(*) from public.shared_activities a where a.user_id = new.user_id and a.created_at > now() - interval '1 day'), 100, 'shared activities per day');
-    new.created_at := now();
+    new.created_at := now(); new.removed_at := null;
   else
     new.user_id := old.user_id; new.created_at := old.created_at; new.id := old.id;
+    if coalesce(current_setting('hybrd.mod', true), '') <> '1' then new.removed_at := old.removed_at; end if;
+  end if;
+  if coalesce(current_setting('hybrd.mod', true), '') <> '1' and (public.acct_paused(new.user_id) or public.acct_suspended(new.user_id)) then
+    raise exception 'acct_paused: resume your account to share activities' using errcode = 'P0001';
   end if;
   if not public.social_is_member(new.user_id) then raise exception 'not_member' using errcode = 'P0001'; end if;
   if exists (select 1 from public.social_bans b where b.user_id = new.user_id) then raise exception 'banned' using errcode = 'P0001'; end if;
@@ -2278,7 +2448,7 @@ language sql stable security definer set search_path = '' as $$
     'author', case when p.id is null then null else jsonb_build_object('display_name', p.display_name,
       'username', case when p.privacy = 'public' or a.user_id = auth.uid() or (auth.uid() is not null and public.social_are_friends(auth.uid(), a.user_id)) then p.username end) end)
   from public.shared_activities a left join public.social_profiles p on p.id = a.user_id
-  where a.id = p_id and public.activity_can_view(a.user_id, a.visibility)
+  where a.id = p_id and public.activity_can_view(a.user_id, a.visibility) and (a.removed_at is null or a.user_id = auth.uid())
 $$;
 revoke execute on function public.activity_public(uuid) from public;
 grant execute on function public.activity_public(uuid) to anon, authenticated;
@@ -2306,3 +2476,344 @@ create policy "activity_images_delete_own" on storage.objects for delete to auth
 -- Check: shared_activities should show rowsecurity = true, and the bucket public = false
 select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename = 'shared_activities';
 select id, public from storage.buckets where id = 'activity-images';
+
+-- =====================================================================================================================
+-- SAFETY (v1.6, added 26 Nov 2026 — safe to re-run; SETUP.md §15): report people and content, restrict, take time off,
+-- delete your account with 30 days to reopen, moderator decisions, appeals and the moderation queue.
+-- Tables account_state, moderation_actions, appeals (top of the social section) and dm_restricts (messages section)
+-- are created earlier because the visibility helpers use them.
+--   * Nobody can make themselves a moderator: profiles.is_moderator is frozen for app users (trigger below) and every
+--     moderator RPC checks it on the server. The /moderation route in the app is only a view of these RPCs.
+--   * Reporters stay anonymous: the reported person never sees reports, and decisions they see carry no reporter.
+--   * Every moderator action is written to moderation_actions (audit log; moderators can read it, nobody can edit it).
+-- =====================================================================================================================
+
+-- ---------- guards ----------
+-- profiles.is_moderator can only be changed from the SQL editor / service role, never by the app.
+create or replace function public.profiles_protect_moderator() returns trigger
+language plpgsql as $$
+begin
+  if current_user in ('authenticated', 'anon') then
+    if tg_op = 'INSERT' then new.is_moderator := false; else new.is_moderator := old.is_moderator; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists profiles_protect_moderator on public.profiles;
+create trigger profiles_protect_moderator before insert or update on public.profiles for each row execute function public.profiles_protect_moderator();
+
+-- Paused or suspended accounts can't publish (posts, stories, comments). Removal flags can't be set by the author.
+create or replace function public.safety_publish_guard() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if public.acct_suspended(new.author_id) then raise exception 'acct_suspended: your account is suspended' using errcode = 'P0001'; end if;
+  if public.acct_paused(new.author_id) then raise exception 'acct_paused: resume your account to post' using errcode = 'P0001'; end if;
+  new.removed_at := null;
+  return new;
+end $$;
+drop trigger if exists safety_publish_guard on public.posts;
+create trigger safety_publish_guard before insert on public.posts for each row execute function public.safety_publish_guard();
+drop trigger if exists safety_publish_guard on public.stories;
+create trigger safety_publish_guard before insert on public.stories for each row execute function public.safety_publish_guard();
+drop trigger if exists safety_publish_guard on public.comments;
+create trigger safety_publish_guard before insert on public.comments for each row execute function public.safety_publish_guard();
+
+-- Notifications stop while either side is paused, deactivated or suspended.
+create or replace function public.notifications_safety() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if public.acct_hidden(new.user_id) or public.acct_hidden(new.actor_id) then return null; end if;
+  return new;
+end $$;
+drop trigger if exists notifications_safety on public.notifications;
+create trigger notifications_safety before insert on public.notifications for each row execute function public.notifications_safety();
+
+-- ---------- Row Level Security ----------
+alter table public.account_state      enable row level security;
+alter table public.moderation_actions enable row level security;
+alter table public.appeals            enable row level security;
+alter table public.dm_restricts       enable row level security;
+do $$
+declare r record;
+begin
+  for r in select policyname, tablename from pg_policies where schemaname = 'public' and tablename in ('account_state', 'moderation_actions', 'appeals', 'dm_restricts') loop
+    execute format('drop policy if exists %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end $$;
+-- account_state: read your own row; changes only through account_* RPCs
+create policy "account_state_select_own" on public.account_state for select to authenticated using (user_id = (select auth.uid()));
+-- moderation_actions: moderators only (people see their own decisions through account_status())
+create policy "moderation_actions_select_mod" on public.moderation_actions for select to authenticated using (public.is_moderator());
+-- appeals: your own, or moderators; created / decided only through RPCs
+create policy "appeals_select_own_or_mod" on public.appeals for select to authenticated using (user_id = (select auth.uid()) or public.is_moderator());
+-- restricts: your own list
+create policy "dm_restricts_select_own" on public.dm_restricts for select to authenticated using (user_id = (select auth.uid()));
+create policy "dm_restricts_insert_own" on public.dm_restricts for insert to authenticated
+  with check (user_id = (select auth.uid()) and public.social_is_member((select auth.uid())) and public.social_is_member(restricted_id));
+create policy "dm_restricts_delete_own" on public.dm_restricts for delete to authenticated using (user_id = (select auth.uid()));
+-- moderators can read every report (the queue); reporters keep reading their own
+drop policy if exists "reports_select_mod" on public.reports;
+create policy "reports_select_mod" on public.reports for select to authenticated using (public.is_moderator());
+drop policy if exists "message_reports_select_mod" on public.message_reports;
+create policy "message_reports_select_mod" on public.message_reports for select to authenticated using (public.is_moderator());
+
+revoke all on public.account_state, public.moderation_actions, public.appeals, public.dm_restricts from anon;
+revoke all on public.account_state, public.moderation_actions, public.appeals, public.dm_restricts from authenticated;
+grant select on public.account_state, public.moderation_actions, public.appeals to authenticated;
+grant select, insert, delete on public.dm_restricts to authenticated;
+
+-- ---------- reporter: my reports ----------
+create or replace function public.safety_my_reports() returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(x order by x->>'created_at' desc), '[]'::jsonb) from (
+    select jsonb_build_object('id', r.id, 'store', 'social', 'target_type', r.target_type, 'target_id', r.target_id, 'reason', r.reason, 'details', r.details,
+             'status', r.status, 'created_at', r.created_at, 'reviewed_at', r.reviewed_at,
+             'target_name', (select '@' || p.username from public.social_profiles p where p.id = r.target_user_id)) x
+      from public.reports r where r.reporter_id = auth.uid()
+    union all
+    select jsonb_build_object('id', m.id, 'store', 'messages', 'target_type', m.target_type, 'target_id', coalesce(m.message_id, m.conversation_id), 'reason', m.reason, 'details', m.details,
+             'status', m.status, 'created_at', m.created_at, 'reviewed_at', m.reviewed_at,
+             'target_name', (select '@' || p.username from public.social_profiles p where p.id = m.target_user_id)) x
+      from public.message_reports m where m.reporter_id = auth.uid()
+    order by 1 limit 200
+  ) q
+$$;
+
+-- ---------- account: status, time off, deletion ----------
+-- One call for Settings › Safety › Account status and the welcome-back / deletion screens. Expired pauses are cleared here.
+create or replace function public.account_status() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); st public.account_state;
+begin
+  if me is null then raise exception 'not_signed_in' using errcode = 'P0001'; end if;
+  update public.account_state set paused_at = null, pause_until = null, updated_at = now()
+   where user_id = me and paused_at is not null and pause_until is not null and pause_until <= now();
+  select * into st from public.account_state where user_id = me;
+  return jsonb_build_object(
+    'paused_at', st.paused_at, 'pause_until', st.pause_until, 'deletion_requested_at', st.deletion_requested_at, 'purge_after', st.purge_after,
+    'is_moderator', public.is_moderator(), 'now', now(),
+    'decisions', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', a.id, 'kind', a.action, 'guideline', a.guideline, 'note', a.note, 'content_type', a.content_type, 'content_id', a.content_id,
+        'content_preview', a.content_preview, 'created_at', a.created_at, 'ends_at', a.ends_at, 'reversed_at', a.reversed_at,
+        'appeal', (select jsonb_build_object('id', p.id, 'body', p.body, 'status', p.status, 'created_at', p.created_at, 'decided_at', p.decided_at, 'note', p.decision_note)
+                     from public.appeals p where p.decision_id = a.id)) order by a.created_at desc)
+      from public.moderation_actions a where a.target_user_id = me and a.action in ('remove_content', 'restrict_messaging', 'suspend')), '[]'::jsonb));
+end $$;
+
+create or replace function public.account_pause(p_until timestamptz default null) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'not_signed_in' using errcode = 'P0001'; end if;
+  if p_until is not null and (p_until <= now() or p_until > now() + interval '366 days') then raise exception 'pause_date: pick a date within the next year' using errcode = 'P0001'; end if;
+  if exists (select 1 from public.account_state s where s.user_id = me and s.deletion_requested_at is not null) then raise exception 'deletion_pending: reopen your account first' using errcode = 'P0001'; end if;
+  insert into public.account_state (user_id, paused_at, pause_until, updated_at) values (me, now(), p_until, now())
+  on conflict (user_id) do update set paused_at = now(), pause_until = p_until, updated_at = now();
+end $$;
+
+create or replace function public.account_resume() returns void
+language sql security definer set search_path = '' as $$
+  update public.account_state set paused_at = null, pause_until = null, updated_at = now() where user_id = auth.uid();
+$$;
+
+-- Deletion needs a fresh sign-in (the app asks for the password again right before calling this).
+create or replace function public.account_request_deletion(p_reason text default null) returns timestamptz
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); signed timestamptz; purge timestamptz := now() + interval '30 days';
+begin
+  if me is null then raise exception 'not_signed_in' using errcode = 'P0001'; end if;
+  select u.last_sign_in_at into signed from auth.users u where u.id = me;
+  if signed is null or signed < now() - interval '10 minutes' then raise exception 'reauth_required: enter your password again' using errcode = 'P0001'; end if;
+  insert into public.account_state (user_id, deletion_requested_at, purge_after, deletion_reason, paused_at, pause_until, updated_at)
+  values (me, now(), purge, left(nullif(btrim(coalesce(p_reason, '')), ''), 200), null, null, now())
+  on conflict (user_id) do update set deletion_requested_at = now(), purge_after = purge, deletion_reason = excluded.deletion_reason, paused_at = null, pause_until = null, updated_at = now();
+  return purge;
+end $$;
+
+create or replace function public.account_reopen() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then raise exception 'not_signed_in' using errcode = 'P0001'; end if;
+  update public.account_state set deletion_requested_at = null, purge_after = null, deletion_reason = null, updated_at = now()
+   where user_id = auth.uid() and deletion_requested_at is not null and purge_after > now();
+end $$;
+
+-- ---------- appeals ----------
+create or replace function public.appeal_submit(p_decision uuid, p_body text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); d public.moderation_actions; aid uuid;
+begin
+  select * into d from public.moderation_actions a where a.id = p_decision and a.target_user_id = me and a.action in ('remove_content', 'restrict_messaging', 'suspend');
+  if d.id is null then raise exception 'appeal_not_found' using errcode = 'P0001'; end if;
+  if d.reversed_at is not null then raise exception 'appeal_reversed: already reversed' using errcode = 'P0001'; end if;
+  if d.created_at < now() - interval '30 days' then raise exception 'appeal_window: appeals must be sent within 30 days' using errcode = 'P0001'; end if;
+  if exists (select 1 from public.appeals p where p.decision_id = d.id) then raise exception 'appeal_once: each decision can be appealed once' using errcode = 'P0001'; end if;
+  if char_length(btrim(coalesce(p_body, ''))) not between 10 and 1000 then raise exception 'appeal_text: write 10 to 1,000 characters' using errcode = 'P0001'; end if;
+  perform public.social_rate_check((select count(*) from public.appeals p where p.user_id = me and p.created_at > now() - interval '1 day'), 10, 'appeals per day');
+  insert into public.appeals (decision_id, user_id, body) values (d.id, me, btrim(p_body)) returning id into aid;
+  return aid;
+end $$;
+
+-- ---------- moderation (moderators only; every action is logged) ----------
+create or replace function public.mod_require() returns uuid
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or not public.is_moderator() then raise exception 'not_moderator: moderators only' using errcode = 'P0001'; end if;
+  return auth.uid();
+end $$;
+
+create or replace function public.mod_queue() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  perform public.mod_require();
+  return jsonb_build_object(
+    'reports', coalesce((select jsonb_agg(q order by (q->>'priority')::int, q->>'created_at') from (
+      select jsonb_build_object('id', r.id, 'store', 'social', 'target_type', r.target_type, 'target_id', r.target_id, 'target_user_id', r.target_user_id,
+               'target_name', (select p.display_name || ' @' || p.username from public.social_profiles p where p.id = r.target_user_id),
+               'reason', r.reason, 'details', r.details, 'snapshot', r.snapshot, 'status', r.status, 'priority', r.priority, 'created_at', r.created_at,
+               'report_count', (select count(*) from public.reports x where x.target_type = r.target_type and x.target_id = r.target_id and x.status in ('open', 'reviewing'))) q
+        from public.reports r where r.status in ('open', 'reviewing')
+      union all
+      select jsonb_build_object('id', m.id, 'store', 'messages', 'target_type', m.target_type, 'target_id', coalesce(m.message_id, m.conversation_id), 'conversation_id', m.conversation_id,
+               'target_user_id', m.target_user_id, 'target_name', (select p.display_name || ' @' || p.username from public.social_profiles p where p.id = m.target_user_id),
+               'reason', m.reason, 'details', m.details, 'snapshot', m.snapshot, 'status', m.status, 'priority', m.priority, 'created_at', m.created_at, 'report_count', 1) q
+        from public.message_reports m where m.status in ('open', 'reviewing')
+      limit 300) z), '[]'::jsonb),
+    'appeals', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'body', p.body, 'status', p.status, 'created_at', p.created_at, 'user_id', p.user_id,
+               'user_name', (select sp.display_name || ' @' || sp.username from public.social_profiles sp where sp.id = p.user_id),
+               'decision', jsonb_build_object('id', a.id, 'kind', a.action, 'guideline', a.guideline, 'note', a.note, 'content_type', a.content_type, 'content_id', a.content_id,
+                 'content_preview', a.content_preview, 'created_at', a.created_at, 'ends_at', a.ends_at, 'reversed_at', a.reversed_at)) order by p.created_at)
+      from public.appeals p join public.moderation_actions a on a.id = p.decision_id where p.status in ('submitted', 'under_review')), '[]'::jsonb));
+end $$;
+
+-- Act on a report: review | dismiss | remove_content | restrict_messaging | suspend. Returns the moderation_actions id.
+create or replace function public.mod_act(p_store text, p_report uuid, p_action text, p_guideline text default null, p_note text default null,
+                                          p_days integer default null, p_internal text default null) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := public.mod_require(); tt text; tid uuid; conv uuid; target uuid; ctype text; cid uuid; preview text; ends timestamptz; aid uuid; newstatus text;
+begin
+  if p_store = 'social' then
+    select r.target_type, r.target_id, r.target_user_id into tt, tid, target from public.reports r where r.id = p_report;
+  elsif p_store = 'messages' then
+    select r.target_type, coalesce(r.message_id, r.conversation_id), r.conversation_id, r.target_user_id into tt, tid, conv, target from public.message_reports r where r.id = p_report;
+  else raise exception 'mod_invalid: store' using errcode = 'P0001'; end if;
+  if tt is null then raise exception 'mod_not_found: report not found' using errcode = 'P0001'; end if;
+  if target = me and p_action in ('remove_content', 'restrict_messaging', 'suspend') then raise exception 'mod_self: another moderator must handle reports about you' using errcode = 'P0001'; end if;
+  if p_action in ('remove_content', 'restrict_messaging', 'suspend') and p_guideline is null then raise exception 'mod_guideline: choose the guideline that was broken' using errcode = 'P0001'; end if;
+  if p_action in ('restrict_messaging', 'suspend') then
+    if target is null then raise exception 'mod_invalid: no account to act on' using errcode = 'P0001'; end if;
+    if coalesce(p_days, 0) not between 1 and 365 then raise exception 'mod_days: choose 1 to 365 days' using errcode = 'P0001'; end if;
+    ends := now() + make_interval(days => p_days);
+  end if;
+  perform set_config('hybrd.mod', '1', true);
+  if p_action = 'remove_content' then
+    if p_store = 'social' and tt in ('post', 'media') then
+      ctype := 'post'; cid := tid; update public.posts set removed_at = now() where id = tid returning left(body, 140) into preview;
+    elsif p_store = 'social' and tt = 'comment' then
+      ctype := 'comment'; cid := tid; update public.comments set removed_at = now() where id = tid returning left(body, 140) into preview;
+    elsif p_store = 'social' and tt = 'story' then
+      ctype := 'story'; cid := tid; update public.stories set removed_at = now() where id = tid returning left(coalesce(body, 'Photo story'), 140) into preview;
+    elsif p_store = 'social' and tt = 'activity' then
+      ctype := 'activity'; cid := tid; update public.shared_activities set removed_at = now() where id = tid returning left(coalesce(data->>'title', 'Shared activity'), 140) into preview;
+    elsif p_store = 'messages' and tt = 'message' then
+      ctype := 'message'; cid := tid; update public.messages set removed_at = now() where id = tid and deleted_at is null returning left(case when body = '' then kind else body end, 140) into preview;
+    else
+      raise exception 'mod_invalid: this report is about an account or a whole chat — restrict messaging or suspend instead' using errcode = 'P0001';
+    end if;
+    if not found then raise exception 'mod_gone: the content was already deleted' using errcode = 'P0001'; end if;
+  end if;
+  perform set_config('hybrd.mod', '', true);
+  newstatus := case p_action when 'review' then 'reviewing' when 'dismiss' then 'dismissed' else 'actioned' end;
+  insert into public.moderation_actions (moderator_id, target_user_id, action, content_type, content_id, content_preview, guideline, note, internal_note, report_store, report_id, ends_at)
+  values (me, target, p_action, ctype, cid, preview, p_guideline, left(nullif(btrim(coalesce(p_note, '')), ''), 500), left(nullif(btrim(coalesce(p_internal, '')), ''), 1000), p_store, p_report, ends)
+  returning id into aid;
+  -- the report and every other open report on the same thing move together
+  if p_store = 'social' then
+    update public.reports set status = newstatus, reviewed_at = case when newstatus = 'reviewing' then null else now() end
+     where (id = p_report or (target_type = tt and target_id = tid and status in ('open', 'reviewing') and p_action <> 'review'));
+  else
+    update public.message_reports set status = newstatus, reviewed_at = case when newstatus = 'reviewing' then null else now() end
+     where (id = p_report or (coalesce(message_id, conversation_id) = tid and target_type = tt and status in ('open', 'reviewing') and p_action <> 'review'));
+  end if;
+  return aid;
+end $$;
+
+-- Decide an appeal: under_review | upheld | reversed. Reversed = the decision is undone (content restored, restriction or suspension lifted).
+create or replace function public.mod_decide_appeal(p_appeal uuid, p_status text, p_note text default null) returns void
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := public.mod_require(); ap public.appeals; d public.moderation_actions;
+begin
+  select * into ap from public.appeals where id = p_appeal;
+  if ap.id is null then raise exception 'appeal_not_found' using errcode = 'P0001'; end if;
+  if ap.status in ('upheld', 'reversed') then raise exception 'appeal_decided: this appeal is already decided' using errcode = 'P0001'; end if;
+  if p_status not in ('under_review', 'upheld', 'reversed') then raise exception 'mod_invalid: status' using errcode = 'P0001'; end if;
+  if ap.user_id = me then raise exception 'mod_self: another moderator must decide your appeal' using errcode = 'P0001'; end if;
+  select * into d from public.moderation_actions where id = ap.decision_id;
+  update public.appeals set status = p_status, decided_at = case when p_status = 'under_review' then null else now() end,
+         decided_by = me, decision_note = left(nullif(btrim(coalesce(p_note, '')), ''), 500) where id = ap.id;
+  insert into public.moderation_actions (moderator_id, target_user_id, action, decision_id, appeal_id, note, content_type, content_id)
+  values (me, ap.user_id, case p_status when 'under_review' then 'appeal_reviewing' when 'upheld' then 'appeal_upheld' else 'appeal_reversed' end, d.id, ap.id, left(nullif(btrim(coalesce(p_note, '')), ''), 500), d.content_type, d.content_id);
+  if p_status = 'reversed' then
+    update public.moderation_actions set reversed_at = now() where id = d.id and reversed_at is null;
+    if d.action = 'remove_content' then
+      perform set_config('hybrd.mod', '1', true);
+      if d.content_type = 'post' then update public.posts set removed_at = null where id = d.content_id;
+      elsif d.content_type = 'comment' then update public.comments set removed_at = null where id = d.content_id;
+      elsif d.content_type = 'story' then update public.stories set removed_at = null where id = d.content_id;
+      elsif d.content_type = 'activity' then update public.shared_activities set removed_at = null where id = d.content_id;
+      elsif d.content_type = 'message' then update public.messages set removed_at = null where id = d.content_id;
+      end if;
+      perform set_config('hybrd.mod', '', true);
+      insert into public.moderation_actions (moderator_id, target_user_id, action, decision_id, appeal_id, content_type, content_id)
+      values (me, ap.user_id, 'restore_content', d.id, ap.id, d.content_type, d.content_id);
+    end if;
+  end if;
+end $$;
+
+-- ---------- scheduled jobs (service role / pg_cron only) ----------
+-- Clears expired pauses (they already stop hiding the account the moment pause_until passes; this tidies the rows).
+create or replace function public.account_housekeeping() returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  update public.account_state set paused_at = null, pause_until = null, updated_at = now() where paused_at is not null and pause_until is not null and pause_until <= now();
+  get diagnostics n = row_count;
+  return n;
+end $$;
+-- Accounts whose 30 days are up. The purge-accounts Edge Function deletes their storage files, then the auth user
+-- (which cascades to every table: profile, logs, social profile, posts, stories, comments, chats membership …).
+create or replace function public.account_purge_candidates(p_limit integer default 50) returns table (user_id uuid, purge_after timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select s.user_id, s.purge_after from public.account_state s where s.purge_after is not null and s.purge_after <= now() order by s.purge_after limit greatest(1, least(p_limit, 500))
+$$;
+-- Files in the message-media bucket sent by the account (they live under <conversation>/<sender>/…).
+create or replace function public.account_purge_message_media(p_user uuid) returns setof text
+language sql stable security definer set search_path = '' as $$
+  select distinct p from public.messages x, lateral (values (x.media->>'path'), (x.media->>'poster_path')) v(p)
+   where x.sender_id = p_user and p is not null
+$$;
+-- Last step for one account (after its files are gone): delete the messages it sent, then the auth user.
+create or replace function public.account_purge_finish(p_user uuid) returns boolean
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not exists (select 1 from public.account_state s where s.user_id = p_user and s.purge_after <= now()) then return false; end if;
+  delete from public.messages where sender_id = p_user;
+  delete from auth.users where id = p_user;
+  return true;
+end $$;
+
+-- ---------- function access ----------
+-- acct_hidden() is used inside RLS policies, so app users may call it (it only says "hidden or not", which an invisible
+-- profile already shows). Everything that would reveal more — paused vs suspended, or whether someone restricted you — is not callable.
+revoke execute on function public.acct_suspended(uuid), public.acct_msg_restricted(uuid), public.acct_paused(uuid),
+  public.dm_is_restricted(uuid, uuid), public.mod_require(), public.account_housekeeping(), public.account_purge_candidates(integer),
+  public.account_purge_message_media(uuid), public.account_purge_finish(uuid), public.safety_publish_guard(), public.notifications_safety() from public, anon, authenticated;
+revoke execute on function public.is_moderator(), public.safety_my_reports(), public.account_status(), public.account_pause(timestamptz), public.account_resume(),
+  public.account_request_deletion(text), public.account_reopen(), public.appeal_submit(uuid, text), public.mod_queue(),
+  public.mod_act(text, uuid, text, text, text, integer, text), public.mod_decide_appeal(uuid, text, text) from public, anon;
+grant execute on function public.is_moderator(), public.safety_my_reports(), public.account_status(), public.account_pause(timestamptz), public.account_resume(),
+  public.account_request_deletion(text), public.account_reopen(), public.appeal_submit(uuid, text), public.mod_queue(),
+  public.mod_act(text, uuid, text, text, text, integer, text), public.mod_decide_appeal(uuid, text, text) to authenticated;
+grant execute on function public.account_housekeeping(), public.account_purge_candidates(integer), public.account_purge_message_media(uuid), public.account_purge_finish(uuid) to service_role;
+
+-- Check: the safety tables should show rowsecurity = true
+select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in ('account_state', 'moderation_actions', 'appeals', 'dm_restricts');

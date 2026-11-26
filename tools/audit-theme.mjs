@@ -8,7 +8,7 @@ const OUT = process.argv[2] || '/tmp/sweep';
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const problems = [], notes = [];
-const ROUTES = ['/', '/score', '/coach', '/train', '/train/log', '/train/ultra', '/record', '/routes', '/timers', '/fuel', '/fuel/add', '/fuel/calculator', '/fuel/weight-loss', '/fuel/weight-loss/setup', '/fuel/fasting', '/fuel/sleep', '/mind', '/mind/help', '/burn', '/progress', '/me', '/me/gallery', '/me/import', '/social', '/social/friends', '/social/new', '/social/notifications', '/social/profile', '/messages', '/settings', '/settings/account', '/settings/profile', '/settings/privacy', '/settings/units', '/settings/recording', '/settings/notifications', '/settings/goals', '/settings/devices', '/settings/messages', '/settings/appearance', '/settings/data', '/settings/help', '/settings/about', '/a?id=8d3c1a52-2f4e-4c36-9a77-0b1e5c2d9f10', '/sign-in'];
+const ROUTES = ['/', '/score', '/coach', '/train', '/train/log', '/train/ultra', '/record', '/routes', '/timers', '/fuel', '/fuel/add', '/fuel/calculator', '/fuel/weight-loss', '/fuel/weight-loss/setup', '/fuel/fasting', '/fuel/sleep', '/mind', '/mind/help', '/burn', '/progress', '/me', '/me/gallery', '/me/import', '/social', '/social/friends', '/social/new', '/social/notifications', '/social/profile', '/messages', '/settings', '/settings/account', '/settings/profile', '/settings/privacy', '/settings/units', '/settings/recording', '/settings/notifications', '/settings/goals', '/settings/devices', '/settings/messages', '/settings/appearance', '/settings/data', '/settings/help', '/settings/about', '/settings/safety', '/safety/guidelines', '/safety/reporting', '/safety/time-off', '/safety/delete', '/moderation', '/a?id=8d3c1a52-2f4e-4c36-9a77-0b1e5c2d9f10', '/sign-in'];
 const only = process.env.ROUTES ? process.env.ROUTES.split(',') : null;
 
 const AUDIT = () => {
@@ -23,7 +23,8 @@ const AUDIT = () => {
     if (!node.nodeValue.trim()) continue;
     const el = node.parentElement; if (!el || ['SCRIPT', 'STYLE', 'OPTION'].includes(el.tagName)) continue;
     const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
-    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
+    const cs = getComputedStyle(el); if (el.closest('button:disabled, [aria-disabled="true"]')) continue; // inactive controls are exempt (WCAG 1.4.3)
+    if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
     if (el.closest('.leaflet-container, .maplibregl-map, [aria-hidden="true"], .recmap, .call-screen, .s-story, .gv, .sample-tag, svg')) continue;
     // background: walk up, compositing translucent layers
     let layers = [], p = el, unknown = false;

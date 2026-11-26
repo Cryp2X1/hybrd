@@ -32,6 +32,7 @@ const Devices = lazy(() => import('./Devices'));
 const DataPage = lazy(() => import('./DataPage'));
 const Help = lazy(() => import('./Help'));
 const MessageSettings = lazy(() => import('./Messages').then((m) => ({ default: m.MessageSettings })));
+const SafetySettings = lazy(() => import('./Safety').then((m) => ({ default: m.SafetySettings })));
 
 export const APP_VERSION = '1.4.0';
 
@@ -106,7 +107,7 @@ export function SettingsHome() {
           <h2>Settings</h2>
           <p className="muted">Pick a section on the left, or search for any setting.</p>
           <div className="set-quick">
-            <Link to="/settings/privacy" className="set-qc"><Icon name="shield" /><b>Privacy & safety</b><span className="muted small">Hide your start & end, privacy zones</span></Link>
+            <Link to="/settings/privacy" className="set-qc"><Icon name="shield" /><b>Privacy</b><span className="muted small">Hide your start & end, privacy zones</span></Link>
             <Link to="/settings/appearance" className="set-qc" data-testid="set-qc-appearance"><Icon name="sun" /><b>Appearance</b><span className="muted small">Light, Dark or System</span></Link>
             <Link to="/settings/units" className="set-qc"><Icon name="ruler" /><b>Units</b><span className="muted small">mi / km, lb / kg</span></Link>
             <Link to="/settings/devices" className="set-qc"><Icon name="watch" /><b>Devices</b><span className="muted small">Heart rate, Strava, music</span></Link>
@@ -396,7 +397,7 @@ function HelpSettings() {
         <Card>
           <div className="card-head"><h3>Legal & sources</h3></div>
           <Link className="srow plain" to="/fuel?tab=sources"><span className="set-ic dim"><Icon name="book" size={18} /></span><span className="set-t"><b>Sources</b><span>Where every number comes from</span></span><Icon name="chevron" size={16} /></Link>
-          <Link className="srow plain" to="/social/rules"><span className="set-ic dim"><Icon name="flag" size={18} /></span><span className="set-t"><b>Community rules</b><span>What’s allowed in Friends & Stories and Messages</span></span><Icon name="chevron" size={16} /></Link>
+          <Link className="srow plain" to="/safety/guidelines"><span className="set-ic dim"><Icon name="flag" size={18} /></span><span className="set-t"><b>Community Guidelines</b><span>What’s allowed in Friends & Stories and Messages</span></span><Icon name="chevron" size={16} /></Link>
           <Link className="srow plain" to="/mind/help"><span className="set-ic dim"><Icon name="phone" size={18} /></span><span className="set-t"><b>Get help now</b><span>988 call or text · 911 · helplines worldwide</span></span><Icon name="chevron" size={16} /></Link>
           <p className="muted small" style={{ marginBottom: 0 }}>Not medical advice. HYBRD’s numbers are estimates from public research.</p>
         </Card>
@@ -448,6 +449,7 @@ const BODY: Record<string, () => ReactNode> = {
   account: () => <Account />,
   profile: () => <ProfileSettings />,
   privacy: () => <PrivacySettings />,
+  safety: () => <SafetySettings />,
   units: () => <UnitsSettings />,
   recording: () => <RecordingSettings />,
   notifications: () => <SoundSettings />,

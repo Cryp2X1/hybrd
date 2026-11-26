@@ -10,12 +10,12 @@ const check = (name: string, cond: boolean, detail?: unknown) => { n++; if (!con
 const src = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const settings = src('src/pages/Settings.tsx'), app = src('src/App.tsx'), me = src('src/pages/Me.tsx'), rec = src('src/pages/Record.tsx'), post = src('tools/postbuild.mjs');
 const anchorsIn = (code: string) => new Set([...code.matchAll(/\bid="([a-z-]+)"/g)].map((m) => m[1]));
-const anchors = new Set([...anchorsIn(settings), ...anchorsIn(src('src/pages/Devices.tsx')), ...anchorsIn(src('src/pages/Messages.tsx'))]);
+const anchors = new Set([...anchorsIn(settings), ...anchorsIn(src('src/pages/Devices.tsx')), ...anchorsIn(src('src/pages/Messages.tsx')), ...anchorsIn(src('src/pages/Safety.tsx'))]);
 
 const allSrc = (readdirSync(new URL('../src', import.meta.url), { recursive: true }) as string[]).filter((f) => /\.tsx?$/.test(f)).map((f) => src(`src/${f}`)).join('\n');
 // ---------- index ----------
-const want = ['account', 'profile', 'privacy', 'units', 'recording', 'notifications', 'goals', 'devices', 'messages', 'appearance', 'data', 'help', 'about'];
-check('13 sections: account, profile, privacy, units, recording, sounds, goals/fuel, devices, messages, appearance, data, help, about', want.every((id) => sectionById(id)) && SECTIONS.length === 13);
+const want = ['account', 'profile', 'privacy', 'safety', 'units', 'recording', 'notifications', 'goals', 'devices', 'messages', 'appearance', 'data', 'help', 'about'];
+check('14 sections: account, profile, privacy, safety, units, recording, sounds, goals/fuel, devices, messages, appearance, data, help, about', want.every((id) => sectionById(id)) && SECTIONS.length === 14);
 check('section ids are unique', new Set(SECTIONS.map((s) => s.id)).size === SECTIONS.length);
 check('every section belongs to a group, every group has sections', SECTIONS.every((s) => GROUPS.some((g) => g.id === s.group)) && GROUPS.every((g) => SECTIONS.some((s) => s.group === g.id)));
 check('every section has a title, subtitle and icon', SECTIONS.every((s) => s.title && s.sub && s.icon));
@@ -34,7 +34,7 @@ check('search by keyword “miles” → distance units', searchSettings('miles'
 check('search “password” → Account', searchSettings('password').items.some((i) => i.section === 'account'));
 check('search is case / accent insensitive', searchSettings('PRIVACÝ').sections.some((s) => s.id === 'privacy') || searchSettings('PRIVACY').sections.some((s) => s.id === 'privacy'));
 check('search requires every word (“hide map”)', searchSettings('hide map').items.length >= 1 && searchSettings('hide map').items.every((i) => i.section === 'privacy'));
-check('nonsense → nothing; empty → all sections', searchSettings('zzqx').items.length === 0 && searchSettings('zzqx').sections.length === 0 && searchSettings('  ').sections.length === 13);
+check('nonsense → nothing; empty → all sections', searchSettings('zzqx').items.length === 0 && searchSettings('zzqx').sections.length === 0 && searchSettings('  ').sections.length === 14);
 check('search finds Strava, Spotify, heart-rate strap, 988', ['strava', 'spotify', 'strap', '988'].every((q) => searchSettings(q).items.length > 0));
 
 // ---------- routes / redirects ----------

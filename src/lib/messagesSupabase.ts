@@ -109,6 +109,7 @@ export class SupabaseDm implements DmBackend {
     const ids = rows.flatMap((r) => [...(r.members as Row[]).map((m) => m.user_id as string), r.last_message?.sender_id as string]);
     const prof = await this.profiles(ids.filter(Boolean));
     const directOthers = rows.filter((r) => r.kind === 'direct').flatMap((r) => (r.members as Row[]).filter((m) => m.user_id !== this.myId).map((m) => m.user_id as string));
+    const restrictedSet = new Set(await this.restrictedIds().catch(() => [] as string[]));
     const [pres, blocks] = await Promise.all([
       directOthers.length && myS.activity ? this.rpc<Row[]>('dm_presence', { p_users: [...new Set(directOthers)] }).catch(() => [] as Row[]) : Promise.resolve([] as Row[]),
       directOthers.length ? this.q(this.sb.from('blocks').select('blocked_id').eq('blocker_id', this.myId).in('blocked_id', [...new Set(directOthers)])).catch(() => [] as Row[]) : Promise.resolve([] as Row[]),
@@ -135,15 +136,16 @@ export class SupabaseDm implements DmBackend {
       const lastM = lastBy.get(conv.id);
       const last: MessageView | null = lastM ? this.viewOne(lastM, conv, prof, myS, new Map()) : null;
       const la = direct ? lastActive.get(direct.userId) : undefined;
+      const restricted = !!direct && restrictedSet.has(direct.userId);
       const v: ConvView = {
         id: conv.id, kind: conv.kind, customTitle: conv.title, title: convTitle(conv, this.myId, Object.fromEntries(prof)), createdBy: conv.createdBy, createdAt: conv.createdAt, lastMessageAt: conv.lastMessageAt,
-        me: meM, members: views, others, folder: folderOf(conv, this.myId), unread: Number(r.unread) || 0, last,
+        me: meM, members: views, others, folder: folderOf(conv, this.myId, restricted), unread: Number(r.unread) || 0, last,
         muted: isMuted(meM), pinned: !!meM.pinnedAt, archived: !!meM.archived,
         request: r.state === 'request' ? 'incoming' : outgoing ? 'outgoing' : null,
         requestRemaining: outgoing ? Math.max(0, REQUEST_MAX_MESSAGES - (Number(r.requests_sent) || 0)) : Infinity,
         blocked: direct && blockedByMe.has(direct.userId) ? 'byMe' : direct && !this.profCache.has(direct.userId) ? 'unavailable' : null,
         presence: direct && direct.state === 'active' && la && canSeePresence(myS, { activity: true }, false) ? presenceText(la) : null,
-        isAdmin: r.role === 'admin' && r.state === 'active',
+        isAdmin: r.role === 'admin' && r.state === 'active', restricted,
       };
       this.convCache.set(v.id, v);
       return v;
@@ -275,7 +277,7 @@ export class SupabaseDm implements DmBackend {
   }
 
   // ---------- membership ----------
-  async markRead(conversationId: string) { await this.rpc('dm_mark_read', { p_conv: conversationId }); this.broadcast(conversationId, 'read', {}); }
+  async markRead(conversationId: string) { await this.rpc('dm_mark_read', { p_conv: conversationId }); if (!this.isRestrictedChat(conversationId)) this.broadcast(conversationId, 'read', {}); }
   async accept(conversationId: string) { await this.rpc('dm_accept', { p_conv: conversationId }); this.emit({ type: 'inbox' }); }
   async decline(conversationId: string) { await this.rpc('dm_decline', { p_conv: conversationId }); this.emit({ type: 'inbox' }); }
   async setPrefs(conversationId: string, p: { mutedUntil?: number | null; archived?: boolean; pinned?: boolean }) {
@@ -296,10 +298,29 @@ export class SupabaseDm implements DmBackend {
     await this.q(this.sb.from('message_reports').insert({
       target_type: r.targetType, conversation_id: r.conversationId, message_id: r.targetType === 'message' ? r.targetId : null,
       reason: r.reason, details: r.details ? cleanText(r.details, REPORT_DETAILS_MAX) : null,
+      ...(r.messageIds?.length ? { message_ids: r.messageIds.slice(0, 10) } : {}),
     }));
   }
   async block(userId: string) { await this.social.act({ type: 'block', other: userId }); this.emit({ type: 'inbox' }); }
   async unblock(userId: string) { await this.social.act({ type: 'unblock', other: userId }); this.emit({ type: 'inbox' }); }
+  // Restrict lives in dm_restricts (only I can see my rows). The server hides my receipts/online status from them and refuses their calls.
+  private restrictedCache: { at: number; ids: string[] } | null = null;
+  async restrict(userId: string) {
+    await this.q(this.sb.from('dm_restricts').upsert({ user_id: this.myId, restricted_id: userId }, { onConflict: 'user_id,restricted_id', ignoreDuplicates: true }));
+    this.restrictedCache = null; this.emit({ type: 'inbox' });
+  }
+  async unrestrict(userId: string) { await this.q(this.sb.from('dm_restricts').delete().eq('user_id', this.myId).eq('restricted_id', userId)); this.restrictedCache = null; this.emit({ type: 'inbox' }); }
+  async restrictedIds(): Promise<string[]> {
+    if (this.restrictedCache && Date.now() - this.restrictedCache.at < 30_000) return this.restrictedCache.ids;
+    const rows = ((await this.q(this.sb.from('dm_restricts').select('restricted_id').eq('user_id', this.myId)).catch(() => [])) || []) as Row[];
+    const ids = rows.map((r) => r.restricted_id as string);
+    this.restrictedCache = { at: Date.now(), ids };
+    return ids;
+  }
+  private isRestrictedChat(conversationId: string) {
+    const c = this.convCache.get(conversationId);
+    return !!c?.restricted;
+  }
 
   // ---------- realtime: typing + seen over Broadcast (private channel dm:<id>, RLS on realtime.messages) ----------
   private channel(conversationId: string): RealtimeChannel {
@@ -323,6 +344,7 @@ export class SupabaseDm implements DmBackend {
   }
   setTyping(conversationId: string, on: boolean) {
     if (this.mySettings && !this.mySettings.activity) return; // activity status off → never broadcast typing (reciprocal)
+    if (this.isRestrictedChat(conversationId)) return; // restricted people don't see me typing
     this.broadcast(conversationId, 'typing', { on });
   }
   async heartbeat() { await this.rpc('dm_heartbeat').catch(() => undefined); await this.rpc('dm_mark_delivered').catch(() => undefined); }

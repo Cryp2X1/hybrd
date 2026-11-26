@@ -156,20 +156,10 @@ export const visibleReactions = <R extends Pick<Reaction, 'userId'>>(rs: R[], v:
 export function canReactOn(visible: boolean, me: string, authorId: string, g: Graph): boolean {
   return visible && !isBlocked(g, me, authorId);
 }
-export type ReportTarget = 'post' | 'comment' | 'user' | 'story';
-export type ReportReason = 'spam' | 'harassment' | 'hate' | 'nudity' | 'violence' | 'self_harm' | 'misinformation' | 'underage' | 'impersonation' | 'other';
-export const REPORT_REASONS: { v: ReportReason; label: string; sub: string }[] = [
-  { v: 'spam', label: 'Spam or scam', sub: 'Ads, fake offers, repeated junk' },
-  { v: 'harassment', label: 'Harassment or bullying', sub: 'Targeting, insulting or threatening someone' },
-  { v: 'hate', label: 'Hate speech', sub: 'Attacks on people for who they are' },
-  { v: 'nudity', label: 'Nudity or sexual content', sub: 'Not allowed on HYBRD' },
-  { v: 'violence', label: 'Violence or dangerous acts', sub: 'Threats, graphic content, dangerous challenges' },
-  { v: 'self_harm', label: 'Self-harm or eating disorder content', sub: 'Promoting self-harm, extreme dieting or purging' },
-  { v: 'misinformation', label: 'Harmful health misinformation', sub: 'Dangerous medical, drug or diet claims' },
-  { v: 'underage', label: 'User may be under 13', sub: 'Friends & Stories is for ages 13+' },
-  { v: 'impersonation', label: 'Impersonation', sub: 'Pretending to be someone else' },
-  { v: 'other', label: 'Something else', sub: 'Tell us more below' },
-];
+export type ReportTarget = 'post' | 'comment' | 'user' | 'story' | 'activity' | 'media';
+// Report reasons live in ./safety (one list for Friends & Stories, Messages and calls).
+export type { ReportReason } from './safety';
+export { REPORT_REASONS } from './safety';
 
 // ---------- handles ----------
 export const RESERVED_HANDLES = new Set([

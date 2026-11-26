@@ -29,6 +29,8 @@ export interface ConvView {
   blocked: 'byMe' | 'unavailable' | null;
   presence: string | null;
   isAdmin: boolean;
+  /** Direct chats: I restricted this person (their messages wait quietly in Requests). */
+  restricted?: boolean;
 }
 export interface ReplyRef { id: string; senderName: string; mine: boolean; preview: string; deleted: boolean; kind: Message['kind']; thumb?: string }
 export interface MessageView extends Message {
@@ -61,7 +63,7 @@ export type DmEvent =
   | { type: 'typing'; conversationId: string; userId: string; on: boolean }
   | { type: 'read'; conversationId: string; userId: string }
   | { type: 'inbox' };
-export interface NewDmReport { targetType: DmReportTarget; targetId: string; conversationId: string; reason: ReportReason; details?: string }
+export interface NewDmReport { targetType: DmReportTarget; targetId: string; conversationId: string; reason: ReportReason; details?: string; /** extra messages attached to a message report (up to 10 in total) */ messageIds?: string[] }
 export interface SearchResult { chats: ConvView[]; hits: (SearchHit & { conv: ConvView; senderName: string })[] }
 export type EligibilityView = Eligibility & { existing?: string };
 
@@ -98,6 +100,10 @@ export interface DmBackend {
   report(r: NewDmReport): Promise<void>;
   block(userId: string): Promise<void>;
   unblock(userId: string): Promise<void>;
+  /** Restrict (softer than block): their messages go quietly to Requests; they can't see my read receipts or when I'm online, or call me. */
+  restrict(userId: string): Promise<void>;
+  unrestrict(userId: string): Promise<void>;
+  restrictedIds(): Promise<string[]>;
   setTyping(conversationId: string, on: boolean): void;
   heartbeat(): Promise<void>;
   search(q: string): Promise<SearchResult>;

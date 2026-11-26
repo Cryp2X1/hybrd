@@ -408,6 +408,73 @@ How links work: `https://<user>.github.io/hybrd/a?id=<uuid>`. The page loads the
 
 Test: `PG_BIN=... bash tools/test-social-sql.sh` (step "== shared activities": 39 checks — RLS, anon reads, minors, bans, blocks, the 100-a-day limit, storage paths).
 
+## 15. Safety: reporting, restrict, time off, account deletion, appeals, moderation — created by `schema.sql`
+
+Re-running `supabase/schema.sql` (SQL Editor › paste › Run) adds everything below. It's safe to run again; every new
+table has Row Level Security on. Until it's run, the app shows "The safety features need the latest database setup".
+
+### 15.1 What the database does
+| Feature | Tables / functions | Rules enforced by the database |
+|---|---|---|
+| Report user / content | `reports`, `message_reports` (+ `priority`, `message_ids`) | 10 reports an hour, 30 a day, no duplicate of the same thing within 24 h. Reporters only ever see their own reports (`safety_my_reports()`); the reported person can't read them. Minor-safety and self-harm reports get priority 0 (top of the queue). |
+| Restrict | `dm_restricts` | Only you can see who you restricted. Restricted people don't get your read receipts (`dm_members`) or online status (`dm_presence`) and can't call you (`call_unavailable`). The app files their chats under Requests without a badge. |
+| Delete for me / unsend | `message_hidden`, `messages.deleted_at` | Unsend for everyone works for 24 hours (`dm_unsend_window`); delete for me always works. |
+| Moderator removal | `removed_at` on posts, stories, comments, messages, shared activities | Removed items are hidden from everyone except the owner, who sees a notice naming the guideline. Only moderator functions can set or clear `removed_at`. |
+| Time off | `account_state.paused_at / pause_until`, `account_pause()`, `account_resume()` | While paused: profile, posts, stories, comments, activities and presence are hidden; nobody can message or call; notifications are dropped; nothing is deleted. Pauses end on their own at `pause_until`. |
+| Delete account | `account_state.deletion_requested_at / purge_after`, `account_request_deletion()`, `account_reopen()` | Needs a password sign-in within the last 10 minutes (the app asks for the password again). Hidden immediately; reopen any time in the 30 days; purged after that by the Edge Function below. |
+| Suspensions, messaging restrictions | `moderation_actions` (audit log of every moderator action) | Suspended accounts are hidden and can't post, message or call; restricted ones can't message or call. Both end at `ends_at`. |
+| Appeals | `appeals`, `appeal_submit()`, `mod_decide_appeal()` | One appeal per decision, within 30 days, 10–1,000 characters, 10 a day. Reversing restores the content or lifts the limit. |
+| Moderation queue | `mod_queue()`, `mod_act()`, `mod_decide_appeal()` | Only accounts with `profiles.is_moderator = true`. Users can't set this flag themselves (a trigger freezes it for app roles). |
+
+### 15.2 Make someone a moderator (SQL Editor only)
+```sql
+update public.profiles set is_moderator = true
+ where id = (select id from auth.users where email = 'moderator@example.com');
+```
+They then see **Settings › Safety › Moderation queue** (route `/hybrd/moderation`). To remove the role, set it back to `false`.
+Moderators can't act on reports about themselves.
+
+### 15.3 Deleting accounts after 30 days (Edge Function + daily schedule)
+Storage files can't be deleted from SQL, so a small Edge Function does the purge.
+
+1. Pick a long random secret (for example `openssl rand -hex 32`). Don't commit it anywhere.
+2. Deploy the function and set the secret (Supabase CLI):
+   ```bash
+   supabase functions deploy purge-accounts --no-verify-jwt
+   supabase secrets set PURGE_SECRET=<your secret>
+   ```
+3. Store the same secret and your project URL in Vault (SQL Editor), then schedule it daily with pg_cron + pg_net
+   (Dashboard › Database › Extensions: enable **pg_cron** and **pg_net** first):
+   ```sql
+   select vault.create_secret('<your secret>', 'purge_secret');
+   select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+
+   select cron.schedule('hybrd-purge-accounts', '17 3 * * *', $$
+     select net.http_post(
+       url     := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/purge-accounts',
+       headers := jsonb_build_object('Content-Type', 'application/json',
+                    'x-purge-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'purge_secret')),
+       body    := '{}'::jsonb)
+   $$);
+   ```
+   Check runs with `select * from cron.job_run_details order by start_time desc limit 5;` and the function's logs.
+4. What it deletes for each due account: files under `user-media/<uid>/`, `social-media/<uid>/`, `activity-images/<uid>/`,
+   the photos/videos they sent in `message-media`, their messages, then the auth user (which cascades to every table).
+   `moderation_actions` rows stay, with the user id set to null.
+
+Without this function, accounts stay hidden after 30 days but aren't actually purged. Run it by hand with
+`curl -X POST -H "x-purge-secret: <secret>" https://<project-ref>.supabase.co/functions/v1/purge-accounts`.
+
+### 15.4 Operating notes (please read)
+- Reports aren't monitored around the clock. The app says so and points people to 911 / 988.
+- **Child sexual exploitation:** in the US, providers who become aware of apparent child sexual abuse material must report it
+  to NCMEC's CyberTipline (report.cybertip.org) and preserve it. Don't just delete it; get legal advice on your obligations.
+- **Imminent risk** (a credible threat or someone about to hurt themselves): contact local emergency services.
+- The app's legal copy (Community Guidelines, How reporting works, Privacy) is plain-language product copy, not reviewed legal
+  terms. Have it reviewed before a public launch.
+- Demo / Local mode: every safety screen works on the device with simulated decisions and a demo queue of SAMPLE reports;
+  nothing is sent anywhere.
+
 ## Local development
 ```bash
 npm install

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Applies supabase/schema.sql TWICE to a throwaway local PostgreSQL (with a small Supabase shim), then runs the
-# Friends & Stories, Messages, gallery, sleep and mind RLS / trigger / RPC checks in tools/sql/test-*.sql.
+# Friends & Stories, Messages, gallery, sleep, mind and safety RLS / trigger / RPC checks in tools/sql/test-*.sql.
 # Needs PostgreSQL 15+ server binaries: set PG_BIN (dir with initdb, pg_ctl, postgres) — e.g. from `npm i @embedded-postgres/linux-x64`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,3 +22,4 @@ echo "== mind & recovery"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-mind.sql 
 echo "== messages"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-messages.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== calls"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-calls.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
 echo "== shared activities"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-activities.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+echo "== safety"; "${PSQL[@]}" -o /dev/null -f tools/sql/test-safety.sql 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'

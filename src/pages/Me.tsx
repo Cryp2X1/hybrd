@@ -31,7 +31,8 @@ export default function Me() {
         <div>
           <Card className="me-set">
             <div className="card-head"><h3>Settings</h3><Link className="link small" to="/settings">All settings →</Link></div>
-            <RowLink to="/settings/privacy" icon="shield" title="Privacy & safety" sub={`Activities: ${visibilityLabel(pr.defaultVisibility)} · ${pr.hideEnds ? 'start & end hidden' : 'full routes'}${pr.zones.length ? ` · ${pr.zones.length} zone${pr.zones.length === 1 ? '' : 's'}` : ''}`} />
+            <RowLink to="/settings/privacy" icon="eye" title="Privacy" sub={`Activities: ${visibilityLabel(pr.defaultVisibility)} · ${pr.hideEnds ? 'start & end hidden' : 'full routes'}${pr.zones.length ? ` · ${pr.zones.length} zone${pr.zones.length === 1 ? '' : 's'}` : ''}`} />
+            <RowLink to="/settings/safety" icon="shield" title="Safety" sub="Account status, reports, who can message you" />
             <RowLink to="/settings/units" icon="ruler" title="Units & display" sub={`${distUnit(p.units)} · ${wUnit(wu(p))}`} />
             <RowLink to="/settings/account" icon="lock" title="Account & security" sub={user ? 'Email, password, sync' : configured ? 'Sign in or create an account' : 'Local mode — how accounts turn on'} />
             <RowLink to="/settings/devices" icon="watch" title="Devices & integrations" sub="Heart-rate strap · watch files · Strava · Spotify" />

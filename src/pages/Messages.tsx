@@ -8,6 +8,7 @@ import { Card, Empty, Sheet } from '../components/ui';
 import { SAvatar, SampleTag, SocialGate } from '../components/Social';
 import { ReactionBar, ReactorsSheet } from '../components/Reactions';
 import { CrisisCard } from '../components/MindBits';
+import { SafetyBanner, useCanInteract, useRestricted } from '../components/Safety';
 import { Bubble, ConvAvatar, DmReportSheet, ForwardSheet, isSampleConv, MsgMenu, timeLabel, WorkoutSheet, type MenuAction } from '../components/Messages';
 import { useMessages } from '../lib/messagesStore';
 import { CallButtons, CallsList } from '../components/Call';
@@ -81,6 +82,7 @@ function Inbox({ activeId }: { activeId: string | null }) {
           <Link className="icon-btn dm-new" to="/messages/new" aria-label="New message" data-testid="dm-new"><Icon name="edit" size={20} /></Link>
         </div>
       </header>
+      <SafetyBanner />
       {mode === 'demo' && <p className="dm-demo-note" role="note"><Icon name="info" size={14} /> Demo: sample people, not real users. Messages stay on this device.</p>}
       <label className="dm-search"><Icon name="search" size={18} /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" data-testid="dm-search" />{q && <button aria-label="Clear search" onClick={() => setQ('')}><Icon name="x" size={16} /></button>}</label>
       {res ? <SearchResults res={res} onPick={() => setQ('')} /> : (
@@ -203,6 +205,8 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
   const stick = useRef(true);
   const typingSent = useRef(0);
   const meId = me?.id || '';
+  const can = useCanInteract('message');
+  const restrict = useRestricted();
 
   // ?to=<handle>: resolve the person, reuse an existing chat, or show a new-chat composer (the chat is created on first send)
   useEffect(() => {
@@ -266,7 +270,7 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
   const theirMsgs = all.filter((m) => !m.mine);
   const warn = stranger && !warnClosed ? strangerWarning(theirMsgs) : null;
   const left = conv && conv.me.state !== 'active' && conv.me.state !== 'request';
-  const blockedMsg = conv?.blocked === 'byMe' ? 'You blocked this account.' : conv?.blocked === 'unavailable' ? 'You can’t message this account.' : null;
+  const blockedMsg = !can.ok ? can.why! : conv?.blocked === 'byMe' ? 'You blocked this account.' : conv?.blocked === 'unavailable' ? 'You can’t message this account.' : null;
   const denied = target && !target.elig.ok ? target.elig.msg : null;
   const limitHit = outgoing && remaining <= 0;
   const disabledMsg = left ? 'You’re no longer in this group.' : blockedMsg || denied || (limitHit ? `You’ve sent ${REQUEST_MAX_MESSAGES} messages. You can send more once ${otherP?.displayName.split(' ')[0] || 'they'} accept${otherP ? 's' : ''} your request.` : null);
@@ -418,6 +422,7 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
       ) : (
         <div className="dm-compose-wrap">
           {outgoing && !disabledMsg && <p className="dm-req-left small" data-testid="dm-req-left"><Icon name="lock" size={13} /> {conv?.request === 'outgoing' ? 'Request sent. ' : 'This will be a message request. '}You can send {remaining} more message{remaining === 1 ? '' : 's'} until {otherP?.displayName.split(' ')[0] || 'they'} accept{otherP ? 's' : ''}.</p>}
+          {conv?.restricted && otherP && <div className="dm-restricted-note" data-testid="dm-restricted-note"><Icon name="eyeoff" size={15} /><span>You restricted @{otherP.username}. They can’t see when you’ve read their messages or when you’re online.</span><button className="link" onClick={() => restrict.toggle(otherP, false).then(load)}>Unrestrict</button></div>}
           {disabledMsg ? (
             <div className="dm-disabled" data-testid="dm-disabled"><Icon name="ban" size={16} /> {disabledMsg}{conv?.blocked === 'byMe' && otherP && <button className="link" onClick={async () => { await backend?.unblock(otherP.id); await refresh(); await load(); toast('Unblocked'); }}>Unblock</button>}</div>
           ) : canCompose && (
@@ -466,7 +471,8 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
       </>}
       {reactors && backend && <ReactorsSheet open onClose={() => setReactors(null)} load={() => backend.reactors(reactors.id)} />}
       {fwd && <ForwardSheet m={fwd} onClose={() => setFwd(null)} />}
-      {report && cid && <DmReportSheet target={{ type: report.type, id: report.m?.id || cid, conversationId: cid, who: report.m ? report.m.sender : otherP, groupTitle: conv?.kind === 'group' ? conv.title : undefined, preview: report.m ? previewText({ ...report.m, senderId: '_' }, meId, nameOf) : undefined }} onClose={() => setReport(null)} onBlocked={() => { if (incoming) nav('/messages?folder=requests', { replace: true }); else load(); }} />}
+      {report && cid && <DmReportSheet target={{ type: report.type, id: report.m?.id || cid, conversationId: cid, who: report.m ? report.m.sender : otherP, groupTitle: conv?.kind === 'group' ? conv.title : undefined, preview: report.m ? previewText({ ...report.m, senderId: '_' }, meId, nameOf) : undefined,
+        messages: report.m ? reportable(all, report.m).map((x) => ({ id: x.id, preview: previewText({ ...x, senderId: '_' }, meId, nameOf), who: x.sender.displayName.split(' ')[0] })) : undefined }} onClose={() => setReport(null)} onBlocked={() => { if (incoming) nav('/messages?folder=requests', { replace: true }); else load(); }} />}
       <WorkoutSheet open={pickW} onClose={() => setPickW(false)} onPick={(w) => { setWorkout(w); setAtt(null); setPickW(false); ta.current?.focus(); }} />
       {info && conv && <ChatInfo c={conv} onClose={() => setInfo(false)} onReport={() => { setInfo(false); setReport({ type: 'conversation' }); }} onBlock={() => { setInfo(false); block(); }} onChanged={load} />}
       {viewer?.media && <div className="dm-viewer" role="dialog" aria-label="Photo" onClick={() => setViewer(null)}><img src={viewer.media.url} alt="" /><button className="icon-btn" aria-label="Close"><Icon name="x" /></button></div>}
@@ -475,6 +481,11 @@ function Chat({ cid, to }: { cid: string | null; to: string | null }) {
 }
 
 // ---------- chat details (people, mute, pin, group admin) ----------
+/** The reported message plus up to 9 earlier ones from the same person, newest last. */
+function reportable(all: MessageView[], m: MessageView): MessageView[] {
+  const theirs = all.filter((x) => x.senderId === m.senderId && !x.mine && !x.deletedAt && x.kind !== 'system' && !x.pending && x.createdAt <= m.createdAt);
+  return theirs.slice(-10);
+}
 function ChatInfo({ c, onClose, onReport, onBlock, onChanged }: { c: ConvView; onClose: () => void; onReport: () => void; onBlock: () => void; onChanged: () => void }) {
   const { backend, refresh } = useMessages();
   const { graph, me } = useSocial();
@@ -484,6 +495,7 @@ function ChatInfo({ c, onClose, onReport, onBlock, onChanged }: { c: ConvView; o
   const [adding, setAdding] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
   const [prefs, setPrefs] = useState(false);
+  const restrict = useRestricted();
   const run = async (f: () => Promise<unknown>, ok: string) => { try { await f(); await refresh(); onChanged(); toast(ok); } catch (e) { toast(friendlyDmError(e)); } };
   if (!backend) return null;
   const other = c.kind === 'direct' ? c.others[0] : undefined;
@@ -534,6 +546,7 @@ function ChatInfo({ c, onClose, onReport, onBlock, onChanged }: { c: ConvView; o
           {other && (c.blocked === 'byMe'
             ? <button onClick={() => run(() => backend.unblock(other.userId), 'Unblocked')}><Icon name="ban" size={18} />Unblock</button>
             : <button className="danger" onClick={onBlock} data-testid="dm-info-block"><Icon name="ban" size={18} />Block @{other.profile.username}</button>)}
+          {other && c.blocked !== 'byMe' && <button onClick={() => restrict.toggle(other.profile).then(onChanged)} data-testid="dm-info-restrict"><Icon name="eyeoff" size={18} />{c.restricted ? `Unrestrict @${other.profile.username}` : `Restrict @${other.profile.username}`}</button>}
           <button className="danger" onClick={onReport} data-testid="dm-info-report"><Icon name="flag" size={18} />Report {c.kind === 'group' ? 'group' : 'conversation'}</button>
         </div>
         <p className="dm-privacy muted small"><Icon name="lock" size={13} /> {PRIVACY_NOTE}</p>

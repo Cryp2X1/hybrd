@@ -4,7 +4,8 @@ export interface SettingsSection { id: string; title: string; icon: string; sub:
 export const SECTIONS: SettingsSection[] = [
   { id: 'account', title: 'Account & security', icon: 'lock', sub: 'Email, password, sign-in, sync', group: 'you' },
   { id: 'profile', title: 'Profile', icon: 'user', sub: 'Name, body stats, training, HYROX division', group: 'you' },
-  { id: 'privacy', title: 'Privacy & safety', icon: 'shield', sub: 'Privacy zones, map visibility, who sees your activities', group: 'you' },
+  { id: 'privacy', title: 'Privacy', icon: 'eye', sub: 'Privacy zones, map visibility, who sees your activities', group: 'you' },
+  { id: 'safety', title: 'Safety', icon: 'shield', sub: 'Account status, reports, who can message you, restricted and blocked', group: 'you' },
   { id: 'units', title: 'Units & display', icon: 'ruler', sub: 'mi / km, lb / kg, step length, heart-rate max, FTP', group: 'activity' },
   { id: 'recording', title: 'Recording', icon: 'record', sub: 'Auto-pause, map style, GPS tips', group: 'activity' },
   { id: 'notifications', title: 'Sounds & voice cues', icon: 'volume', sub: 'Beeps, vibration, spoken splits, notifications', group: 'activity' },
@@ -27,6 +28,8 @@ export const ITEMS: SettingsItem[] = [
   { label: 'Change password', section: 'account', keywords: 'password reset forgot' },
   { label: 'Sync now', section: 'account', keywords: 'cloud sync backup devices laptop phone' },
   { label: 'Sign out', section: 'account', keywords: 'log out logout' },
+  { label: 'Take time off (pause account)', section: 'account', anchor: 'time-off', keywords: 'break pause deactivate hide suspend resume vacation detox' },
+  { label: 'Delete account', section: 'account', anchor: 'delete', keywords: 'close remove deactivate erase reopen 30 days' },
   // profile
   { label: 'Name', section: 'profile', anchor: 'body', keywords: 'display name' },
   { label: 'Weight', section: 'profile', anchor: 'body', keywords: 'body weight kg lb' },
@@ -42,8 +45,15 @@ export const ITEMS: SettingsItem[] = [
   { label: 'Who can see my activities', section: 'privacy', anchor: 'activities', keywords: 'visibility only me friends everyone public default' },
   { label: 'Share heart rate & calories', section: 'privacy', anchor: 'activities', keywords: 'health data hr kcal' },
   { label: 'Public profile & posts', section: 'privacy', anchor: 'social', keywords: 'friends stories feed private account handle' },
-  { label: 'Blocked accounts', section: 'privacy', anchor: 'social', keywords: 'block unblock' },
-  { label: 'Who can message or call me', section: 'privacy', anchor: 'social', keywords: 'dm messages calls' },
+  // safety
+  { label: 'Account status', section: 'safety', anchor: 'status', keywords: 'moderation removed suspended restricted appeal violation guidelines' },
+  { label: 'Appeal a decision', section: 'safety', anchor: 'status', keywords: 'appeal moderation removed suspended' },
+  { label: 'My reports', section: 'safety', anchor: 'reports', keywords: 'report status reported' },
+  { label: 'Who can message or call me', section: 'safety', anchor: 'messaging', keywords: 'dm messages calls requests everyone friends no one' },
+  { label: 'Restricted accounts', section: 'safety', anchor: 'restricted', keywords: 'restrict unrestrict harassment quiet' },
+  { label: 'Blocked accounts', section: 'safety', anchor: 'blocked', keywords: 'block unblock' },
+  { label: 'Community Guidelines', section: 'safety', keywords: 'rules community guidelines allowed' },
+  { label: 'How reporting works', section: 'safety', keywords: 'report anonymous moderation' },
   // units
   { label: 'Distance units (mi / km)', section: 'units', keywords: 'miles kilometres kilometers imperial metric pace speed feet' },
   { label: 'Weight units (lb / kg)', section: 'units', keywords: 'pounds kilograms lifts' },

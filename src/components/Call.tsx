@@ -195,7 +195,7 @@ function CallScreen({ c }: { c: ActiveCall }) {
         </footer>
       )}
       {info && <InfoSheet c={c} onClose={() => setInfo(false)} onReport={() => { setInfo(false); setReport(true); }} />}
-      {report && c.conv && <DmReportSheet target={{ type: 'conversation', id: c.conversationId, conversationId: c.conversationId, who: c.conv.kind === 'direct' ? c.conv.others[0]?.profile : undefined, groupTitle: c.conv.kind === 'group' ? c.conv.title : undefined, preview: `Reported during a ${c.kind} call` }} onClose={() => setReport(false)} onBlocked={() => calls.hangup()} />}
+      {report && c.conv && <DmReportSheet target={{ type: 'call', id: c.conversationId, conversationId: c.conversationId, who: c.conv.kind === 'direct' ? c.conv.others[0]?.profile : undefined, groupTitle: c.conv.kind === 'group' ? c.conv.title : undefined, preview: `Reported during a ${c.kind} call` }} onClose={() => setReport(false)} onBlocked={() => calls.hangup()} />}
     </div>
   );
 }
