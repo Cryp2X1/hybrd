@@ -59,7 +59,7 @@ export const FEATURES: Record<Feature, FeatureInfo> = {
   'mind.recovery': { free: true, label: 'Recovery toolkit & planner' },
   'mind.journal': { free: true, label: 'Private journal' },
   'mind.trends': { free: true, label: 'Mind trends, streaks & patterns' },
-  'mind.screening': { free: true, label: 'Well-being check-ups (WHO-5, PHQ-4)' },
+  'mind.screening': { free: true, label: 'HYBRD Pulse weekly check-in (+ optional PHQ-2 / GAD-2)' },
   'mind.research': { free: true, label: 'Mind & recovery evidence & sources' },
   'profile.avatar': { free: true, label: 'Profile photo' },
   'gallery.photos': { free: true, label: 'Photo gallery' },

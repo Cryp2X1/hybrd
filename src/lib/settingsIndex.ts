@@ -11,6 +11,7 @@ export const SECTIONS: SettingsSection[] = [
   { id: 'goals', title: 'Goals & fuel', icon: 'target', sub: 'Step and calorie goals, macros, plans', group: 'activity' },
   { id: 'devices', title: 'Devices & integrations', icon: 'watch', sub: 'Heart-rate strap, watch files, Strava, Spotify', group: 'connections' },
   { id: 'messages', title: 'Messages & calls', icon: 'chat', sub: 'Who can message or call you, read receipts, Do not disturb', group: 'connections' },
+  { id: 'appearance', title: 'Appearance', icon: 'sun', sub: 'Light, Dark or follow your device', group: 'app' },
   { id: 'data', title: 'Data & storage', icon: 'data', sub: 'Export, import, sample data, delete everything', group: 'app' },
   { id: 'help', title: 'Help & legal', icon: 'help', sub: 'Phone tips, sources, community rules, crisis lines', group: 'app' },
   { id: 'about', title: 'About HYBRD', icon: 'info', sub: 'Version, credits, map data', group: 'app' },
@@ -73,6 +74,9 @@ export const ITEMS: SettingsItem[] = [
   { label: 'Activity status & typing', section: 'messages', keywords: 'online active now' },
   { label: 'Do not disturb (calls)', section: 'messages', anchor: 'calls', keywords: 'dnd ringing quiet' },
   { label: 'Protect my IP address in calls', section: 'messages', anchor: 'calls', keywords: 'relay turn' },
+  // appearance
+  { label: 'Theme: Light, Dark or System', section: 'appearance', anchor: 'theme', keywords: 'dark mode light mode night day appearance color colour display follow device automatic' },
+  { label: 'Follow my device (automatic dark mode)', section: 'appearance', anchor: 'theme', keywords: 'system automatic night schedule' },
   // data
   { label: 'Export your data', section: 'data', keywords: 'backup json download' },
   { label: 'Import a HYBRD export', section: 'data', keywords: 'restore json' },

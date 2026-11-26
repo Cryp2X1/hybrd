@@ -32,7 +32,7 @@ function StackedBars({ days, mode, goal, height = 170, onPick }: { days: DayBurn
   return (
     <div className="chart burn-chart">
       <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" width="100%" height={height} role="img" aria-label={`${mode} calories burned per day`}>
-        {[0.25, 0.5, 0.75].map((g) => <line key={g} x1="0" x2="100" y1={base - g * span} y2={base - g * span} stroke="#222" strokeWidth="0.3" vectorEffect="non-scaling-stroke" />)}
+        {[0.25, 0.5, 0.75].map((g) => <line key={g} x1="0" x2="100" y1={base - g * span} y2={base - g * span} stroke="var(--line)" strokeWidth="0.3" vectorEffect="non-scaling-stroke" />)}
         {days.map((d, i) => {
           let y = base;
           return <g key={d.date} onClick={() => onPick?.(d.date)} style={{ cursor: onPick ? 'pointer' : undefined }}>
@@ -42,10 +42,10 @@ function StackedBars({ days, mode, goal, height = 170, onPick }: { days: DayBurn
               const h = (v / max) * span; y -= h;
               return <rect key={p.k} x={i * w + w * 0.16} width={w * 0.68} y={y} height={Math.max(h, 0.8)} fill={p.color} opacity={d.date === today || !many ? 1 : 0.9} />;
             })}
-            {val(d) === 0 && <rect x={i * w + w * 0.16} width={w * 0.68} y={base - 0.6} height={0.6} fill="#2a2a2a" />}
+            {val(d) === 0 && <rect x={i * w + w * 0.16} width={w * 0.68} y={base - 0.6} height={0.6} fill="var(--line2)" />}
           </g>;
         })}
-        {goal && mode === 'active' ? <line x1="0" x2="100" y1={base - (goal / max) * span} y2={base - (goal / max) * span} stroke="#FFE600" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" /> : null}
+        {goal && mode === 'active' ? <line x1="0" x2="100" y1={base - (goal / max) * span} y2={base - (goal / max) * span} stroke="var(--yc)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" /> : null}
       </svg>
       <div className="chart-labels">{days.map((d, i) => {
         const dt = new Date(d.date + 'T12:00');
@@ -67,7 +67,7 @@ function CompositionBar({ v, mode }: { v: { resting: number; workouts: number; s
   const tot = parts.reduce((a, p) => a + v[p.k], 0);
   return (
     <div className="burn-comp" role="img" aria-label="Burn breakdown">
-      {tot > 0 ? parts.map((p) => v[p.k] > 0 && <div key={p.k} style={{ flex: v[p.k], background: p.color }} title={`${p.label}: ${n0(v[p.k])} kcal`} />) : <div style={{ flex: 1, background: '#222' }} />}
+      {tot > 0 ? parts.map((p) => v[p.k] > 0 && <div key={p.k} style={{ flex: v[p.k], background: p.color }} title={`${p.label}: ${n0(v[p.k])} kcal`} />) : <div style={{ flex: 1, background: 'var(--track)' }} />}
     </div>
   );
 }

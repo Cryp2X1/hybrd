@@ -20,7 +20,7 @@ function ConnectButton({ block }: { block?: boolean }) {
   return (
     <>
       <button className={`btn y ${block ? 'block' : ''} sm sp-connect`} disabled={!!sp.loading.connect} onClick={() => connect().catch((e) => setErr(e.message))}><Icon name="music" size={18} />{sp.loading.connect ? 'Connecting…' : 'Connect Spotify'}</button>
-      {err && <p className="small" style={{ color: '#ff8a8a', margin: '6px 0 0' }}>{err}</p>}
+      {err && <p className="small" style={{ color: 'var(--bad-t)', margin: '6px 0 0' }}>{err}</p>}
     </>
   );
 }
@@ -95,7 +95,7 @@ function Devices({ sp }: { sp: SpState }) {
             ? <button className="btn sm" onClick={() => startBrowserPlayer()}><Icon name="laptop" size={16} />Play in this browser</button>
             : <button className="btn sm ghost" onClick={stopBrowserPlayer}>{sp.sdk.status === 'loading' ? 'Starting browser player…' : 'Stop browser player'}</button>}
           <span className="muted small">Desktop Chrome, Edge, Firefox or Safari · Premium · {sp.sdk.status === 'ready' ? 'ready ✓' : 'adds the “streaming” permission'}</span>
-          {sp.sdk.error && <div className="small" style={{ color: '#ff8a8a' }}>{sp.sdk.error}</div>}
+          {sp.sdk.error && <div className="small" style={{ color: 'var(--bad-t)' }}>{sp.sdk.error}</div>}
         </div>
       ) : <p className="muted small" style={{ margin: '6px 0 0' }}>{isIOS() ? 'On iPhone the music plays in the Spotify app and HYBRD is the remote. ' : 'Music plays in the Spotify app; HYBRD is the remote. '}Keep HYBRD on screen while recording — phones pause a web app’s GPS when you switch apps.</p>}
     </div>

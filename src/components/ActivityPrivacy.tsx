@@ -73,11 +73,11 @@ export function RouteSketch({ segments, visible, zones = [], mode, height = 220 
   const mPerPx = fit.bounds ? 156543.03 * Math.cos(((fit.bounds.minLat + fit.bounds.maxLat) / 2) * Math.PI / 180) / fit.scale / 256 : 1;
   return (
     <svg className={`route-sketch ${mode}`} viewBox={`0 0 ${W} ${H}`} style={{ height }} role="img" aria-label={mode === 'you' ? 'Your full route, hidden parts dashed' : 'What others see'} data-testid={`sketch-${mode}`}>
-      <defs><pattern id="rs-grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="rgba(255,255,255,.05)" /></pattern></defs>
+      <defs><pattern id="rs-grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="var(--line)" /></pattern></defs>
       <rect width={W} height={H} fill="url(#rs-grid)" />
       {mode === 'you' && zones.map((z) => { const [x, y] = pt(z); return <circle key={z.id} cx={x} cy={y} r={Math.max(6, z.radiusM / mPerPx)} fill="rgba(239,68,68,.12)" stroke="rgba(239,68,68,.6)" strokeDasharray="6 5" />; })}
       {mode === 'you' && <path d={d(segments)} fill="none" stroke="#8a8a8a" strokeWidth={4} strokeDasharray="2 9" strokeLinecap="round" strokeLinejoin="round" />}
-      {visible.length > 0 && <path d={d(visible)} fill="none" stroke="#FFE600" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 6px rgba(255,230,0,.5))' }} />}
+      {visible.length > 0 && <path d={d(visible)} fill="none" stroke="var(--yc)" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 6px rgba(255,230,0,.5))' }} />}
       {mode === 'you' && first && (() => { const [x, y] = pt(first); return <g><circle cx={x} cy={y} r={9} fill="#0a0a0a" stroke="#22c55e" strokeWidth={4} /><text x={x + 14} y={y - 10} className="rs-l">Start</text></g>; })()}
       {mode === 'you' && last && (() => { const [x, y] = pt(last); return <g><circle cx={x} cy={y} r={9} fill="#0a0a0a" stroke="#ef4444" strokeWidth={4} /><text x={x + 14} y={y + 22} className="rs-l">End</text></g>; })()}
       {mode === 'others' && [vFirst, vLast].map((p, i) => { if (!p) return null; const [x, y] = pt(p); return <circle key={i} cx={x} cy={y} r={7} fill={i ? '#FFE600' : '#fff'} stroke="#0a0a0a" strokeWidth={3} />; })}

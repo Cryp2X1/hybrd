@@ -151,8 +151,8 @@ export default function Sleep() {
           <p className="small" style={{ margin: '10px 0 0' }}>{BAND_TEXT[b]}</p>
           <svg className="sl-curve" viewBox={`0 0 ${W} ${Hh}`} preserveAspectRatio="none" role="img" aria-label="Caffeine over the day (estimate)">
             <line x1="0" x2={W} y1={Hh - (SAFE_MG / max) * (Hh - 6)} y2={Hh - (SAFE_MG / max) * (Hh - 6)} stroke="rgba(74,222,128,.6)" strokeDasharray="4 4" />
-            <polyline points={path} fill="none" stroke="#FFE600" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
-            <line x1={((now - start) / (end - start)) * W} x2={((now - start) / (end - start)) * W} y1="0" y2={Hh} stroke="rgba(255,255,255,.5)" />
+            <polyline points={path} fill="none" stroke="var(--yc)" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+            <line x1={((now - start) / (end - start)) * W} x2={((now - start) / (end - start)) * W} y1="0" y2={Hh} stroke="var(--mut)" />
             <line x1={((bed - start) / (end - start)) * W} x2={((bed - start) / (end - start)) * W} y1="0" y2={Hh} stroke="#a78bfa" strokeDasharray="3 3" />
           </svg>
           <div className="sl-meter-l"><span>{hm(start)}</span><span>now {Math.round(nowMg)} mg</span><span>bed {quiz.bed}</span></div>

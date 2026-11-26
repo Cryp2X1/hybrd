@@ -8,7 +8,7 @@ select t.as('aaaaaaaa-0000-0000-0000-000000000001');
 insert into public.mind_checkins (id, day, data) values ('ci-2026-11-16', '2026-11-16', '{"date":"2026-11-16","mood":4,"stress":2,"energy":4,"motivation":4,"soreness":2,"sleepQ":4,"score":78,"rec":"go","v":1}');
 insert into public.journal_entries (id, day, data) values ('j1', '2026-11-16', '{"date":"2026-11-16","kind":"win","text":"Held pace on the last km."}');
 insert into public.mind_sessions (id, day, data) values ('s1', '2026-11-16', '{"date":"2026-11-16","kind":"breathe","ref":"sigh","minutes":5}');
-insert into public.mind_screens (id, day, data) values ('sc1', '2026-11-16', '{"date":"2026-11-16","who5":[3,3,3,3,3],"safety":"no"}');
+insert into public.mind_screens (id, day, data) values ('sc1', '2026-11-16', '{"date":"2026-11-16","v":2,"pulse":[3,2,3,3,2,3],"safety":"no"}');
 select t.ok((select user_id from public.mind_checkins where id = 'ci-2026-11-16') = 'aaaaaaaa-0000-0000-0000-000000000001', 'mind_checkins: user_id defaults to the signed-in user');
 select t.ok((select count(*) from public.journal_entries) = 1 and (select count(*) from public.mind_sessions) = 1 and (select count(*) from public.mind_screens) = 1, 'journal / sessions / screens: owner can read own rows');
 update public.journal_entries set data = jsonb_set(data, '{text}', '"Edited"') where id = 'j1';

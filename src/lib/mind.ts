@@ -120,52 +120,111 @@ export function toolStatus(tool: Tool, q: Pick<MindQuiz, 'age' | 'heart' | 'preg
 }
 
 // =====================================================================================================================
-// Screening (optional check-ups). Screens, never diagnoses.
+// HYBRD Pulse — HYBRD's own weekly well-being reflection (replaced the retired licensed index in Nov 2026).
+// Every word, the 0–4 emoji scale, the scoring and the bands are original to HYBRD. It is a general-wellness
+// self-reflection tool: NOT validated, NOT a screening test, NOT a diagnosis — see PULSE_DISCLAIMER and APP-BUILDER-NOTES.
 // =====================================================================================================================
-/** WHO-5 items, verbatim (WHO 2024, CC BY-NC-SA 3.0 IGO). Answer 0–5 for “over the last two weeks”. */
-export const WHO5_ITEMS = ['I have felt cheerful and in good spirits', 'I have felt calm and relaxed', 'I have felt active and vigorous', 'I woke up feeling fresh and rested', 'My daily life has been filled with things that interest me'];
-export const WHO5_SCALE = [{ v: 5, label: 'All of the time' }, { v: 4, label: 'Most of the time' }, { v: 3, label: 'More than half of the time' }, { v: 2, label: 'Less than half of the time' }, { v: 1, label: 'Some of the time' }, { v: 0, label: 'At no time' }];
-/** PHQ-2 + GAD-2 items (PHQ-4), verbatim (Pfizer PHQ Screeners — free to reproduce). 0–3 for “over the last 2 weeks”. */
+export type PulseKey = 'energy' | 'sleep' | 'mood' | 'stress' | 'drive' | 'recovery';
+export interface PulseItem { k: PulseKey; label: string; q: string; lo: string; hi: string; tip: string; link: string; linkLabel: string }
+/** Order matters: answers are stored as a 6-number array in this order (ScreenResult.pulse). Higher is always better. */
+export const PULSE_ITEMS: PulseItem[] = [
+  { k: 'energy', label: 'Energy', q: 'How much fuel has been in your tank for training and everyday life?', lo: 'Running on empty', hi: 'Fully charged',
+    tip: 'Energy dipping? Check the basics first: regular meals with enough carbs around training, water, and a lighter day or two.', link: '/fuel', linkLabel: 'Open Fuel' },
+  { k: 'sleep', label: 'Sleep', q: 'How well has your sleep been recharging you?', lo: 'Barely at all', hi: 'Fully recharged',
+    tip: 'Protect sleep this week: a steady bedtime, caffeine before early afternoon, and a 10-minute wind-down.', link: '/fuel/sleep', linkLabel: 'Sleep tools' },
+  { k: 'mood', label: 'Mood', q: 'Overall, how has your mood been?', lo: 'Really low', hi: 'Really good',
+    tip: 'Mood low? Easy movement outdoors, time with people you like and a few lines in your journal can all help.', link: '/mind?tab=journal', linkLabel: 'Journal' },
+  { k: 'stress', label: 'Stress', q: 'How manageable has your stress load felt?', lo: 'Overwhelming', hi: 'Easy to handle',
+    tip: 'Stress running high? Five minutes of slow breathing with long exhales is a quick way to take the edge off.', link: '/mind/breathe/sigh', linkLabel: 'Breathe 5 min' },
+  { k: 'drive', label: 'Drive', q: 'How strong has your drive been to move and work toward your goals?', lo: 'No drive', hi: 'Fired up',
+    tip: 'Drive fading? Shrink the goal: plan one short session you can’t say no to, and decide exactly when and where you’ll do it.', link: '/mind?tab=skills', linkLabel: 'Mental skills' },
+  { k: 'recovery', label: 'Recovery', q: 'How well has your body been bouncing back between sessions?', lo: 'Beat up and sore', hi: 'Bouncing back well',
+    tip: 'Body not bouncing back? Swap one hard session for an easy one, and use a recovery routine after training.', link: '/mind?tab=recover', linkLabel: 'Recovery planner' },
+];
+export const PULSE_SCALE: { v: number; emoji: string; label: string }[] = [
+  { v: 0, emoji: '😣', label: 'Very poor' }, { v: 1, emoji: '🙁', label: 'Poor' }, { v: 2, emoji: '😐', label: 'Okay' }, { v: 3, emoji: '🙂', label: 'Good' }, { v: 4, emoji: '😄', label: 'Great' },
+];
+export const PULSE_PERIOD = 'the past 7 days';
+export const PULSE_MAX = PULSE_ITEMS.length * 4;
+export type PulseBand = 'thriving' | 'steady' | 'low' | 'care';
+/** HYBRD's own bands for reading your trend — not clinical cut-offs. */
+export const PULSE_BAND: Record<PulseBand, { label: string; min: number; text: string }> = {
+  thriving: { label: 'Thriving', min: 75, text: 'You’re in a good place this week. Keep doing what’s working.' },
+  steady: { label: 'Steady', min: 55, text: 'A solid week with a soft spot or two. Small tweaks below.' },
+  low: { label: 'Running low', min: 35, text: 'A tougher week. Go easier on yourself and lean on the basics: sleep, food, easy movement, people.' },
+  care: { label: 'Needs some care', min: 0, text: 'This week has been heavy. Make rest and support the priority — training can wait.' },
+};
+export const pulseBand = (score: number): PulseBand => (score >= PULSE_BAND.thriving.min ? 'thriving' : score >= PULSE_BAND.steady.min ? 'steady' : score >= PULSE_BAND.low.min ? 'low' : 'care');
+export interface PulseResult { score: number; band: PulseBand; items: { k: PulseKey; label: string; v: number; pct: number }[]; focus: PulseKey[]; support: boolean }
+/** 0–100 = sum of six 0–4 answers ÷ 24 × 100. `focus` = up to 2 lowest areas scoring ≤ 2. `support` = show the gentle 988 line. */
+export function pulseScore(a: number[] | undefined): PulseResult | null {
+  if (!a || a.length !== PULSE_ITEMS.length || a.some((x) => !Number.isInteger(x) || x < 0 || x > 4)) return null;
+  const score = Math.round((a.reduce((s, x) => s + x, 0) / PULSE_MAX) * 100);
+  const items = PULSE_ITEMS.map((it, i) => ({ k: it.k, label: it.label, v: a[i], pct: a[i] * 25 }));
+  const focus = items.filter((x) => x.v <= 2).sort((x, y) => x.v - y.v).slice(0, 2).map((x) => x.k);
+  const mood = a[PULSE_ITEMS.findIndex((x) => x.k === 'mood')];
+  return { score, band: pulseBand(score), items, focus, support: score < PULSE_BAND.low.min || mood === 0 };
+}
+export const PULSE_DISCLAIMER = 'HYBRD Pulse is an original self-reflection tool for general wellness. It is not a medical device, a validated or clinical questionnaire, a screening test or a diagnosis, and it is not medical advice. Scores are HYBRD’s own rule of thumb to help you notice your trends.';
+export const pulseTalk = (minor: boolean) => (minor ? 'a parent or guardian, a school counselor or your doctor' : 'your doctor or another qualified professional');
+/** Gentle, non-alarming support line shown when a Pulse is low. Names no condition, no threshold, no diagnosis. */
+export const pulseSupportLine = (minor: boolean) => `Rough stretch? You don’t have to carry it alone. Talk to someone you trust${minor ? ' — like a parent, guardian or school counselor' : ''}, and if things ever feel like too much, you can call or text 988 (US) any time — free and confidential.`;
+/** Pulse scores oldest → newest (only check-ins with a Pulse; retired-format entries are skipped). */
+export function pulseTrend(screens: Pick<ScreenResult, 'date' | 'pulse' | 'deleted' | 'id'>[], n = 8): { id: string; date: string; score: number; band: PulseBand }[] {
+  return screens.filter((s) => !s.deleted && s.pulse).map((s) => ({ s, p: pulseScore(s.pulse) })).filter((x) => x.p)
+    .sort((x, y) => x.s.date.localeCompare(y.s.date)).slice(-n).map((x) => ({ id: x.s.id, date: x.s.date, score: x.p!.score, band: x.p!.band }));
+}
+
+// Optional add-on: PHQ-2 + GAD-2 (PHQ-4) — free to use (Pfizer PHQ Screeners: “No permission required to reproduce,
+// translate, display or distribute”). Off by default; the user opts in inside the Pulse sheet.
+/** PHQ-2 + GAD-2 items (PHQ-4), verbatim. 0–3 for “over the last 2 weeks”. */
 export const PHQ4_ITEMS = ['Little interest or pleasure in doing things', 'Feeling down, depressed, or hopeless', 'Feeling nervous, anxious or on edge', 'Not being able to stop or control worrying'];
 export const PHQ4_SCALE = [{ v: 0, label: 'Not at all' }, { v: 1, label: 'Several days' }, { v: 2, label: 'More than half the days' }, { v: 3, label: 'Nearly every day' }];
 export const SAFETY_Q = 'In the past 2 weeks, have you had thoughts of ending your life or of hurting yourself?';
 export type SafetyAnswer = 'yes' | 'no' | 'skip';
 
-export function who5Score(a: number[]): { raw: number; pct: number; low: boolean } | null {
-  if (a.length !== 5 || a.some((x) => !Number.isInteger(x) || x < 0 || x > 5)) return null;
-  const raw = a.reduce((s, x) => s + x, 0);
-  return { raw, pct: raw * 4, low: raw < 13 }; // WHO: percentage < 50 (raw < 13) → poor well-being, consider further assessment
-}
 export function phq4Score(a: number[]): { phq2: number; gad2: number; total: number; dep: boolean; anx: boolean } | null {
   if (a.length !== 4 || a.some((x) => !Number.isInteger(x) || x < 0 || x > 3)) return null;
   const phq2 = a[0] + a[1], gad2 = a[2] + a[3];
   return { phq2, gad2, total: phq2 + gad2, dep: phq2 >= 3, anx: gad2 >= 3 }; // ≥ 3 = recommended screening cut-point for each
 }
-export type ScreenLevel = 'crisis' | 'professional' | 'watch' | 'ok';
-export interface ScreenResult extends Rec { date: string; who5?: number[]; phq4?: number[]; safety?: SafetyAnswer; localOnly?: boolean; sample?: boolean }
-export function screenOutcome(s: Pick<ScreenResult, 'who5' | 'phq4' | 'safety'>, minor = false): { level: ScreenLevel; title: string; lines: string[]; src: string[] } {
-  const w = s.who5 ? who5Score(s.who5) : null, p = s.phq4 ? phq4Score(s.phq4) : null;
-  const talk = minor ? 'a parent or guardian, a school counselor or your doctor' : 'your doctor or a licensed mental-health professional';
+export type ScreenLevel = 'crisis' | 'professional' | 'watch' | 'ok' | 'legacy';
+/** A Pulse check-in (v 2). Records saved before Nov 2026 may carry `who5` — answers to a retired licensed index. They are kept
+ *  untouched so nothing breaks and they still sync/export, but they are never scored, shown or compared with Pulse. */
+export interface ScreenResult extends Rec { date: string; v?: 2; pulse?: number[]; /** @deprecated retired format, kept as-is */ who5?: number[]; phq4?: number[]; safety?: SafetyAnswer; localOnly?: boolean; sample?: boolean }
+export const isLegacyScreen = (s: Pick<ScreenResult, 'pulse' | 'who5'>) => !s.pulse && Array.isArray(s.who5);
+export interface ScreenOutcome { level: ScreenLevel; title: string; lines: string[]; src: string[]; pulse: PulseResult | null; support: boolean }
+export function screenOutcome(s: Pick<ScreenResult, 'pulse' | 'who5' | 'phq4' | 'safety'>, minor = false): ScreenOutcome {
+  const pulse = pulseScore(s.pulse), p = s.phq4 ? phq4Score(s.phq4) : null;
+  const talk = pulseTalk(minor);
   if (s.safety === 'yes') return {
-    level: 'crisis', title: 'Thank you for telling us. You don’t have to handle this alone.',
+    level: 'crisis', title: 'Thank you for telling us. You don’t have to handle this alone.', pulse, support: true,
     lines: ['Please reach out now: call or text 988 (US) to talk with a trained counselor, any time, free and confidential.', 'If you might act on these thoughts or are in danger, call 911 or go to the nearest emergency room. Outside the US, contact your local emergency services.', `When you can, also tell ${talk} — and someone you trust.`],
     src: ['mind-988', 'mind-nimh-suicide', 'mind-dazzi'],
   };
   const lines: string[] = [], src: string[] = [];
-  if (w) { lines.push(w.low ? `Well-being ${w.pct}/100 — below the WHO-5’s 50 cut-off for low well-being.` : `Well-being ${w.pct}/100 (WHO-5).`); src.push('mind-who5', 'mind-topp'); }
+  if (pulse) { lines.push(`Pulse ${pulse.score}/100 · ${PULSE_BAND[pulse.band].label}. ${PULSE_BAND[pulse.band].text}`); src.push('mind-saw', 'mind-hooper'); }
+  else if (isLegacyScreen(s)) lines.push('Older check-up in a retired format. Your answers are kept, but they aren’t scored or compared with HYBRD Pulse.');
   if (p) {
     lines.push(p.dep ? `Mood items ${p.phq2}/6 — at or above the PHQ-2 screening cut-off (3).` : `Mood items ${p.phq2}/6 (PHQ-2).`);
     lines.push(p.anx ? `Worry items ${p.gad2}/6 — at or above the GAD-2 screening cut-off (3).` : `Worry items ${p.gad2}/6 (GAD-2).`);
     src.push('mind-phq2', 'mind-gad2');
   }
-  if ((w && w.low) || (p && (p.dep || p.anx))) return {
-    level: 'professional', title: 'Worth talking to someone',
+  if (p && (p.dep || p.anx)) return {
+    level: 'professional', title: 'Worth talking to someone', pulse, support: true,
     lines: [...lines, `This is a screening result, not a diagnosis. Scores like this are a good reason to talk with ${talk} — support works, and asking for it is a strength.`],
     src: [...src, 'mind-smhat'],
   };
-  const borderline = (w && w.pct < 60) || (p && (p.phq2 === 2 || p.gad2 === 2));
-  if (borderline) return { level: 'watch', title: 'Keep an eye on it', lines: [...lines, 'Not above the cut-offs. If low mood or worry sticks around for 2 weeks or more, or gets in the way of daily life, talk to someone.'], src: [...src, 'mind-nimh-caring'] };
-  return { level: 'ok', title: 'Looking steady', lines: [...lines, 'No flags today. Keep doing what’s working — and check in again in a couple of weeks.'], src };
+  const support = !!pulse?.support;
+  if (support) return {
+    level: 'watch', title: 'Go easy on yourself this week', pulse, support,
+    lines: [...lines, `If you’ve felt like this for a couple of weeks or more, or it’s getting in the way of daily life, talking with ${talk} can really help.`],
+    src: [...src, 'mind-nimh-caring', 'mind-988'],
+  };
+  if (!pulse && !p) return { level: 'legacy', title: 'Older check-up', pulse, support: false, lines, src };
+  const borderline = (pulse && pulse.band === 'low') || (p && (p.phq2 === 2 || p.gad2 === 2));
+  if (borderline) return { level: 'watch', title: 'Keep an eye on it', pulse, support: false, lines: [...lines, 'Be kind to yourself this week. If low mood or worry sticks around for 2 weeks or more, or gets in the way of daily life, talk to someone.'], src: [...src, 'mind-nimh-caring'] };
+  return { level: 'ok', title: pulse?.band === 'thriving' ? 'Looking strong' : 'Looking steady', pulse, support: false, lines: [...lines, 'Check in again next week to see your trend.'], src };
 }
 
 // =====================================================================================================================

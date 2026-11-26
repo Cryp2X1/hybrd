@@ -1,4 +1,4 @@
-// /mind — Mind & Recovery hub. Tabs: Today (check-in → readiness), Breathe, Skills (programs + check-ups), Recover, Journal, Trends, Evidence.
+// /mind — Mind & Recovery hub. Tabs: Today (check-in → readiness), Breathe, Skills (programs + HYBRD Pulse), Recover, Journal, Trends, Evidence.
 // Logic lives in src/lib/mind.ts (tested by tools/test-mind.ts); content + sources in src/data/mindContent.ts.
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -6,8 +6,8 @@ import { useStore, uid } from '../lib/store';
 import { prettyDay, todayKey } from '../lib/calc';
 import {
   BAND_TEXT, COLD_HEAT_SAFETY, DELOAD_HOW, GRADES, GRADE_HINT, GRADE_LABEL, JOURNAL_MAX, PATTERNS, PHQ4_ITEMS, PHQ4_SCALE, RED_FLAGS, REC_LABEL, REC_TEXT,
-  SAFETY_Q, WHO5_ITEMS, WHO5_SCALE, baselines, coldHeatAdvice, crisisInText, defaultMindQuiz, deloadSignal, hardYesterday, loadSummary, mindScreen, mindStats,
-  moodWatch, patterns, programProgress, readiness, recoveryPlan, screenOutcome, toolStatus, trend, validCheckIn, who5Score,
+  SAFETY_Q, PULSE_BAND, PULSE_ITEMS, baselines, coldHeatAdvice, crisisInText, defaultMindQuiz, deloadSignal, hardYesterday, isLegacyScreen, loadSummary, mindScreen, mindStats,
+  moodWatch, patterns, programProgress, pulseScore, pulseTrend, readiness, recoveryPlan, screenOutcome, toolStatus, trend, validCheckIn,
   type CheckIn, type JournalEntry, type JournalKind, type MindSession, type Pain, type RedFlag, type SafetyAnswer, type ScreenResult, type WLike,
 } from '../lib/mind';
 import { MIND_EVIDENCE, MIND_EV_CATS, MIND_SOURCE_IDS, MIND_TIPS, PROGRAMS, ROUTINES, routineSec, type MindEvCat } from '../data/mindContent';
@@ -17,6 +17,7 @@ import { Page, Card, Banner, Segmented, Sheet, Pill } from '../components/ui';
 import { SrcPills } from '../components/SrcPills';
 import { Icon } from '../components/Icon';
 import { CrisisCard, MGrade, NotTherapy, Ring } from '../components/MindBits';
+import { PulseBreakdown, PulseDial, PulseDisclaimer, PulseFocus, PulseQuestion, PulseSupport, PulseTrendChart } from '../components/Pulse';
 import { useToast } from '../lib/toast';
 
 type Tab = 'today' | 'breathe' | 'skills' | 'recover' | 'journal' | 'trends' | 'evidence';
@@ -135,10 +136,25 @@ export default function Mind() {
     </Card>;
   };
 
+  // ---------------- HYBRD Pulse cards ----------------
+  const pulsePts = pulseTrend(screens, 8);
+  const lastPulse = pulsePts[pulsePts.length - 1];
+  const HistoryList = (n: number) => <ul className="mn-hist" data-testid="pulse-history">{screens.slice(0, n).map((s) => { const o = screenOutcome(s, minor); const pr = pulseScore(s.pulse); return <li key={s.id}>
+    <span>{prettyDay(s.date)}</span>{pr ? <span className="mono">Pulse {pr.score}</span> : isLegacyScreen(s) ? <span className="muted">Older format (retired)</span> : null}
+    <span className={`mn-lvl ${o.level}`}>{o.title}</span>{s.localOnly && <Icon name="lock" size={12} />}
+    <button className="icon-btn" aria-label="Delete check-in" onClick={() => remove('screens', s.id)}><Icon name="trash" size={14} /></button></li>; })}</ul>;
+  const PulseCard = (onToday: boolean) => <Card>
+    <div className="kicker">Weekly · ~1 minute · optional</div>
+    <h3>HYBRD Pulse</h3>
+    <p className="muted small" style={{ margin: '2px 0 8px' }}>Six questions in HYBRD’s own words about your energy, sleep, mood, stress, drive and recovery over the past week. A trend to reflect on — not a test or a diagnosis.</p>
+    {lastPulse && <div className="pl-lastrow"><PulseDial score={lastPulse.score} band={lastPulse.band} size={64} /><span className="small">Last Pulse <b>{lastPulse.score}</b> · {PULSE_BAND[lastPulse.band].label}<br /><span className="muted">{prettyDay(lastPulse.date)}</span></span></div>}
+    <div className="row wrap" style={{ gap: 8 }}><button className="btn sm" data-testid={onToday ? 'mind-checkup-open' : 'mind-pulse-open'} onClick={openScreen}>{lastPulse ? 'Take this week’s Pulse' : 'Take your first Pulse'}</button>{pulsePts.length > 1 && <Link className="btn sm ghost" to="/mind?tab=trends">Trend</Link>}</div>
+    {!onToday && screens.length > 0 && HistoryList(5)}
+  </Card>;
+
   // ---------------- Today ----------------
   const nextProg = PROGRAMS.map((p) => ({ p, pr: programProgress(sessions, p.id, p.days.length) })).find((x) => x.pr.done.size > 0 && x.pr.next !== null);
   const deload = deloadSignal(ws, cis, today);
-  const lastScreen = screens[0];
   const TodayTab = () => <div className="sl-grid">
     <div className="stack">
       {!plan && <Card className="mn-setup">
@@ -180,11 +196,7 @@ export default function Mind() {
           <div className="stat"><div className="stat-v">{stats.journal7}</div><div className="stat-l">journal · 7 d</div></div>
         </div>
       </Card>
-      <Card>
-        <h3>Well-being check-up</h3>
-        <p className="muted small" style={{ margin: '2px 0 10px' }}>Optional, every couple of weeks: 10 short questions from validated screening tools (WHO-5, PHQ-2, GAD-2). A screen, never a diagnosis. {lastScreen ? `Last: ${prettyDay(lastScreen.date)}.` : ''}</p>
-        <button className="btn sm" data-testid="mind-checkup-open" onClick={openScreen}>Start check-up · 1 min</button>
-      </Card>
+      {PulseCard(true)}
       <p className="muted small">{MIND_TIPS[new Date().getDate() % MIND_TIPS.length].text} <SrcPills ids={MIND_TIPS[new Date().getDate() % MIND_TIPS.length].src} /></p>
     </div>
   </div>;
@@ -217,12 +229,7 @@ export default function Mind() {
       <div className="mn-prog-bar"><i style={{ width: `${pr.pct}%` }} /></div>
       <div className="meta"><Pill>{p.for}</Pill></div>
     </Link>; })}</div>
-    <Card>
-      <h3>Well-being check-up</h3>
-      <p className="muted small" style={{ margin: '2px 0 10px' }}>WHO-5 well-being, plus PHQ-2 (mood) and GAD-2 (worry). Validated screens that tell you when it’s worth talking to a professional. They don’t diagnose.</p>
-      <button className="btn sm" onClick={openScreen}>Start check-up</button>
-      {screens.length > 0 && <ul className="mn-hist">{screens.slice(0, 5).map((s) => { const o = screenOutcome(s, minor); return <li key={s.id}><span>{prettyDay(s.date)}</span><span className={`mn-lvl ${o.level}`}>{o.title}</span>{s.localOnly && <Icon name="lock" size={12} />}<button className="icon-btn" aria-label="Delete check-up" onClick={() => remove('screens', s.id)}><Icon name="trash" size={14} /></button></li>; })}</ul>}
-    </Card>
+    {PulseCard(false)}
   </div>;
 
   // ---------------- Recover ----------------
@@ -358,10 +365,16 @@ export default function Mind() {
             : <ul className="mn-pats" data-testid="mind-patterns">{pats.map((p) => <li key={p.id}><b>{p.label}</b><div><span>{p.aLabel}: <b>{p.a}</b> <small>({p.na} days)</small></span><span>{p.bLabel}: <b>{p.b}</b> <small>({p.nb} days)</small></span></div></li>)}</ul>}
           <p className="muted small" style={{ margin: '8px 0 0' }}>Average readiness on each kind of day, from your own check-ins (last 90 days). A pattern, not proof — lots of things change at once.</p>
         </Card>
-        {screens.length > 0 && <Card>
-          <h3>Check-ups</h3>
-          <ul className="mn-hist">{screens.slice(0, 8).map((s) => { const w = s.who5 ? who5Score(s.who5) : null; const o = screenOutcome(s, minor); return <li key={s.id}><span>{prettyDay(s.date)}</span>{w && <span className="mono">WHO-5 {w.pct}</span>}<span className={`mn-lvl ${o.level}`}>{o.title}</span></li>; })}</ul>
-        </Card>}
+        <Card>
+          <div className="card-head"><div><div className="kicker">Weekly · your own words, your own trend</div><h3>HYBRD Pulse</h3></div><button className="btn sm" onClick={openScreen}>New Pulse</button></div>
+          {pulsePts.length < 2 ? <p className="muted small">{pulsePts.length ? 'One Pulse so far — your trend appears after the next one.' : 'Take a Pulse once a week to see your trend here.'}</p> : <>
+            <PulseTrendChart pts={pulsePts} />
+            <div className="pl-legend">{(Object.keys(PULSE_BAND) as (keyof typeof PULSE_BAND)[]).map((b) => <span key={b}><i className={b} />{PULSE_BAND[b].label}</span>)}</div>
+            <p className="muted small" style={{ margin: '8px 0 0' }}>Average of your last {pulsePts.length}: <b>{Math.round(pulsePts.reduce((a, p) => a + p.score, 0) / pulsePts.length)}</b>. A trend for you to reflect on — not a clinical measure.</p>
+          </>}
+          {screens.length > 0 && HistoryList(8)}
+          <PulseDisclaimer minor={minor} compact />
+        </Card>
       </div>
     </div>;
   };
@@ -382,46 +395,65 @@ export default function Mind() {
       {e.caution && <p className="small" style={{ margin: '8px 0 0' }}><b>Caution:</b> {e.caution}</p>}
       <SrcPills ids={e.src} />
     </Card>)}</div>
-    {cat === 'safety' && <Card><h3>Screening tools & licences</h3><ul className="cues small">
-      <li><b>WHO-5:</b> © World Health Organization 2024, used unchanged under CC BY-NC-SA 3.0 IGO. WHO does not endorse HYBRD.</li>
-      <li><b>PHQ-2 / GAD-2:</b> Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc. No permission required to reproduce.</li>
-      <li>HYBRD never diagnoses. Scores above a cut-off only suggest talking to a professional.</li></ul><SrcPills ids={['mind-who5', 'mind-phq']} /></Card>}
+    {cat === 'safety' && <Card><h3>Check-in tools & licences</h3><ul className="cues small">
+      <li><b>HYBRD Pulse:</b> an original HYBRD tool — questions, emoji scale, scoring and bands written by HYBRD. No third-party licence. It’s for general wellness and self-reflection only: not validated, not a screening test and not a diagnosis.</li>
+      <li><b>Optional PHQ-2 / GAD-2:</b> Developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc. No permission required to reproduce, translate, display or distribute.</li>
+      <li>HYBRD never diagnoses. Low scores only suggest being kind to yourself and, if it lasts, talking to someone.</li></ul><SrcPills ids={['mind-fda-wellness', 'mind-phq']} /></Card>}
     <Card><h3>All sources ({MIND_SOURCE_IDS.length})</h3><ol className="wl-src" data-testid="mind-sources">{MIND_SOURCE_IDS.map((id) => { const s = sourceById(id); return s ? <li key={id}><a href={s.url} target="_blank" rel="noopener">{s.cite}</a></li> : null; })}</ol></Card>
   </div>;
 
-  // ---------------- Check-up sheet ----------------
+  // ---------------- HYBRD Pulse sheet ----------------
   const [scrOpen, setScrOpen] = useState(false);
-  const [who5, setWho5] = useState<(number | undefined)[]>([]);
+  const [pulse, setPulse] = useState<(number | undefined)[]>([]);
+  const [addPhq, setAddPhq] = useState(false);
   const [phq, setPhq] = useState<(number | undefined)[]>([]);
   const [safety, setSafety] = useState<SafetyAnswer | undefined>();
   const [scrDone, setScrDone] = useState<ScreenResult | null>(null);
-  function openScreen() { setWho5([]); setPhq([]); setSafety(undefined); setScrDone(null); setScrOpen(true); }
-  const scrReady = WHO5_ITEMS.every((_, i) => typeof who5[i] === 'number') && PHQ4_ITEMS.every((_, i) => typeof phq[i] === 'number') && !!safety;
+  function openScreen() { setPulse([]); setAddPhq(false); setPhq([]); setSafety(undefined); setScrDone(null); setScrOpen(true); }
+  const pulseLeft = PULSE_ITEMS.filter((_, i) => typeof pulse[i] !== 'number').length;
+  const scrReady = pulseLeft === 0 && (!addPhq || PHQ4_ITEMS.every((_, i) => typeof phq[i] === 'number')) && !!safety;
   const saveScreen = () => {
     if (!scrReady || !can('mind.screening')) return;
-    const s: Omit<ScreenResult, 'updatedAt'> = { id: uid(), date: today, who5: who5 as number[], phq4: phq as number[], safety, ...(priv ? { localOnly: true } : {}) };
+    const s: Omit<ScreenResult, 'updatedAt'> = { id: uid(), date: today, v: 2, pulse: pulse as number[], ...(addPhq ? { phq4: phq as number[] } : {}), safety, ...(priv ? { localOnly: true } : {}) };
     upsert('screens', s as ScreenResult); setScrDone(s as ScreenResult);
   };
   const outcome = scrDone ? screenOutcome(scrDone, minor) : null;
-  const ScreenSheet = <Sheet open={scrOpen} onClose={() => setScrOpen(false)} title="Well-being check-up">
-    <div className="mn-scr sl-root" data-testid="mind-checkup">
+  const prevPulse = scrDone ? pulsePts.filter((p) => p.id !== scrDone.id).slice(-1)[0] : undefined;
+  const ScreenSheet = <Sheet open={scrOpen} onClose={() => setScrOpen(false)} title="HYBRD Pulse">
+    <div className="pl-sheet sl-root" data-testid="mind-checkup">
       {!scrDone ? <>
-        <p className="muted small" style={{ marginTop: 0 }}>Over the <b>last two weeks</b>… Answers are private{priv ? ' and stay on this device' : ''}. This is a screen, not a diagnosis.</p>
-        <div className="kicker">WHO-5 · how often</div>
-        {WHO5_ITEMS.map((it, i) => <div key={it} className="mn-sq"><p>{it}</p><div className="chips">{WHO5_SCALE.map((o) => <button key={o.v} className={`chip ${who5[i] === o.v ? 'on' : ''}`} aria-pressed={who5[i] === o.v} onClick={() => setWho5((cur) => { const n = [...cur]; n[i] = o.v; return n; })}>{o.label}</button>)}</div></div>)}
-        <div className="kicker" style={{ marginTop: 14 }}>How often have you been bothered by…</div>
-        {PHQ4_ITEMS.map((it, i) => <div key={it} className="mn-sq"><p>{it}</p><div className="chips">{PHQ4_SCALE.map((o) => <button key={o.v} className={`chip ${phq[i] === o.v ? 'on' : ''}`} aria-pressed={phq[i] === o.v} onClick={() => setPhq((cur) => { const n = [...cur]; n[i] = o.v; return n; })}>{o.label}</button>)}</div></div>)}
+        <p className="muted small">Six quick questions about <b>the past 7 days</b> — about a minute. Tap the face that fits best. Answers are private{priv ? ' and stay on this device' : ''}.</p>
+        <PulseDisclaimer minor={minor} compact />
+        {PULSE_ITEMS.map((_, i) => <PulseQuestion key={i} i={i} value={pulse[i]} onChange={(v) => setPulse((cur) => { const n = [...cur]; n[i] = v; return n; })} />)}
         <div className="mn-sq"><p><b>{SAFETY_Q}</b></p><div className="chips">{([['no', 'No'], ['yes', 'Yes'], ['skip', 'Prefer not to say']] as [SafetyAnswer, string][]).map(([v, l]) => <button key={v} className={`chip ${safety === v ? 'on' : ''}`} aria-pressed={safety === v} data-testid={`scr-safety-${v}`} onClick={() => setSafety(v)}>{l}</button>)}</div>
           <p className="muted small" style={{ margin: '4px 0 0' }}>We ask because asking is safe and helps people get support. <SrcPills ids={['mind-dazzi']} /></p></div>
         {safety === 'yes' && <CrisisCard minor={minor} />}
-        <button className="btn y block" disabled={!scrReady} data-testid="scr-save" onClick={saveScreen}>See result</button>
-        <p className="muted small">WHO-5 © WHO 2024 (CC BY-NC-SA 3.0 IGO). PHQ-2/GAD-2 developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc.</p>
+        <details className="pl-opt" open={addPhq} onToggle={(e) => setAddPhq((e.currentTarget as HTMLDetailsElement).open)}>
+          <summary data-testid="pulse-add-phq">Optional: add 4 standard mood & worry questions <span>(PHQ-2 / GAD-2)</span></summary>
+          <div className="kicker" style={{ marginTop: 10 }}>Over the last 2 weeks, how often have you been bothered by…</div>
+          {PHQ4_ITEMS.map((it, i) => <div key={it} className="mn-sq"><p>{it}</p><div className="chips">{PHQ4_SCALE.map((o) => <button key={o.v} className={`chip ${phq[i] === o.v ? 'on' : ''}`} aria-pressed={phq[i] === o.v} onClick={() => setPhq((cur) => { const n = [...cur]; n[i] = o.v; return n; })}>{o.label}</button>)}</div></div>)}
+          <p className="muted small">PHQ-2/GAD-2 developed by Drs. Robert L. Spitzer, Janet B.W. Williams, Kurt Kroenke and colleagues, with an educational grant from Pfizer Inc. A screen, never a diagnosis.</p>
+        </details>
+        <button className="btn y block" disabled={!scrReady} data-testid="scr-save" onClick={saveScreen}>{scrReady ? 'See my Pulse' : pulseLeft ? `Answer ${pulseLeft} more` : 'Answer the last question'}</button>
       </> : outcome && <div className={`mn-out ${outcome.level}`} data-testid={`scr-out-${outcome.level}`}>
-        <h3>{outcome.title}</h3>
-        {outcome.lines.map((l) => <p key={l} className="small">{l}</p>)}
+        {outcome.pulse && <div className="pl-hero" data-testid="pulse-result">
+          <PulseDial score={outcome.pulse.score} band={outcome.pulse.band} />
+          <div style={{ minWidth: 0 }}>
+            <div className="kicker">Your Pulse · past 7 days</div>
+            <h3>{PULSE_BAND[outcome.pulse.band].label}</h3>
+            <p className="small">{PULSE_BAND[outcome.pulse.band].text}</p>
+            {prevPulse && <span className={`pl-delta ${outcome.pulse.score >= prevPulse.score ? 'up' : ''}`}>{outcome.pulse.score - prevPulse.score >= 0 ? '+' : ''}{outcome.pulse.score - prevPulse.score} since {prettyDay(prevPulse.date)}</span>}
+          </div>
+        </div>}
+        {outcome.level !== 'ok' && <h3 className={outcome.level === 'crisis' ? '' : 'pl-title'}>{outcome.title}</h3>}
+        {outcome.pulse && outcome.level !== 'crisis' && <><PulseBreakdown r={outcome.pulse} /><div className="kicker" style={{ marginTop: 8 }}>Focus this week</div><PulseFocus r={outcome.pulse} /></>}
+        {outcome.lines.filter((l) => !/^Pulse \d/.test(l)).map((l) => <p key={l} className="small">{l}</p>)}
         <SrcPills ids={outcome.src} />
-        {(outcome.level === 'crisis' || outcome.level === 'professional') && <CrisisCard minor={minor} title={outcome.level === 'crisis' ? 'Reach out now' : 'Support is available any time'} />}
-        <button className="btn block" onClick={() => setScrOpen(false)}>Close</button>
+        {outcome.level === 'crisis' && <CrisisCard minor={minor} title="Reach out now" />}
+        {outcome.level === 'professional' && <CrisisCard minor={minor} title="Support is available any time" />}
+        {outcome.level === 'watch' && outcome.support && <PulseSupport minor={minor} />}
+        <PulseDisclaimer minor={minor} />
+        <div className="row wrap" style={{ gap: 8 }}><button className="btn" onClick={() => setScrOpen(false)}>Close</button><button className="btn ghost" onClick={() => { setScrOpen(false); setTab('trends'); }}>See my trend</button></div>
       </div>}
     </div>
   </Sheet>;

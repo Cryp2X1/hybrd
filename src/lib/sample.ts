@@ -137,7 +137,7 @@ export function buildSample(weightKg: number, center: [number, number]): Partial
     sleeps.push({ id: `${SAMPLE_TAG}-sleep-${off}`, updatedAt: Date.now(), date: addDays(today, off), bed: '22:45', wake: '06:30', hours, quality, caffeineLate, alcohol, lateMeal, snack: off % 2 ? 'Kiwi & Greek yogurt' : undefined });
   }
   // Mind & Recovery: ~3 weeks of daily check-ins (today left open so the 20-second check-in is the first thing to try),
-  // a few journal entries, breathing / routine sessions, 3 days of the Discipline program and one well-being check-up.
+  // a few journal entries, breathing / routine sessions, 3 days of the Discipline program and three weekly HYBRD Pulse check-ins.
   const checkins: CheckIn[] = [];
   const cl = (x: number) => Math.max(1, Math.min(5, Math.round(x))) as Scale5;
   for (let off = -20; off <= -1; off++) {
@@ -164,6 +164,10 @@ export function buildSample(weightKg: number, center: [number, number]): Partial
     ms(-12, 'breathe', 'sigh', 5, 1), ms(-11, 'breathe', 'resonance', 10, 2), ms(-10, 'program', 'discipline:1', 6, 3), ms(-8, 'program', 'discipline:2', 6, 4), ms(-6, 'program', 'discipline:3', 5, 5),
     ms(-6, 'routine', 'post-run', 9, 6), ms(-4, 'breathe', 'sigh', 5, 7), ms(-2, 'routine', 'post-run', 9, 8), ms(-2, 'breathe', 'resonance', 10, 9), ms(-1, 'routine', 'upper', 8, 10),
   ];
-  const screens: ScreenResult[] = [{ id: `${SAMPLE_TAG}-scr-1`, updatedAt: Date.now(), sample: true, date: addDays(today, -10), who5: [3, 3, 4, 3, 4], phq4: [0, 1, 1, 1], safety: 'no' }];
+  const screens: ScreenResult[] = [
+    { id: `${SAMPLE_TAG}-scr-1`, updatedAt: Date.now(), sample: true, date: addDays(today, -17), v: 2, pulse: [2, 2, 3, 2, 3, 2], safety: 'no' },
+    { id: `${SAMPLE_TAG}-scr-2`, updatedAt: Date.now(), sample: true, date: addDays(today, -10), v: 2, pulse: [3, 2, 3, 3, 3, 2], safety: 'no' },
+    { id: `${SAMPLE_TAG}-scr-3`, updatedAt: Date.now(), sample: true, date: addDays(today, -3), v: 2, pulse: [3, 3, 3, 3, 4, 3], safety: 'no' },
+  ];
   return { workouts, routes, foods, water, body, steps, burns, sleeps, checkins, journal, mindsessions, screens };
 }

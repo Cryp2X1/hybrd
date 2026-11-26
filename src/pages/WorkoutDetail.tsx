@@ -127,7 +127,7 @@ export default function WorkoutDetail() {
           return (
             <div key={i} className="food-row" style={isSlow ? { background: 'rgba(255,230,0,.08)', borderRadius: 10, padding: '11px 8px' } : undefined}>
               <span className="mono muted" style={{ width: 70 }}>{splitLabel(s)}</span>
-              <div className="fr-main"><div className="pillar-track"><div className="pillar-fill" style={{ width: `${(s.sec / maxSplit) * 100}%`, background: isSlow ? 'var(--y)' : '#f4f4f4' }} /></div></div>
+              <div className="fr-main"><div className="pillar-track"><div className="pillar-fill" style={{ width: `${(s.sec / maxSplit) * 100}%`, background: isSlow ? 'var(--yc)' : 'var(--bar-hi)' }} /></div></div>
               <span className="fr-k">{fmtTime(s.sec)}</span>
               {delta != null && <span className={`mono small delta ${delta > 0 ? 'up' : 'down'}`} style={{ width: 52, textAlign: 'right' }}>{delta > 0 ? '+' : '−'}{fmtTime(Math.abs(delta))}</span>}
             </div>);

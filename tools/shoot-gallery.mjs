@@ -142,7 +142,7 @@ async function run(kind, browser) {
   check(av && av.size < 200 * 1024 && /webp|jpeg/.test(av.type), `Avatar stored in IndexedDB as ${av?.type} ${Math.round((av?.size || 0) / 1024)} KB`);
   const avDims = await page.$eval('.me-head img', (i) => [i.naturalWidth, i.naturalHeight]);
   check(avDims[0] === 512 && avDims[1] === 512, `Avatar is 512×512 (got ${avDims})`);
-  if (phone) check(!!(await page.$('.bottom-nav .bn-me [data-testid="avatar-img"]')) && !!(await page.$('.topbar .top-av [data-testid="avatar-img"]')), 'Avatar in bottom nav + top bar');
+  if (phone) check(!!(await page.$('.topbar .top-av [data-testid="avatar-img"]')), 'Avatar in the top bar');
   else check(!!(await page.$('.side-nav .side-me [data-testid="avatar-img"]')), 'Avatar in desktop sidebar');
 
   // ----- gallery: empty → bad files → upload many -----

@@ -1,0 +1,68 @@
+/* HYBRD Pulse (/mind) — colours from theme variables only, so light and dark themes both work. */
+.pl-sheet { min-width: 0; max-width: 100%; overflow-wrap: anywhere; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.pl-sheet > p { margin: 0; }
+.pl-q { padding: 10px 0 4px; border-top: 1px solid var(--line); }
+.pl-qh { display: grid; gap: 2px; margin-bottom: 8px; }
+.pl-qh p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--fg); }
+.pl-k { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.pl-scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.pl-scale button { display: grid; justify-items: center; gap: 2px; padding: 8px 2px 6px; border-radius: 12px; border: 1px solid var(--line2); background: var(--card2); color: var(--fg); cursor: pointer; font: inherit; min-height: 58px; }
+.pl-scale button .e { font-size: 24px; line-height: 1.1; filter: grayscale(.55); opacity: .8; transition: transform .12s ease, filter .12s ease; }
+.pl-scale button .l { font-size: 10.5px; color: var(--mut); }
+.pl-scale button:hover .e { filter: none; opacity: 1; }
+.pl-scale button.on { border-color: var(--yc, var(--y)); box-shadow: inset 0 0 0 1px var(--yc, var(--y)); }
+.pl-scale button.on .e { filter: none; opacity: 1; transform: scale(1.12); }
+.pl-scale button.on .l { color: var(--fg); font-weight: 600; }
+.pl-scale button:focus-visible { outline: 2px solid var(--yc, var(--y)); outline-offset: 2px; }
+.pl-ends { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--mut2); margin-top: 4px; }
+.pl-opt { border: 1px dashed var(--line2); border-radius: 14px; padding: 10px 12px; }
+.pl-opt summary { cursor: pointer; font-size: 13.5px; color: var(--fg); }
+.pl-opt summary span { color: var(--mut); }
+
+.pl-dial { position: relative; flex: none; }
+.pl-dial svg circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+.pl-dial .bg { stroke: var(--line); }
+.pl-dial .fg { stroke: var(--yc, var(--y)); }
+.pl-dial.thriving .fg { stroke: var(--ok); } .pl-dial.steady .fg { stroke: var(--yc, var(--y)); } .pl-dial.low .fg { stroke: var(--blue); } .pl-dial.care .fg { stroke: var(--mut); }
+.pl-dial .v { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.pl-dial .v b { font-family: var(--head); font-size: 34px; line-height: 1; color: var(--fg); }
+.pl-dial .v span { font-size: 11px; color: var(--mut); }
+.pl-hero { display: flex; gap: 14px; align-items: center; min-width: 0; }
+.pl-hero h3 { margin: 2px 0 4px; }
+.pl-hero p { margin: 0; line-height: 1.45; }
+.pl-delta { font-family: var(--mono); font-size: 12px; color: var(--mut); }
+.pl-delta.up { color: var(--ok); }
+
+.pl-bars { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 7px; }
+.pl-bars li { display: grid; grid-template-columns: 74px minmax(0, 1fr) 26px; align-items: center; gap: 8px; font-size: 13px; }
+.pl-bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.pl-bar i { display: block; height: 100%; border-radius: 99px; background: var(--yc, var(--y)); }
+.pl-bar i.hi { background: var(--ok); } .pl-bar i.mid { background: var(--yc, var(--y)); } .pl-bar i.lo { background: var(--blue); }
+.pl-bars b { font-size: 16px; text-align: center; }
+
+.pl-focus { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pl-focus li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--card2); border: 1px solid var(--line); }
+.pl-focus li .rl { color: var(--ya, var(--y)); font-weight: 600; text-decoration: none; }
+.pl-focus-none { margin: 0; color: var(--mut); }
+
+.pl-support { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; border: 1px solid var(--line2); background: var(--card2); color: var(--fg); }
+.pl-support > svg { flex: none; margin-top: 2px; color: var(--blue); }
+.pl-support p { margin: 0 0 8px; line-height: 1.5; }
+.pl-disc { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); color: var(--mut); }
+.pl-disc > svg { flex: none; margin-top: 2px; }
+.pl-disc p { margin: 0; line-height: 1.5; }
+.pl-disc.compact { padding: 6px 10px; }
+
+.pl-trend { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; align-items: end; height: 150px; margin-top: 6px; }
+.pl-trend .c { display: grid; grid-template-rows: auto 1fr auto; height: 100%; gap: 4px; text-align: center; min-width: 0; }
+.pl-trend .bar { position: relative; background: var(--bg2); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.pl-trend .bar i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 6px 6px 0 0; background: var(--yc, var(--y)); }
+.pl-trend .bar i.thriving { background: var(--ok); } .pl-trend .bar i.steady { background: var(--yc, var(--y)); } .pl-trend .bar i.low { background: var(--blue); } .pl-trend .bar i.care { background: var(--mut); }
+.pl-trend .s { font-family: var(--mono); font-size: 12px; color: var(--fg); }
+.pl-trend .d { font-size: 10.5px; color: var(--mut); }
+.pl-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--mut); margin-top: 8px; }
+.pl-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.pl-legend i.thriving { background: var(--ok); } .pl-legend i.steady { background: var(--yc, var(--y)); } .pl-legend i.low { background: var(--blue); } .pl-legend i.care { background: var(--mut); }
+.mn-lvl.legacy { color: var(--mut); }
+.pl-lastrow { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
+.pl-title { font-size: 17px; margin: 6px 0 0; }

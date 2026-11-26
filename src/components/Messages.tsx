@@ -260,11 +260,11 @@ export function DmBanner() {
 }
 
 /** Header link to the inbox with the unread badge. */
-export function MessagesLink({ className = 'top-social top-dm', size = 20, children }: { className?: string; size?: number; children?: ReactNode }) {
+export function MessagesLink({ className = 'top-social top-dm', size = 20, children, testid = 'top-messages' }: { className?: string; size?: number; children?: ReactNode; testid?: string }) {
   const { badge } = useMessages();
   return (
-    <Link to="/messages" className={className} aria-label={`Messages${badge ? `, ${badge} unread` : ''}`} data-testid="top-messages">
-      <Icon name="chat" size={size} />{children}{badge > 0 && <span className="s-badge" data-testid="dm-badge">{badge > 9 ? '9+' : badge}</span>}
+    <Link to="/messages" className={className} aria-label={`Messages${badge ? `, ${badge} unread` : ''}`} data-testid={testid}>
+      <Icon name="chat" size={size} />{children}{badge > 0 && <span className="s-badge" data-testid={testid === 'top-messages' ? 'dm-badge' : `${testid}-badge`}>{badge > 9 ? '9+' : badge}</span>}
     </Link>
   );
 }

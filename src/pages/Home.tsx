@@ -102,7 +102,7 @@ export default function Home() {
               <div className="stat"><div className="stat-v">{burned}</div><div className="stat-l">active burn est.</div></div>
             </div>
             <MacroBar label="Protein" value={tot.protein} target={t.protein} />
-            <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="#f4f4f4" />
+            <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="var(--bar-hi)" />
             <MacroBar label="Water" value={water / 1000} target={t.waterMl / 1000} unit=" L" color="#60a5fa" />
           </Card>
 

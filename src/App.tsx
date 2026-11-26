@@ -12,6 +12,7 @@ import { useSocial } from './lib/socialStore';
 import { useMessages } from './lib/messagesStore';
 import { DmBanner, MessagesLink } from './components/Messages';
 import { CallLayer } from './components/Call';
+import { useTheme, hasStoredPref, readStoredPref, setStoredPref, parsePref } from './lib/theme';
 
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Train = lazy(() => import('./pages/Train'));
@@ -65,8 +66,11 @@ const SettingsSection = lazy(() => import('./pages/Settings').then((m) => ({ def
 const LegacyRedirect = lazy(() => import('./pages/Settings').then((m) => ({ default: m.LegacyRedirect })));
 const SharedActivity = lazy(() => import('./pages/SharedActivity'));
 
+// Main navigation order (desktop sidebar): Home, then Social (Friends & Stories), then Messages, then the rest.
 const NAV = [
   { to: '/', icon: 'home', label: 'Home', end: true },
+  { to: '/social', icon: 'users', label: 'Social' },
+  { to: '/messages', icon: 'chat', label: 'Messages' },
   { to: '/coach', icon: 'coach', label: 'Coach' },
   { to: '/train', icon: 'train', label: 'Train' },
   { to: '/record', icon: 'record', label: 'Record' },
@@ -75,8 +79,6 @@ const NAV = [
   { to: '/mind', icon: 'mind', label: 'Mind' },
   { to: '/burn', icon: 'fire', label: 'Burn' },
   { to: '/progress', icon: 'progress', label: 'Progress' },
-  { to: '/social', icon: 'users', label: 'Social' },
-  { to: '/messages', icon: 'chat', label: 'Messages' },
 ];
 
 export function ModeChip() {
@@ -97,6 +99,13 @@ export function App() {
   const loc = useLocation();
   const nav = useNavigate();
 
+  // Appearance: applies the saved theme (and follows the device for "System"); keeps localStorage and the profile in step.
+  const { pref: themePref } = useTheme();
+  useEffect(() => {
+    if (!ready) return;
+    if (profile.theme) { if (parsePref(profile.theme) !== themePref) setStoredPref(parsePref(profile.theme)); }
+    else if (hasStoredPref()) setProfile({ theme: readStoredPref() });
+  }, [ready, profile.theme, themePref]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setCuePrefs(profile.sound !== false, !!profile.voice); }, [profile.sound, profile.voice]);
   // Auth email landings: /?next=reset-password | account
   useEffect(() => {
@@ -128,7 +137,8 @@ export function App() {
         <div className="side-foot"><ModeChip /><div style={{ marginTop: 10 }}>Train · Track · Fuel</div></div>
       </nav>
       <main className="main">
-        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><NavLink to="/social" className="top-social" aria-label={`Social${badge ? `, ${badge} new` : ''}`} data-testid="top-social"><Icon name="users" size={20} />{badge > 0 && <span className="s-badge">{badge > 9 ? '9+' : badge}</span>}</NavLink><MessagesLink /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/settings" className="top-set" aria-label="Settings" data-testid="top-settings"><Icon name="gear" size={20} /></NavLink><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
+        <div className="desk-bar"><MessagesLink className="desk-dm" size={20} testid="desk-messages"><span>Messages</span></MessagesLink></div>
+        <div className="topbar"><div className="brand"><span className="brand-mark">H</span>HYBRD</div><div className="spacer" /><MessagesLink /><NavLink to="/coach" className="top-coach" aria-label="HYBRD Coach"><Icon name="coach" size={18} /><span className="top-coach-label">Coach</span></NavLink><ModeChip /><NavLink to="/settings" className="top-set" aria-label="Settings" data-testid="top-settings"><Icon name="gear" size={20} /></NavLink><NavLink to="/me" className="top-av" aria-label="Me"><Avatar size={32} /></NavLink></div>
         <Suspense fallback={<div className="muted" style={{ padding: 30 }}>Loading…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -199,10 +209,10 @@ export function App() {
       <CallLayer />
       <nav className="bottom-nav" aria-label="Main">
         <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
-        <NavLink to="/train"><Icon name="train" /><span>Train</span></NavLink>
+        <NavLink to="/social" className="bn-social" data-testid="nav-social" aria-label={`Social, friends and stories${badge ? `, ${badge} new` : ''}`}><span className="bn-ic"><Icon name="users" />{badge > 0 && <span className="s-badge" data-testid="nav-social-badge">{badge > 9 ? '9+' : badge}</span>}</span><span>Social</span></NavLink>
         <NavLink to="/record" className={`rec ${live ? 'live' : ''}`}><span className="rec-btn"><Icon name="record" size={26} /></span><span>{live ? 'Live' : 'Record'}</span></NavLink>
+        <NavLink to="/train"><Icon name="train" /><span>Train</span></NavLink>
         <NavLink to="/fuel"><Icon name="fuel" /><span>Fuel</span></NavLink>
-        <NavLink to="/me" className="bn-me"><Avatar size={24} /><span>Me</span></NavLink>
       </nav>
     </div>
   );

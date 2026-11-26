@@ -4,7 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 const base = process.env.BASE || '/hybrd/';
 const port = +(process.env.PORT || 4173);
-const root = new URL('../dist/', import.meta.url).pathname;
+const root = process.env.DIST ? process.env.DIST.replace(/\/?$/, '/') : new URL('../dist/', import.meta.url).pathname;
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webmanifest': 'application/manifest+json' };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');

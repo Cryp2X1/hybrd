@@ -51,6 +51,8 @@ export interface Profile {
   /** Settings › Privacy & safety: map visibility defaults, privacy zones, default activity visibility. */
   privacy?: Partial<import('./privacy').PrivacyPrefs>;
   /** Settings › Recording: defaults for new GPS sessions. */
+  /** Appearance: Light / Dark / System. Mirrors localStorage 'hybrd:theme' so it follows you across devices. */
+  theme?: 'light' | 'dark' | 'system';
   recording?: { autoPause?: boolean; keepAwake?: boolean; splitCues?: boolean };
   /** Gear you pick from when saving an activity (shoes, bikes). */
   gear?: { id: string; name: string; kind: 'shoes' | 'bike' | 'other'; retired?: boolean }[];
@@ -173,7 +175,7 @@ export interface DataState {
   journal: import('./mind').JournalEntry[];
   /** Completed breathing sessions, program days and recovery routines. Synced to `mind_sessions`. */
   mindsessions: import('./mind').MindSession[];
-  /** Optional WHO-5 / PHQ-4 check-ups (screening only). localOnly entries never sync. Synced to `mind_screens`. */
+  /** HYBRD Pulse weekly check-ins (+ optional PHQ-2/GAD-2; older retired-format entries kept as-is). localOnly entries never sync. Synced to `mind_screens`. */
   screens: import('./mind').ScreenResult[];
 }
 export type Collection = keyof DataState;

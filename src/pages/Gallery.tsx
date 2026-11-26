@@ -104,7 +104,7 @@ function Viewer({ list, index, onIndex, onClose, onDelete }: { list: GalleryItem
             <div className="row wrap"><span className={`g-tag inline t-${it.tag}`}>{tagLabel(it.tag)}</span><b>{fmtDay(it.date)}</b><span className="muted small">{vid ? `${fmtDuration(it.duration)} · ` : ''}{it.w ? `${it.w}×${it.h} · ` : ''}{fmtBytes(it.bytes.orig)}{vid && it.container ? ` · ${it.container.toUpperCase()}` : ''}</span>{localOnlyHere && <span className="pill" data-testid="gv-local-only">Device only</span>}</div>
             {it.caption && <div className="gv-cap">{it.caption}</div>}
             {it.hadGps && <div className="muted small"><Icon name="lock" size={12} /> Location data was removed from this {kindWord(it)}{vid ? ' (the video itself wasn’t changed)' : ''}.</div>}
-            {vid && it.telemetry && <div className="small" style={{ color: 'var(--y)' }}>This video has a GPS track from an action camera that HYBRD can’t remove. Keep it private.</div>}
+            {vid && it.telemetry && <div className="small" style={{ color: 'var(--ya)' }}>This video has a GPS track from an action camera that HYBRD can’t remove. Keep it private.</div>}
             {vid && it.playable === false && <div className="muted small">This browser couldn’t play this format when it was added (often iPhone HEVC outside Safari). Download it to watch at full quality.</div>}
             {localOnlyHere && <div className="muted small">Over the {fmtBytes(CLOUD_FILE_CAP)} cloud limit{it.cloudNote === 'refused' ? ' set on your storage bucket' : ''}, so the video stays on this device; its preview is backed up.</div>}
           </>
@@ -163,7 +163,7 @@ function UploadSheet({ drafts, setDrafts, errors, busy, est, onClose, onSave }: 
                   <input className="input sm" type="date" value={d.date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => e.target.value && upd(d.key, { date: e.target.value, dateSource: 'manual' })} aria-label={d.kind === 'video' ? 'Video date' : 'Photo date'} />
                 </div>
                 <div className="muted small" data-testid="up-meta">{d.kind === 'video' ? `Video · ${fmtDuration(d.duration)} · ` : ''}{d.w ? `${d.w}×${d.h} · ` : ''}{fmtBytes(d.orig.size)}{d.dateSource === 'exif' ? ` · date from ${d.kind === 'video' ? 'video' : 'photo'}` : d.dateSource === 'file' ? ' · date from file' : ''}{d.hadGps ? ' · location removed' : ''}</div>
-                {d.warn && <div className="small" style={{ color: 'var(--y)' }}>{d.warn}</div>}
+                {d.warn && <div className="small" style={{ color: 'var(--ya)' }}>{d.warn}</div>}
               </div>
               <button className="icon-btn" aria-label={`Don’t add this ${d.kind === 'video' ? 'video' : 'photo'}`} onClick={() => { URL.revokeObjectURL(d.preview); setDrafts((ds) => ds.filter((x) => x.key !== d.key)); }}><Icon name="x" size={18} /></button>
             </div>

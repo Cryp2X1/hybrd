@@ -73,7 +73,7 @@ alter table public.fasting_logs enable row level security; -- Fasting timer: one
 alter table public.mind_checkins enable row level security; -- Mind & Recovery daily check-in: mood/stress/energy/motivation/soreness/sleep 1–5, optional HRV + resting HR, readiness score; day = local date
 alter table public.journal_entries enable row level security; -- Mind & Recovery journal (gratitude / wins / reflection). Private: owner-only, never shared
 alter table public.mind_sessions enable row level security; -- Mind & Recovery: completed breathing sessions, program days and recovery routines; day = local date
-alter table public.mind_screens enable row level security; -- Mind & Recovery optional WHO-5 / PHQ-4 check-ups (screening answers only, no diagnosis); day = local date
+alter table public.mind_screens enable row level security; -- Mind & Recovery HYBRD Pulse weekly check-ins (+ optional PHQ-2/GAD-2; no diagnosis; older retired-format rows kept as-is); day = local date
 
 -- Defence in depth: entries the user marked "keep on this device" must never be stored server-side (the app never sends them).
 alter table public.journal_entries drop constraint if exists journal_entries_not_local_only;

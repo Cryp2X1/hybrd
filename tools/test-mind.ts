@@ -1,12 +1,12 @@
 // Unit checks for Mind & Recovery (/mind): readiness maths (weights, sleep / HRV / resting-HR / load adjustments, overrides),
 // safety (crisis words incl. training-slang exclusions, red flags, crisis messaging, under-18 framing, tool gating),
-// screening scoring (WHO-5, PHQ-2/GAD-2 cut-offs, outcomes), training load (session RPE, uncoupled ratio, monotony, hard sessions),
+// HYBRD Pulse (original wording, 0–100 scoring, bands, gentle 988 support, legacy records) + optional PHQ-2/GAD-2 cut-offs, outcomes, training load (session RPE, uncoupled ratio, monotony, hard sessions),
 // recovery planner, cold/heat, deload, breathing pacer maths, trends/streaks/patterns, programs, storage + sync wiring, content + sources.
 // Run: node --experimental-strip-types --import ./tools/ts-resolve.mjs tools/test-mind.ts
 import { readFileSync } from 'node:fs';
 import {
   CRISIS, NOT_THERAPY, crisisInText, defaultMindQuiz, goalFromDisciplines, mindScreen, toolStatus, MIND_REASON_TEXT, MIND_REASON_SRC,
-  WHO5_ITEMS, WHO5_SCALE, PHQ4_ITEMS, PHQ4_SCALE, SAFETY_Q, who5Score, phq4Score, screenOutcome,
+  PULSE_ITEMS, PULSE_SCALE, PULSE_BAND, PULSE_DISCLAIMER, pulseScore, pulseBand, pulseTrend, pulseSupportLine, isLegacyScreen, PHQ4_ITEMS, PHQ4_SCALE, SAFETY_Q, phq4Score, screenOutcome,
   RED_FLAGS, REC_LABEL, REC_TEXT, WEIGHTS, itemScore, baselines, sleepPenalty, readiness, validCheckIn,
   DEFAULT_RPE, sessionLoad, dailyLoads, loadSummary, BAND_TEXT, isHard, typicalSession, hardYesterday,
   coldHeatAdvice, recoveryPlan, deloadSignal, DELOAD_HOW, COLD_HEAT_SAFETY,
@@ -56,25 +56,44 @@ check('red flags: chest / numbness / dark urine are emergencies with 911', ['che
 check('red flags: injury ones say see a clinician', ['swelling', 'bone'].every((v) => /clinician/.test(RED_FLAGS.find((f) => f.v === v)!.action)));
 
 // ====================================================== screening ======================================================
-check('WHO-5: 5 items, 0–5 scale', WHO5_ITEMS.length === 5 && WHO5_SCALE.map((s) => s.v).join() === '5,4,3,2,1,0');
+// HYBRD Pulse — original instrument. Guard against ever re-introducing the retired licensed index's wording.
+const RETIRED = ['cheerful and in good spirits', 'calm and relaxed', 'active and vigorous', 'fresh and rested', 'filled with things that interest me', 'all of the time', 'more than half of the time', 'at no time'];
+const pulseText = JSON.stringify([PULSE_ITEMS, PULSE_SCALE, PULSE_BAND, PULSE_DISCLAIMER]).toLowerCase();
+check('Pulse: 6 items (energy, sleep, mood, stress, drive, recovery), 0–4 emoji scale', PULSE_ITEMS.map((i) => i.k).join() === 'energy,sleep,mood,stress,drive,recovery' && PULSE_SCALE.map((s) => s.v).join() === '0,1,2,3,4' && PULSE_SCALE.every((s) => s.emoji && s.label));
+check('Pulse: every item has a question, end labels, tip + link', PULSE_ITEMS.every((i) => i.q.endsWith('?') && i.lo && i.hi && i.tip.length > 30 && i.link.startsWith('/')));
+check('Pulse: none of the retired index’s wording or response labels', RETIRED.every((w) => !pulseText.includes(w)));
+const appText = ['src/lib/mind.ts', 'src/pages/Mind.tsx', 'src/components/Pulse.tsx', 'src/data/mindContent.ts', 'src/data/sources.ts', 'src/lib/entitlements.ts'].map(read).join('\n');
+check('no WHO-5 name, licence or item text left in the app (only the stored legacy key `who5`)', !/WHO-?5|World Health Organization-Five|CC BY-NC-SA/.test(appText) /* lowercase `who5` = stored legacy data key only */ && RETIRED.slice(0, 5).every((w) => !appText.toLowerCase().includes(w)));
+check('Pulse score = sum ÷ 24 × 100', pulseScore([4, 4, 4, 4, 4, 4])!.score === 100 && pulseScore([0, 0, 0, 0, 0, 0])!.score === 0 && pulseScore([2, 2, 2, 2, 2, 2])!.score === 50 && pulseScore([3, 2, 3, 3, 2, 3])!.score === 67);
+check('Pulse bands 75 / 55 / 35', pulseBand(75) === 'thriving' && pulseBand(74) === 'steady' && pulseBand(55) === 'steady' && pulseBand(54) === 'low' && pulseBand(35) === 'low' && pulseBand(34) === 'care');
+check('Pulse rejects bad input', pulseScore([1, 2, 3]) === null && pulseScore([5, 0, 0, 0, 0, 0]) === null && pulseScore([1.5, 0, 0, 0, 0, 0]) === null && pulseScore(undefined) === null);
+check('Pulse focus = up to 2 lowest areas at “Okay” or below', pulseScore([4, 1, 4, 0, 2, 4])!.focus.join() === 'stress,sleep' && pulseScore([4, 3, 4, 3, 4, 3])!.focus.length === 0);
+check('Pulse support line: low score or very low mood', pulseScore([1, 1, 1, 1, 1, 1])!.support && pulseScore([4, 4, 0, 4, 4, 4])!.support && !pulseScore([2, 2, 2, 2, 2, 2])!.support);
+check('support line: 988, gentle, no diagnosis words, minors get a trusted adult', /988/.test(pulseSupportLine(false)) && !/diagnos|disorder|depress|abnormal/i.test(pulseSupportLine(false)) && /school counselor/.test(pulseSupportLine(true)));
+check('disclaimer: general wellness, not medical advice / diagnosis / validated', /general wellness/.test(PULSE_DISCLAIMER) && /not medical advice/.test(PULSE_DISCLAIMER) && /diagnosis/.test(PULSE_DISCLAIMER) && /not a medical device, a validated or clinical questionnaire/.test(PULSE_DISCLAIMER));
+check('Pulse copy names no disease and no clinical cut-off', !/depress|anxiety disorder|disorder|diagnos(e|is)\b(?! and)|cut-?off|screening cut/i.test(JSON.stringify([PULSE_ITEMS, PULSE_BAND])));
 check('PHQ-4: 4 items, 0–3 scale', PHQ4_ITEMS.length === 4 && PHQ4_SCALE.map((s) => s.v).join() === '0,1,2,3');
 check('safety question asks directly', /ending your life|hurting yourself/.test(SAFETY_Q));
-check('WHO-5 raw × 4 = %', who5Score([5, 5, 5, 5, 5])!.pct === 100 && who5Score([0, 0, 0, 0, 0])!.pct === 0 && who5Score([3, 3, 2, 2, 3])!.pct === 52);
-check('WHO-5 cut-off: raw < 13 (pct < 50) is low', who5Score([3, 3, 2, 2, 2])!.low === true && who5Score([3, 3, 3, 2, 2])!.low === false);
-check('WHO-5 rejects bad input', who5Score([1, 2, 3]) === null && who5Score([6, 0, 0, 0, 0]) === null && who5Score([1.5, 0, 0, 0, 0]) === null);
 check('PHQ-2 / GAD-2 sums and ≥ 3 cut-offs', (() => { const p = phq4Score([1, 2, 0, 2])!; return p.phq2 === 3 && p.gad2 === 2 && p.dep && !p.anx && p.total === 5; })());
 check('PHQ-4 rejects bad input', phq4Score([4, 0, 0, 0]) === null && phq4Score([0, 0]) === null);
-const crisis = screenOutcome({ who5: [5, 5, 5, 5, 5], phq4: [0, 0, 0, 0], safety: 'yes' });
-check('safety “yes” → crisis, even with good scores', crisis.level === 'crisis');
+const crisis = screenOutcome({ pulse: [4, 4, 4, 4, 4, 4], safety: 'yes' });
+check('safety “yes” → crisis, even with a great Pulse', crisis.level === 'crisis' && crisis.support);
 check('crisis message: 988 call/text + 911 + local emergency services', crisis.lines.some((l) => /988/.test(l)) && crisis.lines.some((l) => /911/.test(l) && /local emergency services/.test(l)) && crisis.src.includes('mind-988'));
 check('crisis message for minors names a trusted adult', screenOutcome({ safety: 'yes' }, true).lines.some((l) => /parent or guardian/.test(l)));
-const pro = screenOutcome({ who5: [2, 2, 2, 2, 2], phq4: [0, 0, 0, 0], safety: 'no' });
-check('low WHO-5 → professional, framed as not a diagnosis', pro.level === 'professional' && pro.lines.some((l) => /not a diagnosis/.test(l)));
-check('PHQ-2 ≥ 3 → professional', screenOutcome({ phq4: [2, 1, 0, 0], safety: 'no' }).level === 'professional');
+const low = screenOutcome({ pulse: [1, 1, 1, 1, 1, 1], safety: 'no' });
+check('low Pulse → gentle “watch” with support line, not alarming', low.level === 'watch' && low.support && low.title === 'Go easy on yourself this week' && !/diagnos|disorder|abnormal/i.test(low.lines.join(' ')) && low.src.includes('mind-988'));
+check('PHQ-2 ≥ 3 (opt-in) → professional, framed as not a diagnosis', (() => { const o = screenOutcome({ pulse: [3, 3, 3, 3, 3, 3], phq4: [2, 1, 0, 0], safety: 'no' }); return o.level === 'professional' && o.lines.some((l) => /not a diagnosis/.test(l)); })());
 check('GAD-2 ≥ 3 → professional', screenOutcome({ phq4: [0, 0, 3, 0], safety: 'skip' }).level === 'professional');
-check('borderline → watch', screenOutcome({ who5: [3, 3, 3, 3, 2], phq4: [1, 1, 1, 1], safety: 'no' }).level === 'watch');
-check('all clear → ok', screenOutcome({ who5: [4, 4, 4, 4, 4], phq4: [0, 0, 1, 0], safety: 'no' }).level === 'ok');
-check('professional wording for adults vs minors', /licensed mental-health professional/.test(pro.lines.join(' ')) && /school counselor/.test(screenOutcome({ who5: [1, 1, 1, 1, 1] }, true).lines.join(' ')));
+check('“Running low” Pulse → watch, no support line', (() => { const o = screenOutcome({ pulse: [2, 2, 2, 2, 2, 1], safety: 'no' }); return o.level === 'watch' && !o.support; })());
+check('good Pulse → ok', screenOutcome({ pulse: [3, 3, 3, 3, 3, 3], safety: 'no' }).level === 'ok' && screenOutcome({ pulse: [4, 4, 3, 4, 4, 3], safety: 'no' }).title === 'Looking strong');
+check('professional wording for adults vs minors', /qualified professional/.test(low.lines.join(' ')) && /school counselor/.test(screenOutcome({ pulse: [0, 0, 0, 0, 0, 0] }, true).lines.join(' ')));
+// legacy (pre-Nov-2026) records: kept, never scored, nothing breaks
+const legacy = { who5: [3, 3, 4, 3, 4], safety: 'no' as const };
+check('legacy record: recognised, not scored, labelled retired', isLegacyScreen(legacy) && screenOutcome(legacy).level === 'legacy' && screenOutcome(legacy).pulse === null && /retired format/.test(screenOutcome(legacy).lines.join(' ')) && !/\d+\/100/.test(screenOutcome(legacy).lines.join(' ')));
+check('legacy record with PHQ-4 still gets the PHQ result', screenOutcome({ who5: [1, 1, 1, 1, 1], phq4: [3, 3, 0, 0], safety: 'no' }).level === 'professional');
+check('legacy record with safety “yes” still → crisis', screenOutcome({ who5: [5, 5, 5, 5, 5], safety: 'yes' }).level === 'crisis');
+const ptr = pulseTrend([{ id: 'a', date: '2026-11-03', pulse: [2, 2, 2, 2, 2, 2] }, { id: 'l', date: '2026-11-05', who5: [3, 3, 3, 3, 3] } as never, { id: 'b', date: '2026-11-17', pulse: [3, 3, 3, 3, 3, 3] }, { id: 'c', date: '2026-11-10', pulse: [4, 4, 4, 4, 4, 4], deleted: true }]);
+check('Pulse trend: oldest → newest, skips legacy + deleted', ptr.map((x) => `${x.id}:${x.score}`).join() === 'a:50,b:75');
 
 // ====================================================== readiness ======================================================
 check('weights sum to 1', Math.abs(Object.values(WEIGHTS).reduce((a, b) => a + b, 0) - 1) < 1e-9);
@@ -193,7 +212,7 @@ check('evidence: ≥ 35 cards, unique ids, every category used', MIND_EVIDENCE.l
 check('evidence uses all four grades', (['strong', 'moderate', 'limited', 'weak'] as const).every((g) => MIND_EVIDENCE.some((e) => e.grade === g)));
 check('ACWR graded weak and says it does not predict injury', MIND_EVIDENCE.find((e) => e.id === 'acwr')!.grade === 'weak' && /not predict/i.test(MIND_EVIDENCE.find((e) => e.id === 'acwr')!.verdict));
 check('box breathing graded limited (not overclaimed)', MIND_EVIDENCE.find((e) => e.id === 'box')!.grade === 'limited');
-check('screening cards say not a diagnosis', /not a diagnosis/.test(MIND_EVIDENCE.find((e) => e.id === 'who5')!.detail));
+check('Pulse evidence card: limited grade, says not validated / not a diagnosis', MIND_EVIDENCE.find((e) => e.id === 'pulse')!.grade === 'limited' && /not been validated/.test(MIND_EVIDENCE.find((e) => e.id === 'pulse')!.detail) && /not a diagnosis/.test(MIND_EVIDENCE.find((e) => e.id === 'pulse')!.detail) && !MIND_EVIDENCE.some((e) => e.id === 'who5'));
 check('4 programs (7, 7, 5, 5 days) with lessons, steps + prompts', PROGRAMS.length === 4 && PROGRAMS.map((p) => p.days.length).join() === '7,7,5,5' && PROGRAMS.every((p) => p.days.every((d, i) => d.day === i + 1 && d.lesson.length > 60 && d.steps.length >= 3 && d.prompt.length > 5)));
 check('program tools point at real patterns / routines', PROGRAMS.every((p) => p.days.every((d) => !d.tool || (d.tool.kind === 'breathe' ? !!patternById(d.tool.pattern) : d.tool.kind === 'routine' ? !!routineById(d.tool.id) : d.tool.lines.length >= 3))));
 check('5 routines, 5–12 min, sides doubled, transitions counted', ROUTINES.length === 5 && ROUTINES.every((r) => routineSec(r) >= 240 && routineSec(r) <= 720) && routineSteps(routineById('post-run')!).length === 11 && routineSec(routineById('foam')!) === 45 * 2 * 3 + 60 + 30 * 2 + (routineSteps(routineById('foam')!).length - 1) * TRANSITION_SEC);
@@ -228,7 +247,8 @@ check('“not therapy” note on every Mind page', pages.every((p) => /NotTherap
 check('player respects reduced motion', /prefers-reduced-motion: reduce/.test(pages[3]) && /prefers-reduced-motion: reduce/.test(read('src/styles.css')));
 check('journal + check-ups honour the device-only choice', (pages[0].match(/localOnly: true/g) || []).length >= 2 && /localOnly: true/.test(pages[4]));
 check('journal text runs the crisis check', /crisisInText\(t\)/.test(pages[0]) && /crisisInText\(text\)/.test(pages[4]));
-check('screening attribution shown (WHO-5 licence + Pfizer)', /CC BY-NC-SA 3\.0 IGO/.test(pages[0]) && /educational grant from Pfizer/.test(pages[0]));
+check('Pulse UI: disclaimer + support + PHQ opt-in with Pfizer attribution', /PulseDisclaimer/.test(pages[0]) && /PulseSupport/.test(pages[0]) && /addPhq \? \{ phq4/.test(pages[0]) && /educational grant from Pfizer/.test(pages[0]) && /v: 2, pulse:/.test(pages[0]));
+check('Pulse CSS uses theme variables only (dark/light safe)', !/#[0-9a-f]{3,8}\b|rgba?\(/i.test(read('src/pulse.css')));
 check('sample data covers Mind', /checkins, journal, mindsessions, screens/.test(read('src/lib/sample.ts')));
 
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');

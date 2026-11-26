@@ -1,6 +1,6 @@
 // Screenshots + checks for Mind & Recovery (/mind): Home card, 20-second check-in → readiness, setup (health → goal → privacy → ready),
 // breathing pacer (normal + reduced motion), programs, recovery planner + routine timer, journal (incl. crisis-language support and the
-// training-slang exclusion), trends, evidence + sources, well-being check-up with the crisis outcome, help page, under-18 framing.
+// training-slang exclusion), trends, evidence + sources, HYBRD Pulse with the crisis outcome, help page, under-18 framing.
 // Includes a no-horizontal-overflow check on every shot. Needs `node tools/serve.mjs` on :4173.
 import puppeteer from 'puppeteer-core';
 const BASE = 'http://localhost:4173/hybrd/';
@@ -156,16 +156,16 @@ async function run(kind) {
   await clickText('Monitoring', '.seg button');
   check(/does not predict injury/i.test(await text()), 'Monitoring: ACWR shown as weak / not an injury predictor');
   await clickText('Safety & screening', '.seg button');
-  check(/CC BY-NC-SA 3\.0 IGO/i.test(await text()) && /educational grant from Pfizer/i.test(await text()), 'Screening licences + attribution');
+  check(/HYBRD Pulse:/.test(await text()) && /original HYBRD tool/i.test(await text()) && !/WHO-?5|CC BY-NC-SA/.test(await text()) && /educational grant from Pfizer/i.test(await text()), 'Check-in tools: HYBRD Pulse is original, PHQ attribution, no WHO-5');
 
   // Check-up → crisis outcome
   await go('/mind');
   await tid('mind-checkup-open'); await sleep(400);
-  await page.evaluate(() => { document.querySelectorAll('.mn-sq').forEach((q, i) => { const c = q.querySelectorAll('.chip'); if (i < 5) c[2]?.click(); else if (i < 9) c[0]?.click(); }); }); await sleep(200);
+  for (const k of ['energy', 'sleep', 'mood', 'stress', 'drive', 'recovery']) await tid(`pulse-${k}-2`);
   await tid('scr-safety-yes'); await sleep(300);
   await tid('scr-save'); await sleep(500);
   const t8 = await text();
-  check(!!(await page.$('[data-testid="scr-out-crisis"]')) && /You don’t have to handle this alone/i.test(t8) && /988/i.test(t8), 'Check-up: “yes” to the safety question → crisis outcome with 988');
+  check(!!(await page.$('[data-testid="scr-out-crisis"]')) && /You don’t have to handle this alone/i.test(t8) && /988/i.test(t8), 'Pulse: “yes” to the safety question → crisis outcome with 988');
   await shot(phone ? 'phone-mind-checkup-crisis' : 'desktop-mind-checkup-crisis');
   await page.keyboard.press('Escape'); await sleep(300);
 

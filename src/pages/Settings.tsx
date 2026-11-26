@@ -24,6 +24,7 @@ import { MAP_STYLES } from '../lib/mapStyles';
 import { prefsOf, newSeed, MAX_ZONES, ZONE_RADII_M, type PrivacyPrefs, type PrivacyZone } from '../lib/privacy';
 import { GROUPS, SECTIONS, searchSettings, sectionById, itemPath, LEGACY_REDIRECTS } from '../lib/settingsIndex';
 import { trimLabel } from '../components/ActivityPrivacy';
+import { THEME_OPTIONS, prefLabel, useTheme, type ThemePref } from '../lib/theme';
 import type { Goal, Profile } from '../lib/types';
 
 const Account = lazy(() => import('./Account'));
@@ -106,6 +107,7 @@ export function SettingsHome() {
           <p className="muted">Pick a section on the left, or search for any setting.</p>
           <div className="set-quick">
             <Link to="/settings/privacy" className="set-qc"><Icon name="shield" /><b>Privacy & safety</b><span className="muted small">Hide your start & end, privacy zones</span></Link>
+            <Link to="/settings/appearance" className="set-qc" data-testid="set-qc-appearance"><Icon name="sun" /><b>Appearance</b><span className="muted small">Light, Dark or System</span></Link>
             <Link to="/settings/units" className="set-qc"><Icon name="ruler" /><b>Units</b><span className="muted small">mi / km, lb / kg</span></Link>
             <Link to="/settings/devices" className="set-qc"><Icon name="watch" /><b>Devices</b><span className="muted small">Heart rate, Strava, music</span></Link>
           </div>
@@ -402,6 +404,29 @@ function HelpSettings() {
     </>
   );
 }
+// ---------------------------------------------------------------- Appearance
+function AppearanceSettings() {
+  const { profile, setProfile } = useStore();
+  const { pref, theme, setPref } = useTheme((p) => { if (profile.theme !== p) setProfile({ theme: p }); });
+  return (
+    <SPage id="appearance">
+      <Card>
+        <div className="card-head" id="theme"><h3>Theme</h3><span className="muted small">{pref === 'system' ? `System · ${theme === 'dark' ? 'Dark' : 'Light'} right now` : prefLabel(pref)}</span></div>
+        <div className="theme-pick" role="radiogroup" aria-label="Theme" data-testid="theme-pick">
+          {THEME_OPTIONS.map((o) => (
+            <button key={o.v} type="button" role="radio" aria-checked={pref === o.v} className={`theme-opt ${pref === o.v ? 'on' : ''}`} onClick={() => setPref(o.v as ThemePref)} data-testid={`theme-${o.v}`}>
+              <span className={`theme-prev ${o.v}`} aria-hidden="true"><i /><i /><i /></span>
+              <span className="theme-t"><span className="theme-ic"><Icon name={o.icon} size={16} /></span><b>{o.label}</b><span className="s-radio" /></span>
+              <span className="muted small">{o.sub}</span>
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginBottom: 0 }}>Your choice is saved on this device{profile.theme ? ' and in your profile, so it follows you to other devices' : ''}. Maps, photos and share images keep their own look.</p>
+      </Card>
+    </SPage>
+  );
+}
+
 function AboutSettings() {
   const nav = useNavigate();
   return (
@@ -429,6 +454,7 @@ const BODY: Record<string, () => ReactNode> = {
   goals: () => <GoalsSettings />,
   devices: () => <Devices />,
   messages: () => <MessageSettings />,
+  appearance: () => <AppearanceSettings />,
   data: () => <DataPage />,
   help: () => <HelpSettings />,
   about: () => <AboutSettings />,

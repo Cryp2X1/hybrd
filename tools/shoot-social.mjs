@@ -95,7 +95,7 @@ async function run(browser, kind) {
     await go('/social');
     check(/ages 13\+/i.test(await text()) && !(await page.$('[data-testid="post-card"]')), 'Under-13 cannot reach the feed');
     await go('/');
-    check(!(await page.$('[data-testid="top-social"] .s-badge')), 'No social badge for under-13');
+    check(!(await page.$('[data-testid="nav-social-badge"]')), 'No social badge for under-13');
     await ctx.close();
     return;
   }
@@ -120,7 +120,7 @@ async function run(browser, kind) {
   check((await page.$$('.sample-tag')).length >= 5, 'Every sample person carries a SAMPLE tag');
   check(!/Kai W\./.test(feed), 'Friends-only post of a non-friend is not in the feed');
   check(!!(await page.$('[data-testid="workout-card"]')), 'Workout summary cards render in the feed');
-  check(phone ? !!(await page.$('[data-testid="top-social"] .s-badge')) : !!(await page.$('[data-testid="side-social-badge"]')), 'Nav badge shows pending requests');
+  check(phone ? !!(await page.$('[data-testid="nav-social-badge"]')) : !!(await page.$('[data-testid="side-social-badge"]')), 'Nav badge shows pending requests');
   if (phone) await shot('phone-social-feed');
   else await shot('desktop-social-feed');
 

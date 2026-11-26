@@ -55,7 +55,7 @@ export default function Fuel() {
               <div className="pillars">
                 <div className="grid3"><div className="stat"><div className="stat-v">{t.kcal}</div><div className="stat-l">{t.plan ? 'plan target' : 'target'}</div></div><div className="stat"><div className="stat-v">{Math.round(tot.kcal)}</div><div className="stat-l">eaten</div></div><div className="stat"><div className="stat-v">{t.addBurn ? '+' : ''}{burned}</div><div className="stat-l">{t.addBurn ? 'exercise est.' : 'burned (in plan)'}</div></div></div>
                 <MacroBar label="Protein" value={tot.protein} target={t.protein} />
-                <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="#f4f4f4" />
+                <MacroBar label="Carbs" value={tot.carbs} target={t.carbs} color="var(--bar-hi)" />
                 <MacroBar label="Fat" value={tot.fat} target={t.fat} color="#fb923c" />
               </div>
             </div>

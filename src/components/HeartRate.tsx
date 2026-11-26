@@ -34,7 +34,7 @@ export function HrPanel() {
         </div>
       </div>
       {h.status !== 'idle' && <ZoneStrip bpm={fresh ? h.bpm : undefined} max={max} />}
-      {h.error && <p className="small" style={{ color: '#ff8a8a', margin: '6px 0' }}>{h.error}</p>}
+      {h.error && <p className="small" style={{ color: 'var(--bad-t)', margin: '6px 0' }}>{h.error}</p>}
       <div className="row gap8 wrap" style={{ marginTop: 8 }}>
         {h.status === 'idle' || h.status === 'error'
           ? <button className="btn sm y" onClick={() => connectHr().catch(() => {})}><Icon name="heart" size={16} />Connect heart-rate sensor</button>
@@ -105,7 +105,7 @@ export function HrChart({ samples, max, height = 140, bare }: { samples: [number
   return (
     <svg className="hr-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height }} role="img" aria-label="Heart-rate chart">
       {ZONES.map((z, i) => { const top = y(Math.min(hi, (ZONES[i + 1]?.lo ?? 1.2) * max)), bot = y(Math.max(lo, z.lo * max)); return bot > top ? <rect key={z.z} x={0} width={W} y={top} height={bot - top} fill={z.color} opacity={bare ? 0.08 : 0.1} /> : null; })}
-      <path d={d} fill="none" stroke="#ff4d6d" strokeWidth={bare ? 2 : 2.2} vectorEffect="non-scaling-stroke" />
+      <path d={d} fill="none" stroke="var(--hr-t)" strokeWidth={bare ? 2 : 2.2} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
